@@ -6,6 +6,7 @@ bash ./langchain_env/Scripts/activate
 pip install langchain openai
 pip install --upgrade langchain
 pip install langchain_community
+pip install -U langchain-openai
 
 SCRIPT="main.py"
 cat <<EOL > $SCRIPT

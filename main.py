@@ -1,4 +1,4 @@
-from langchain.llms import OpenAI
+from langchain_openai import OpenAI
 from langchain.prompts import PromptTemplate
 
 OPENAI_API_KEY = "***REMOVED***"
@@ -15,5 +15,5 @@ prompt_template = PromptTemplate(
 name = "Саша"
 prompt = prompt_template.format(name=name)
 
-response = llm(prompt)
+response = llm.invoke(prompt)
 print(response)
