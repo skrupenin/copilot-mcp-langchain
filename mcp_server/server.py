@@ -1,27 +1,65 @@
 import os
 import sys
+print(f"Python executable: {sys.executable}")
+print(f"Python version: {sys.version}")
 import anyio
 import click
 import mcp.types as types
 from mcp.server.lowlevel import Server
-from mcp.shared._httpx_utils import create_mcp_http_client
+from langchain_openai import OpenAI
+from langchain.prompts import PromptTemplate
+from dotenv import load_dotenv
 
 # Add the project root to the Python path to ensure imports work correctly
 project_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 if project_root not in sys.path:
     sys.path.insert(0, project_root)
 
+# Load environment variables
+load_dotenv()
 
-async def fetch_website(
-    url: str,
-) -> list[types.Content]:
-    headers = {
-        "User-Agent": "MCP Test Server (github.com/modelcontextprotocol/python-sdk)"
-    }
-    async with create_mcp_http_client(headers=headers) as client:
-        response = await client.get(url)
-        response.raise_for_status()
-        return [types.TextContent(type="text", text=response.text)]
+# Initialize OpenAI client
+OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
+if OPENAI_API_KEY is None:
+    raise ValueError("OPENAI_API_KEY not found in .env")
+
+# Store the saved prompt template
+saved_prompt_template = None
+
+async def save_prompt_template(template_text: str) -> list[types.Content]:
+    global saved_prompt_template
+    try:
+        saved_prompt_template = template_text
+        return [types.TextContent(type="text", text="Prompt template saved successfully.")]
+    except Exception as e:
+        return [types.TextContent(type="text", text=f"Error saving prompt template: {str(e)}")]
+
+async def use_prompt_template(parameters: dict) -> list[types.Content]:
+    global saved_prompt_template
+    
+    if saved_prompt_template is None:
+        return [types.TextContent(type="text", text="No prompt template has been saved. Please save a template first.")]
+    
+    try:
+        # Extract input variables from the parameters
+        input_variables = list(parameters.keys())
+        
+        # Create prompt template with the input variables
+        prompt_template = PromptTemplate(
+            input_variables=input_variables,
+            template=saved_prompt_template
+        )
+        
+        # Format the prompt with the provided parameters
+        prompt = prompt_template.format(**parameters)
+        
+        # Initialize LLM and get response
+        llm = OpenAI(openai_api_key=OPENAI_API_KEY)
+        response = llm.invoke(prompt)
+        
+        return [types.TextContent(type="text", text=response)]
+    except Exception as e:
+        return [types.TextContent(type="text", text=f"Error using prompt template: {str(e)}")]
 
 
 @click.command()
@@ -33,31 +71,47 @@ async def fetch_website(
     help="Transport type",
 )
 def main(port: int, transport: str) -> int:
-    app = Server("mcp-website-fetcher")
+    app = Server("langchain-prompt-server")
 
     @app.call_tool()
     async def fetch_tool(name: str, arguments: dict) -> list[types.Content]:
-        if name != "fetch":
+        if name == "save_prompt":
+            if "template" not in arguments:
+                raise ValueError("Missing required argument 'template'")
+            return await save_prompt_template(arguments["template"])
+        elif name == "use_prompt":
+            if not arguments:
+                raise ValueError("No parameters provided for the prompt template")
+            return await use_prompt_template(arguments)
+        else:
             raise ValueError(f"Unknown tool: {name}")
-        if "url" not in arguments:
-            raise ValueError("Missing required argument 'url'")
-        return await fetch_website(arguments["url"])
 
     @app.list_tools()
     async def list_tools() -> list[types.Tool]:
         return [
             types.Tool(
-                name="fetch",
-                description="Fetches a website and returns its content",
+                name="save_prompt",
+                description="Saves a prompt template for later use",
                 inputSchema={
                     "type": "object",
-                    "required": ["url"],
+                    "required": ["template"],
                     "properties": {
-                        "url": {
+                        "template": {
                             "type": "string",
-                            "description": "URL to fetch",
+                            "description": "The prompt template to save (with placeholders in {name} format)",
                         }
                     },
+                },
+            ),
+            types.Tool(
+                name="use_prompt",
+                description="Uses the saved prompt template with provided parameters",
+                inputSchema={
+                    "type": "object",
+                    "additionalProperties": {
+                        "type": "string"
+                    },
+                    "description": "Key-value pairs to use as parameters in the prompt template",
                 },
             )
         ]

@@ -1,3 +1,7 @@
+import sys
+print(f"Python executable: {sys.executable}")
+print(f"Python version: {sys.version}")
+
 from langchain_openai import OpenAI
 from langchain.prompts import PromptTemplate
 
