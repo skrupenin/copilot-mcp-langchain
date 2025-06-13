@@ -8,6 +8,9 @@ pip install --upgrade langchain
 pip install langchain_community
 pip install -U langchain-openai
 pip install python-dotenv
+pip install modelcontextprotocol anyio click
+pip install "mcp[cli]"
+pip show mcp
 
 SCRIPT="main.py"
 cat <<EOL > $SCRIPT

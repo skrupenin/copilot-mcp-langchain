@@ -1,0 +1,9 @@
+{
+    "servers": {
+      "langchain-mcp":{
+          "type": "stdio",
+          "command": "${workspaceFolder}\\langchain_env\\Scripts\\python.exe",
+          "args": ["${workspaceFolder}\\mcp_server\\server.py"]
+      }
+    }
+}
