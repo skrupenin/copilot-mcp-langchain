@@ -28,6 +28,72 @@ if OPENAI_API_KEY is None:
 # Store the saved prompt template
 saved_prompt_template = None
 
+# Define tools at module level so they can be used by multiple functions
+tool_definitions = [
+    {
+        "name": "lng_save_prompt_template",
+        "description": """Saves a prompt template for later use by the system.
+
+**Parameters:**
+- `template` (string, required): The prompt template to save with placeholders in {name} format
+
+**Example Usage:**
+- Create a template like "Tell me about {topic} in the style of {style}."
+- The system saves this template for future use
+- Placeholders like {topic} and {style} will be replaced with actual values when used
+
+This tool is part of a workflow that allows for flexible prompt engineering while maintaining a clean separation between the prompt structure and the specific content.""",
+        "schema": {
+            "type": "object",
+            "required": ["template"],
+            "properties": {
+                "template": {
+                    "type": "string",
+                    "description": "The prompt template to save (with placeholders in {name} format)",
+                }
+            },
+        }
+    },
+    {
+        "name": "lng_use_prompt_template",
+        "description": """Uses the previously saved prompt template with provided parameters.
+
+**Parameters:**
+- Any key-value pairs that match the placeholders in your template
+
+**Example Usage:**
+- If your saved template contains {topic} and {style} placeholders
+- You would provide values like "topic: artificial intelligence" and "style: a pirate"
+- The system will replace the placeholders with these values and process the completed prompt
+
+This tool works with lng_save_prompt_template to create a flexible prompt engineering system.""",
+        "schema": {
+            "type": "object",
+            "additionalProperties": {
+                "type": "string"
+            },
+            "description": "Key-value pairs to use as parameters in the prompt template",
+        }
+    },
+    {
+        "name": "lng_get_tools_info",
+        "description": """Returns information about the available langchain tools.
+
+**Parameters:**
+- None required
+
+**Example Usage:**
+- Simply request this tool without any parameters
+- The system will return documentation about all available tools
+
+This tool helps you understand the capabilities of all available tools in the system.""",
+        "schema": {
+            "type": "object",
+            "description": "No parameters required",
+        }
+    }
+]
+
 async def lng_save_prompt_template(template_text: str) -> list[types.Content]:
     global saved_prompt_template
     try:
@@ -38,14 +104,26 @@ async def lng_save_prompt_template(template_text: str) -> list[types.Content]:
 
 async def lng_get_tools_info() -> list[types.Content]:
     try:
-        # Path to the markdown file relative to the server script
-        md_file_path = os.path.join(project_root, "langchain_tools.md")
+        # Format the tools information as markdown using the global tool_definitions
+        markdown_content = "# Langchain MCP Tools\n\n"
+        markdown_content += "This document describes the tools available in the Langchain Model Context Protocol (MCP) implementation.\n\n"
+        markdown_content += "## Available Tools\n\n"
         
-        # Read the markdown file
-        with open(md_file_path, "r", encoding="utf-8") as file:
-            content = file.read()
+        # Add each tool's information
+        for i, tool in enumerate(tool_definitions, 1):
+            markdown_content += f"### {i}. `{tool['name']}`\n\n"
+            markdown_content += f"{tool['description']}\n\n"
         
-        return [types.TextContent(type="text", text=content)]
+        # Add section about how tools work together
+        markdown_content += "## How MCP Tools Work Together\n\n"
+        markdown_content += "1. First, you save a template using the `lng_save_prompt_template` tool\n"
+        markdown_content += "2. The template contains placeholders in curly braces, like {name} or {topic}\n"
+        markdown_content += "3. Later, you use the `lng_use_prompt_template` tool with specific values for those placeholders\n"
+        markdown_content += "4. The system fills in the template with your values and processes the completed prompt\n"
+        markdown_content += "5. If you need information about available tools, you can use the `lng_get_tools_info` tool\n\n"
+        markdown_content += "This workflow allows for flexible prompt engineering while maintaining a clean separation between the prompt structure and the specific content."
+        
+        return [types.TextContent(type="text", text=markdown_content)]
     except Exception as e:
         return [types.TextContent(type="text", text=f"Error retrieving tools information: {str(e)}")]
 
@@ -102,43 +180,16 @@ def main(port: int, transport: str) -> int:
             return await lng_get_tools_info()
         else:
             raise ValueError(f"Unknown tool: {name}")
-
+            
     @app.list_tools()
     async def list_tools() -> list[types.Tool]:
+        # Use the global tool_definitions to create the tools
         return [
             types.Tool(
-                name="lng_save_prompt_template",
-                description="Saves a prompt template for later use",
-                inputSchema={
-                    "type": "object",
-                    "required": ["template"],
-                    "properties": {
-                        "template": {
-                            "type": "string",
-                            "description": "The prompt template to save (with placeholders in {name} format)",
-                        }
-                    },
-                },
-            ),
-            types.Tool(
-                name="lng_use_prompt_template",
-                description="Uses the saved prompt template with provided parameters",
-                inputSchema={
-                    "type": "object",
-                    "additionalProperties": {
-                        "type": "string"
-                    },
-                    "description": "Key-value pairs to use as parameters in the prompt template",
-                },
-            ),
-            types.Tool(
-                name="lng_get_tools_info",
-                description="Returns information about the available langchain tools",
-                inputSchema={
-                    "type": "object",
-                    "description": "No parameters required",
-                },
-            )
+                name=tool["name"],
+                description=tool["description"],
+                inputSchema=tool["schema"]
+            ) for tool in tool_definitions
         ]
 
     if transport == "sse":
