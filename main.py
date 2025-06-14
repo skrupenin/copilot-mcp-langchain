@@ -15,15 +15,21 @@ if OPENAI_API_KEY is None:
 llm = OpenAI(openai_api_key=OPENAI_API_KEY)
 
 template = """
-Привет, {name}, как ты себя чувствуешь сегодня?
+"Tell me about {topic} in the style of {style}."
 """
 prompt_template = PromptTemplate(
-    input_variables=["name"],  
+    input_variables=["topic", "style"],  
     template=template
 )
 
-name = "Саша"
-prompt = prompt_template.format(name=name)
+topic = "artificial intelligence"
+style = "a pirate"
+prompt = prompt_template.format(topic=topic, style=style)
+print("-----------------------------------------------------------")
+print(prompt)
 
 response = llm.invoke(prompt)
+
+print("-----------------------------------------------------------")
 print(response)
+print("-----------------------------------------------------------")
