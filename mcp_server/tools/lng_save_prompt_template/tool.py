@@ -1,7 +1,5 @@
 import mcp.types as types
-
-# Store the saved prompt template
-saved_prompt_template = None
+from mcp_server.state_manager import state_manager
 
 async def tool_info() -> dict:
     """Returns information about the lng_save_prompt_template tool."""
@@ -36,9 +34,8 @@ async def run_tool(name: str, arguments: dict) -> list[types.Content]:
     if not template_text:
         return [types.TextContent(type="text", text="Error: 'template' parameter is required.")]
     
-    global saved_prompt_template
     try:
-        saved_prompt_template = template_text
+        state_manager.set("prompt_template", template_text)
         return [types.TextContent(type="text", text="Prompt template saved successfully.")]
     except Exception as e:
         return [types.TextContent(type="text", text=f"Error saving prompt template: {str(e)}")]

@@ -2,7 +2,7 @@ import mcp.types as types
 from langchain_openai import OpenAI
 from langchain.prompts import PromptTemplate
 from mcp_server.config import OPENAI_API_KEY
-from mcp_server.tools.lng_save_prompt_template.tool import saved_prompt_template
+from mcp_server.state_manager import state_manager
 
 async def tool_info() -> dict:
     """Returns information about the lng_save_prompt_template tool."""
@@ -31,7 +31,8 @@ This tool works with lng_save_prompt_template to create a flexible prompt engine
 async def run_tool(name: str, parameters: dict) -> list[types.Content]:
     """Uses the previously saved prompt template with provided parameters."""
     
-    if saved_prompt_template is None:
+    saved_template = state_manager.get("prompt_template")
+    if saved_template is None:
         return [types.TextContent(type="text", text="No prompt template has been saved. Please save a template first.")]
     
     try:
@@ -41,7 +42,7 @@ async def run_tool(name: str, parameters: dict) -> list[types.Content]:
         # Create prompt template with the input variables
         prompt_template = PromptTemplate(
             input_variables=input_variables,
-            template=saved_prompt_template
+            template=saved_template
         )
         
         # Format the prompt with the provided parameters

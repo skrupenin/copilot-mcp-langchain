@@ -10,6 +10,10 @@ from mcp.server.lowlevel import Server
 from dotenv import load_dotenv
 import os.path
 import mcp_server.tools.tool_registry as tools
+from mcp_server.state_manager import state_manager
+
+# Initialize the shared state with default values if needed
+# Example: state_manager.set("app_start_time", datetime.now().isoformat())
 
 # Add the project root to the Python path to ensure imports work correctly
 project_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
