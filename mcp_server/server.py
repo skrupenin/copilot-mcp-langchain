@@ -10,6 +10,7 @@ from mcp.server.lowlevel import Server
 from langchain_openai import OpenAI
 from langchain.prompts import PromptTemplate
 from dotenv import load_dotenv
+import os.path
 
 # Add the project root to the Python path to ensure imports work correctly
 project_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
@@ -27,7 +28,7 @@ if OPENAI_API_KEY is None:
 # Store the saved prompt template
 saved_prompt_template = None
 
-async def save_prompt_template(template_text: str) -> list[types.Content]:
+async def lng_save_prompt_template(template_text: str) -> list[types.Content]:
     global saved_prompt_template
     try:
         saved_prompt_template = template_text
@@ -35,7 +36,20 @@ async def save_prompt_template(template_text: str) -> list[types.Content]:
     except Exception as e:
         return [types.TextContent(type="text", text=f"Error saving prompt template: {str(e)}")]
 
-async def use_prompt_template(parameters: dict) -> list[types.Content]:
+async def lng_get_tools_info() -> list[types.Content]:
+    try:
+        # Path to the markdown file relative to the server script
+        md_file_path = os.path.join(project_root, "langchain_tools.md")
+        
+        # Read the markdown file
+        with open(md_file_path, "r", encoding="utf-8") as file:
+            content = file.read()
+        
+        return [types.TextContent(type="text", text=content)]
+    except Exception as e:
+        return [types.TextContent(type="text", text=f"Error retrieving tools information: {str(e)}")]
+
+async def lng_use_prompt_template(parameters: dict) -> list[types.Content]:
     global saved_prompt_template
     
     if saved_prompt_template is None:
@@ -76,14 +90,16 @@ def main(port: int, transport: str) -> int:
 
     @app.call_tool()
     async def fetch_tool(name: str, arguments: dict) -> list[types.Content]:
-        if name == "save_prompt":
+        if name == "lng_save_prompt_template":
             if "template" not in arguments:
                 raise ValueError("Missing required argument 'template'")
-            return await save_prompt_template(arguments["template"])
-        elif name == "use_prompt":
+            return await lng_save_prompt_template(arguments["template"])
+        elif name == "lng_use_prompt_template":
             if not arguments:
                 raise ValueError("No parameters provided for the prompt template")
-            return await use_prompt_template(arguments)
+            return await lng_use_prompt_template(arguments)
+        elif name == "lng_get_tools_info":
+            return await lng_get_tools_info()
         else:
             raise ValueError(f"Unknown tool: {name}")
 
@@ -91,7 +107,7 @@ def main(port: int, transport: str) -> int:
     async def list_tools() -> list[types.Tool]:
         return [
             types.Tool(
-                name="save_prompt",
+                name="lng_save_prompt_template",
                 description="Saves a prompt template for later use",
                 inputSchema={
                     "type": "object",
@@ -105,7 +121,7 @@ def main(port: int, transport: str) -> int:
                 },
             ),
             types.Tool(
-                name="use_prompt",
+                name="lng_use_prompt_template",
                 description="Uses the saved prompt template with provided parameters",
                 inputSchema={
                     "type": "object",
@@ -113,6 +129,14 @@ def main(port: int, transport: str) -> int:
                         "type": "string"
                     },
                     "description": "Key-value pairs to use as parameters in the prompt template",
+                },
+            ),
+            types.Tool(
+                name="lng_get_tools_info",
+                description="Returns information about the available langchain tools",
+                inputSchema={
+                    "type": "object",
+                    "description": "No parameters required",
                 },
             )
         ]

@@ -29,14 +29,14 @@ async def main():
                 # Save a prompt template
                 print("\nSaving a prompt template...")
                 template = "Tell me about {topic} in the style of {style}."
-                save_result = await session.call_tool("save_prompt", {"template": template})
+                save_result = await session.call_tool("lng_save_prompt_template", {"template": template})
                 print("Prompt template saved:")
                 print(save_result)
                 
                 # Use the saved prompt template
                 print("\nUsing the saved prompt template...")
                 parameters = {"topic": "artificial intelligence", "style": "a pirate"}
-                use_result = await session.call_tool("use_prompt", parameters)
+                use_result = await session.call_tool("lng_use_prompt_template", parameters)
                 print("Generated response:")
                 print(use_result)
     except Exception as e:
