@@ -28,11 +28,12 @@ if OPENAI_API_KEY is None:
 # Store the saved prompt template
 saved_prompt_template = None
 
-# Define tools at module level so they can be used by multiple functions
-tool_definitions = [
-    {
-        "name": "lng_save_prompt_template",
-        "description": """Saves a prompt template for later use by the system.
+# Initialize a list to collect all tool definitions
+tool_definitions = []
+
+tool_definitions.append({
+    "name": "lng_save_prompt_template",
+    "description": """Saves a prompt template for later use by the system.
 
 **Parameters:**
 - `template` (string, required): The prompt template to save with placeholders in {name} format
@@ -43,41 +44,28 @@ tool_definitions = [
 - Placeholders like {topic} and {style} will be replaced with actual values when used
 
 This tool is part of a workflow that allows for flexible prompt engineering while maintaining a clean separation between the prompt structure and the specific content.""",
-        "schema": {
-            "type": "object",
-            "required": ["template"],
-            "properties": {
-                "template": {
-                    "type": "string",
-                    "description": "The prompt template to save (with placeholders in {name} format)",
-                }
-            },
-        }
-    },
-    {
-        "name": "lng_use_prompt_template",
-        "description": """Uses the previously saved prompt template with provided parameters.
+    "schema": {
+        "type": "object",
+        "required": ["template"],
+        "properties": {
+            "template": {
+                "type": "string",
+                "description": "The prompt template to save (with placeholders in {name} format)",
+            }
+        },
+    }
+})
+async def lng_save_prompt_template(template_text: str) -> list[types.Content]:
+    global saved_prompt_template
+    try:
+        saved_prompt_template = template_text
+        return [types.TextContent(type="text", text="Prompt template saved successfully.")]
+    except Exception as e:
+        return [types.TextContent(type="text", text=f"Error saving prompt template: {str(e)}")]
 
-**Parameters:**
-- Any key-value pairs that match the placeholders in your template
-
-**Example Usage:**
-- If your saved template contains {topic} and {style} placeholders
-- You would provide values like "topic: artificial intelligence" and "style: a pirate"
-- The system will replace the placeholders with these values and process the completed prompt
-
-This tool works with lng_save_prompt_template to create a flexible prompt engineering system.""",
-        "schema": {
-            "type": "object",
-            "additionalProperties": {
-                "type": "string"
-            },
-            "description": "Key-value pairs to use as parameters in the prompt template",
-        }
-    },
-    {
-        "name": "lng_get_tools_info",
-        "description": """Returns information about the available langchain tools.
+tool_definitions.append({
+    "name": "lng_get_tools_info",
+    "description": """Returns information about the available langchain tools.
 
 **Parameters:**
 - None required
@@ -87,21 +75,11 @@ This tool works with lng_save_prompt_template to create a flexible prompt engine
 - The system will return documentation about all available tools
 
 This tool helps you understand the capabilities of all available tools in the system.""",
-        "schema": {
-            "type": "object",
-            "description": "No parameters required",
-        }
+    "schema": {
+        "type": "object",
+        "description": "No parameters required",
     }
-]
-
-async def lng_save_prompt_template(template_text: str) -> list[types.Content]:
-    global saved_prompt_template
-    try:
-        saved_prompt_template = template_text
-        return [types.TextContent(type="text", text="Prompt template saved successfully.")]
-    except Exception as e:
-        return [types.TextContent(type="text", text=f"Error saving prompt template: {str(e)}")]
-
+})
 async def lng_get_tools_info() -> list[types.Content]:
     try:
         # Format the tools information as markdown using the global tool_definitions
@@ -127,6 +105,27 @@ async def lng_get_tools_info() -> list[types.Content]:
     except Exception as e:
         return [types.TextContent(type="text", text=f"Error retrieving tools information: {str(e)}")]
 
+tool_definitions.append({
+    "name": "lng_use_prompt_template",
+    "description": """Uses the previously saved prompt template with provided parameters.
+
+**Parameters:**
+- Any key-value pairs that match the placeholders in your template
+
+**Example Usage:**
+- If your saved template contains {topic} and {style} placeholders
+- You would provide values like "topic: artificial intelligence" and "style: a pirate"
+- The system will replace the placeholders with these values and process the completed prompt
+
+This tool works with lng_save_prompt_template to create a flexible prompt engineering system.""",
+    "schema": {
+        "type": "object",
+        "additionalProperties": {
+            "type": "string"
+        },
+        "description": "Key-value pairs to use as parameters in the prompt template",
+    }
+})
 async def lng_use_prompt_template(parameters: dict) -> list[types.Content]:
     global saved_prompt_template
     
@@ -153,7 +152,6 @@ async def lng_use_prompt_template(parameters: dict) -> list[types.Content]:
         return [types.TextContent(type="text", text=response)]
     except Exception as e:
         return [types.TextContent(type="text", text=f"Error using prompt template: {str(e)}")]
-
 
 @click.command()
 @click.option("--port", default=8000, help="Port to listen on for SSE")
