@@ -1,7 +1,8 @@
-import os
 import sys
+import os
 print(f"Python executable: {sys.executable}")
 print(f"Python version: {sys.version}")
+print(f"Current directory: {os.getcwd()}")
 import anyio
 import click
 import mcp.types as types

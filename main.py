@@ -1,12 +1,11 @@
 import sys
+import os
 print(f"Python executable: {sys.executable}")
 print(f"Python version: {sys.version}")
-
+print(f"Current directory: {os.getcwd()}")
 from langchain_openai import OpenAI
 from langchain.prompts import PromptTemplate
-
 from dotenv import load_dotenv
-import os
 
 load_dotenv()
 
