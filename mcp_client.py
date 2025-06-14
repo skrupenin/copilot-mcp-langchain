@@ -37,6 +37,7 @@ async def main():
                 print("Session initialized!")
                 
                 # List available tools
+                print("-----------------------------------------------------------")
                 print("Requesting tools list...")
                 tools = await session.list_tools()
                 print("Available tools:")
@@ -46,6 +47,7 @@ async def main():
                     print(json.dumps(tools_dict, indent=4))
                 
                 # Save a prompt template
+                print("-----------------------------------------------------------")
                 print("\nSaving a prompt template...")
                 template = "Tell me about {topic} in the style of {style}."
                 save_result = await session.call_tool("lng_save_prompt_template", {"template": template})
@@ -54,6 +56,7 @@ async def main():
                 print(json.dumps(save_dict, indent=4))
                 
                 # Use the saved prompt template
+                print("-----------------------------------------------------------")
                 print("\nUsing the saved prompt template...")
                 parameters = {"topic": "artificial intelligence", "style": "a pirate"}
                 use_result = await session.call_tool("lng_use_prompt_template", parameters)
@@ -69,3 +72,4 @@ if __name__ == "__main__":
     print("Running main function...")
     asyncio.run(main())
     print("Main function completed.")
+    print("-----------------------------------------------------------")
