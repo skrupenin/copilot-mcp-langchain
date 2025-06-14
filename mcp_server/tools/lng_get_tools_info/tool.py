@@ -31,7 +31,8 @@ async def run_tool(name: str, arguments: dict) -> list[types.Content]:
         markdown_content += "## Available Tools\n\n"
         
         # Add each tool's information
-        for i, tool in enumerate(tools.tool_definitions, 1):
+        tool_info_list = await tools.tools_info()
+        for i, tool in enumerate(tool_info_list, 1):
             markdown_content += f"### {i}. `{tool['name']}`\n\n"
             markdown_content += f"{tool['description']}\n\n"
         
