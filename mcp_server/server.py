@@ -165,7 +165,7 @@ def main(port: int, transport: str) -> int:
     app = Server("langchain-prompt-server")
 
     @app.call_tool()
-    async def fetch_tool(name: str, arguments: dict) -> list[types.Content]:
+    async def process_tool(name: str, arguments: dict) -> list[types.Content]:
         if name == "lng_save_prompt_template":
             if "template" not in arguments:
                 raise ValueError("Missing required argument 'template'")
