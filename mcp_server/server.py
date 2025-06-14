@@ -3,6 +3,12 @@ import os
 print(f"Python executable: {sys.executable}")
 print(f"Python version: {sys.version}")
 print(f"Current directory: {os.getcwd()}")
+
+# Add the project root to the Python path to ensure imports work correctly
+project_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+if project_root not in sys.path:
+    sys.path.insert(0, project_root)
+
 import anyio
 import click
 import mcp.types as types
@@ -14,11 +20,6 @@ from mcp_server.state_manager import state_manager
 
 # Initialize the shared state with default values if needed
 # Example: state_manager.set("app_start_time", datetime.now().isoformat())
-
-# Add the project root to the Python path to ensure imports work correctly
-project_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-if project_root not in sys.path:
-    sys.path.insert(0, project_root)
 
 tools.register_tools()
 
