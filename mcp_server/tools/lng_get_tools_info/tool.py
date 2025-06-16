@@ -21,7 +21,7 @@ This tool helps you understand the capabilities of all available tools in the sy
         }
     }
 
-async def run_tool(name: str, arguments: dict) -> list[types.Content]:
+async def run_tool(name: str, parameters: dict) -> list[types.Content]:
     """Returns information about the available langchain tools."""
         
     try:

@@ -27,7 +27,8 @@ def register_tools():
     register_tool("lng_save_prompt_template", "mcp_server.tools.lng_save_prompt_template.tool")
     register_tool("lng_use_prompt_template", "mcp_server.tools.lng_use_prompt_template.tool")
     register_tool("lng_get_tools_info", "mcp_server.tools.lng_get_tools_info.tool")
-
+    register_tool("lng_run_chain", "mcp_server.tools.lng_run_chain.tool")
+    
 async def run_tool(name: str, arguments: dict) -> list:
     """Runs the specified tool with the provided arguments."""
     for tool in tool_definitions:

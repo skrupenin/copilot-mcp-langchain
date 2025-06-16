@@ -28,9 +28,9 @@ This tool is part of a workflow that allows for flexible prompt engineering whil
         }
     }
 
-async def run_tool(name: str, arguments: dict) -> list[types.Content]:
+async def run_tool(name: str, parameters: dict) -> list[types.Content]:
     """Saves a prompt template for later use."""
-    template_text = arguments.get("template", None)
+    template_text = parameters.get("template", None)
     if not template_text:
         return [types.TextContent(type="text", text="Error: 'template' parameter is required.")]
     
