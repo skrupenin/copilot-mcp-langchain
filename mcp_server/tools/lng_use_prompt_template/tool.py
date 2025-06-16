@@ -49,7 +49,13 @@ async def run_tool(name: str, parameters: dict) -> list[types.Content]:
         
         # Initialize LLM and get response
         response = llm.invoke(prompt)
+
+        # Check if the response has content and convert it to string
+        if hasattr(response, "content"):
+            response_text = response.content
+        else:
+            response_text = str(response)
         
-        return [types.TextContent(type="text", text=response)]
+        return [types.TextContent(type="text", text=response_text)]
     except Exception as e:
         return [types.TextContent(type="text", text=f"Error using prompt template: {str(e)}")]
