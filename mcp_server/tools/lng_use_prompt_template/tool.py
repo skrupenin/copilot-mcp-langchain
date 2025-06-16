@@ -1,8 +1,7 @@
 import mcp.types as types
-from langchain_openai import OpenAI
 from langchain.prompts import PromptTemplate
-from mcp_server.config import OPENAI_API_KEY
 from mcp_server.state_manager import state_manager
+from mcp_server.llm import llm
 
 async def tool_info() -> dict:
     """Returns information about the lng_save_prompt_template tool."""
@@ -49,7 +48,6 @@ async def run_tool(name: str, parameters: dict) -> list[types.Content]:
         prompt = prompt_template.format(**parameters)
         
         # Initialize LLM and get response
-        llm = OpenAI(openai_api_key=OPENAI_API_KEY)
         response = llm.invoke(prompt)
         
         return [types.TextContent(type="text", text=response)]
