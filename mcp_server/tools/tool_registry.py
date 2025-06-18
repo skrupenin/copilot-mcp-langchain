@@ -29,6 +29,8 @@ def register_tools():
     register_tool("lng_get_tools_info", "mcp_server.tools.lng_get_tools_info.tool")
     register_tool("lng_run_chain", "mcp_server.tools.lng_run_chain.tool")
     register_tool("lng_count_words", "mcp_server.tools.lng_count_words.tool")
+    register_tool("lng_rag_add_data", "mcp_server.tools.lng_rag_add_data.tool")
+    register_tool("lng_rag_search", "mcp_server.tools.lng_rag_search.tool")
     
 async def run_tool(name: str, arguments: dict) -> list:
     """Runs the specified tool with the provided arguments."""
