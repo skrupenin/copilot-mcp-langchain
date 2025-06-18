@@ -2,9 +2,9 @@ import mcp.types as types
 from mcp_server.state_manager import state_manager
 from langchain.schema import Document
 from langchain.text_splitter import RecursiveCharacterTextSplitter
-from langchain_community.vectorstores import FAISS
+# from langchain_community.vectorstores import FAISS
 import os
-from mcp_server.llm import get_embeddings
+from mcp_server.llm import embeddings
 
 async def tool_info() -> dict:
     """Returns information about the lng_rag_add_data tool."""
@@ -55,12 +55,10 @@ async def run_tool(name: str, parameters: dict) -> list[types.Content]:
         
         # Split text into chunks
         chunks = text_splitter.split_text(text)
+          # Create Document objects with metadata
+        documents = [Document(page_content=chunk, metadata=metadata) for chunk in chunks]
         
-        # Create Document objects with metadata
-        documents = [Document(page_content=chunk, metadata=metadata) for chunk in chunks]        # Get embeddings from the centralized function
-        embeddings = get_embeddings()
-        
-        # Get existing vector store from state or create a new one
+        # Get vector store from state or create a new one
         vector_store = state_manager.get("vector_store")
         
         if vector_store is None:

@@ -14,6 +14,7 @@ async def tool_info() -> dict:
 - `query` (string, required): The search query to find relevant documents in the vector database
 - `k` (number, optional): The number of most relevant documents to retrieve (default: 3)
 - `use_prompt_template` (boolean, optional): Whether to use the saved prompt template with the retrieved documents (default: true)
+  It should contain placeholders for `{context}` and `{query}` to format the response.
 
 **Example Usage:**
 - Search for documents related to a specific topic

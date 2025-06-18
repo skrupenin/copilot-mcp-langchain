@@ -18,21 +18,17 @@ else:
         seed             = 1234
     )
 
-def get_embeddings():
-    """
-    Returns an initialized OpenAIEmbeddings instance based on the configured provider.
-    Uses the same configuration as the LLM to ensure consistency.
-    """
-    if LLM_PROVIDER == "azure":
-        print("Using Azure OpenAI Embeddings.")
-        return OpenAIEmbeddings(
-            openai_api_key=AZURE_OPENAI_API_KEY,
-            openai_api_version=AZURE_OPENAI_API_VERSION,
-            azure_endpoint=AZURE_OPENAI_ENDPOINT,
-            deployment="text-embedding-ada-002",  # Use appropriate embedding model deployment
-        )
-    else:
-        print("Using OpenAI Embeddings.")
-        return OpenAIEmbeddings(
-            openai_api_key=OPENAI_API_KEY
-        )
+# Initialize embeddings directly similar to llm
+if LLM_PROVIDER == "azure":
+    print("Using Azure OpenAI Embeddings.")
+    embeddings = OpenAIEmbeddings(
+        openai_api_key=AZURE_OPENAI_API_KEY,
+        openai_api_version=AZURE_OPENAI_API_VERSION,
+        deployment="text-embedding-ada-002",  # Use appropriate embedding model deployment
+        model_kwargs={"azure_endpoint": AZURE_OPENAI_ENDPOINT}
+    )
+else:
+    print("Using OpenAI Embeddings.")
+    embeddings = OpenAIEmbeddings(
+        openai_api_key=OPENAI_API_KEY
+    )
