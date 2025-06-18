@@ -8,8 +8,7 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
-OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
-llm = OpenAI(openai_api_key=OPENAI_API_KEY)
+llm = OpenAI(openai_api_key=os.getenv("OPENAI_API_KEY"))
 
 prompt = "Hello, how are you feeling today?"
 print("-----------------------------------------------------------")
@@ -19,3 +18,6 @@ response = llm.invoke(prompt)
 print("-----------------------------------------------------------")
 print(response)
 print("-----------------------------------------------------------")
+
+
+

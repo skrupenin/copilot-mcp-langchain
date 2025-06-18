@@ -9,16 +9,11 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
-AZURE_OPENAI_API_KEY=os.getenv("AZURE_OPENAI_API_KEY")
-AZURE_OPENAI_API_VERSION=os.getenv("AZURE_OPENAI_API_VERSION")
-AZURE_OPENAI_ENDPOINT=os.getenv("AZURE_OPENAI_ENDPOINT")
-AZURE_OPENAI_API_DEPLOYMENT=os.getenv("AZURE_OPENAI_API_DEPLOYMENT")
-
 llm = AzureChatOpenAI(
-    azure_deployment = AZURE_OPENAI_API_DEPLOYMENT,
-    model            = AZURE_OPENAI_API_VERSION,
-    api_version      = AZURE_OPENAI_API_VERSION,
-    api_key          = AZURE_OPENAI_API_KEY,
+    azure_deployment = os.getenv("AZURE_OPENAI_API_DEPLOYMENT"),
+    api_version      = os.getenv("AZURE_OPENAI_API_VERSION"),
+    api_key          = os.getenv("AZURE_OPENAI_API_KEY"),
+    azure_endpoint   = os.getenv("AZURE_OPENAI_ENDPOINT"),
     max_tokens       = 1000,
     temperature      = 0,
     verbose          = False,
