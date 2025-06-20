@@ -1,4 +1,6 @@
+import os
 from importlib import import_module
+from pathlib import Path
 
 tool_definitions = []
 
@@ -23,14 +25,21 @@ async def tools_info():
     return results
 
 def register_tools():
-    """Registers all tools in the project."""
-    register_tool("lng_save_prompt_template", "mcp_server.tools.lng_save_prompt_template.tool")
-    register_tool("lng_use_prompt_template", "mcp_server.tools.lng_use_prompt_template.tool")
-    register_tool("lng_get_tools_info", "mcp_server.tools.lng_get_tools_info.tool")
-    register_tool("lng_run_chain", "mcp_server.tools.lng_run_chain.tool")
-    register_tool("lng_count_words", "mcp_server.tools.lng_count_words.tool")
-    register_tool("lng_rag_add_data", "mcp_server.tools.lng_rag_add_data.tool")
-    register_tool("lng_rag_search", "mcp_server.tools.lng_rag_search.tool")
+    """Registers all tools in the project by automatically scanning the tools directory."""
+    # Get the directory where this file is located
+    current_dir = Path(os.path.dirname(os.path.abspath(__file__)))
+    
+    # Scan the directory for tool folders
+    for item in current_dir.iterdir():
+        # Check if the item is a directory and starts with 'lng_'
+        if item.is_dir() and item.name.startswith('lng_'):
+            # Check if there's a tool.py file in the directory
+            tool_file = item / 'tool.py'
+            if tool_file.exists():
+                tool_name = item.name
+                module_path = f"mcp_server.tools.{tool_name}.tool"
+                register_tool(tool_name, module_path)
+                print(f"Registered tool: {tool_name}")
     
 async def run_tool(name: str, arguments: dict) -> list:
     """Runs the specified tool with the provided arguments."""
