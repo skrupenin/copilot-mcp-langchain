@@ -12,18 +12,18 @@ from langchain.output_parsers import (
     OutputFixingParser
 )
 from langchain.prompts import PromptTemplate
-from langchain.chains import LLMChain
+from langchain_core.runnables import RunnableSequence
 import yaml
 
 async def tool_info() -> dict:
     """Returns information about the lng_structured_output tool."""
     return {
         "name": "lng_structured_output",
-        "description": """Демонстрирует различные форматы структурированного вывода LangChain с использованием OutputParser.
+        "description": """Demonstrates various structured output formats in LangChain using OutputParser.
 
 **Parameters:**
-- `question` (string, required): Вопрос о фильме, на который нужно ответить в структурированном формате
-- `output_format` (string, required): Формат вывода данных (json, xml, csv, yaml, pydantic)
+- `question` (string, required): The question about a movie to be answered in a structured format
+- `output_format` (string, required): Output data format (json, xml, csv, yaml, pydantic)
 
 **Example Usage:**
 - Provide a question about a movie and specify the desired output format
@@ -37,11 +37,11 @@ This tool demonstrates the OutputParser capabilities in LangChain for transformi
             "properties": {
                 "question": {
                     "type": "string",
-                    "description": "Вопрос о фильме, на который нужно ответить в структурированном формате",
+                    "description": "The question about a movie to be answered in a structured format",
                 },
                 "output_format": {
                     "type": "string",
-                    "description": "Формат вывода данных",
+                    "description": "Output data format",
                     "enum": ["json", "xml", "csv", "yaml", "pydantic"]
                 }
             },
@@ -49,35 +49,35 @@ This tool demonstrates the OutputParser capabilities in LangChain for transformi
     }
 
 class MovieReview(BaseModel):
-    """Обзор фильма"""
-    title: str = Field(description="Название фильма")
-    director: str = Field(description="Режиссер фильма")
-    year: int = Field(description="Год выпуска")
-    rating: float = Field(description="Оценка фильма по шкале от 1 до 10")
-    genres: List[str] = Field(description="Жанры фильма")
-    review: str = Field(description="Краткий обзор фильма")
+    """Movie Review"""
+    title: str = Field(description="Movie title")
+    director: str = Field(description="Movie director")
+    year: int = Field(description="Release year")
+    rating: float = Field(description="Movie rating on a scale from 1 to 10")
+    genres: List[str] = Field(description="Movie genres")
+    review: str = Field(description="Brief movie review")
 
 
 async def format_as_json(question: str) -> str:
-    """Форматирует ответ в JSON с использованием StructuredOutputParser."""
+    """Format the response as JSON using StructuredOutputParser."""
     model = llm()
     
-    # Определяем схему ответа для фильма
+    # Define the response schema for a movie
     response_schemas = [
-        ResponseSchema(name="title", description="Название фильма"),
-        ResponseSchema(name="director", description="Режиссер фильма"),
-        ResponseSchema(name="year", description="Год выпуска (число)"),
-        ResponseSchema(name="rating", description="Оценка по шкале от 1 до 10 (число)"),
-        ResponseSchema(name="genres", description="Список жанров, разделенный запятыми"),
-        ResponseSchema(name="review", description="Краткий обзор фильма")
+        ResponseSchema(name="title", description="Movie title"),
+        ResponseSchema(name="director", description="Movie director"),
+        ResponseSchema(name="year", description="Release year (number)"),
+        ResponseSchema(name="rating", description="Rating on a scale from 1 to 10 (number)"),
+        ResponseSchema(name="genres", description="List of genres, comma-separated"),
+        ResponseSchema(name="review", description="Brief movie review")
     ]
     
-    # Создаем парсер и шаблон промпта
+    # Create parser and prompt template
     parser = StructuredOutputParser.from_response_schemas(response_schemas)
     format_instructions = parser.get_format_instructions()
     
     template = """
-    Ответь на следующий вопрос о фильме с предоставлением структурированной информации:
+    Answer the following question about a movie with structured information:
     
     {question}
     
@@ -89,21 +89,23 @@ async def format_as_json(question: str) -> str:
         input_variables=["question"],
         partial_variables={"format_instructions": format_instructions}
     )
+      # Create and run the chain using RunnableSequence
+    chain = prompt | model
+    response = await chain.ainvoke({"question": question})
     
-    # Создаем и запускаем цепочку
-    chain = LLMChain(llm=model, prompt=prompt)
-    result = await chain.arun(question=question)
+    # Extract content from AIMessage if needed
+    result = response.content if hasattr(response, 'content') else response
     
-    # Парсим результат и форматируем его в JSON
+    # Parse the result and format it as JSON
     try:
         parsed_result = parser.parse(result)
-        # Преобразуем списки из строк в реальные списки
+        # Convert string lists to actual lists
         if isinstance(parsed_result.get("genres"), str) and "," in parsed_result.get("genres", ""):
             parsed_result["genres"] = [item.strip() for item in parsed_result["genres"].split(",")]
         
         return json.dumps(parsed_result, ensure_ascii=False, indent=2)
     except Exception as e:
-        # Если парсинг не удался, используем OutputFixingParser для исправления
+        # If parsing failed, use OutputFixingParser for correction
         fixing_parser = OutputFixingParser.from_llm(parser=parser, llm=model)
         try:
             fixed_result = fixing_parser.parse(result)
@@ -111,59 +113,59 @@ async def format_as_json(question: str) -> str:
                 fixed_result["genres"] = [item.strip() for item in fixed_result["genres"].split(",")]
             return json.dumps(fixed_result, ensure_ascii=False, indent=2)
         except Exception as e2:
-            return f"Ошибка парсинга: {str(e2)}\nИсходный ответ:\n{result}"
+            return f"Parsing error: {str(e2)}\nOriginal response:\n{result}"
 
 
 async def format_as_xml(question: str) -> str:
-    """Форматирует ответ в XML с использованием XMLOutputParser."""
+    """Format the response as XML using XMLOutputParser."""
     model = llm()
     
-    # Используем XMLOutputParser
+    # Use XMLOutputParser
     parser = XMLOutputParser(root_tag="response")
     
     xml_format = """
     <response>
       <movie>
-        <title>Название фильма</title>
-        <director>Режиссер</director>
-        <year>Год выпуска (число)</year>
-        <rating>Оценка (число от 1 до 10)</rating>
+        <title>Movie title</title>
+        <director>Movie director</director>
+        <year>Release year (number)</year>
+        <rating>Rating (number from 1 to 10)</rating>
         <genres>
-          <genre>Жанр 1</genre>
-          <genre>Жанр 2</genre>
-          <!-- Дополнительные жанры -->
+          <genre>Genre 1</genre>
+          <genre>Genre 2</genre>
+          <!-- Additional genres -->
         </genres>
-        <review>Краткий обзор фильма</review>
+        <review>Brief movie review</review>
       </movie>
     </response>
     """
     
     instructions = """
-    Ответь на вопрос о фильме в формате XML. Используй следующую структуру:
+    Answer the question about a movie in XML format. Use the following structure:
     
     <response>
       <movie>
-        <title>Название фильма</title>
-        <director>Режиссер</director>
-        <year>Год выпуска (только число)</year>
-        <rating>Оценка (только число от 1 до 10)</rating>
+        <title>Movie title</title>
+        <director>Movie director</director>
+        <year>Release year (number only)</year>
+        <rating>Rating (number only from 1 to 10)</rating>
         <genres>
-          <genre>Жанр 1</genre>
-          <genre>Жанр 2</genre>
-          <!-- Добавь больше жанров при необходимости -->
+          <genre>Genre 1</genre>
+          <genre>Genre 2</genre>
+          <!-- Add more genres if needed -->
         </genres>
-        <review>Краткий обзор фильма</review>
+        <review>Brief movie review</review>
       </movie>
     </response>
     """
     
-    # Создаем шаблон промпта
+    # Create prompt template
     template = """
     {instructions}
     
-    Вопрос о фильме: {question}
+    Question about a movie: {question}
     
-    Ответ в XML:
+    Answer in XML:
     """
     
     prompt = PromptTemplate(
@@ -171,14 +173,16 @@ async def format_as_xml(question: str) -> str:
         input_variables=["question"],
         partial_variables={"instructions": instructions}
     )
+      # Create and run the chain using RunnableSequence
+    chain = prompt | model
+    response = await chain.ainvoke({"question": question})
     
-    # Создаем и запускаем цепочку
-    chain = LLMChain(llm=model, prompt=prompt)
-    result = await chain.arun(question=question)
+    # Extract content from AIMessage if needed
+    result = response.content if hasattr(response, 'content') else response
     
-    # Обрабатываем результат
+    # Process the result
     try:
-        # Удаляем всё перед первым '<' и после последнего '>'
+        # Remove everything before the first '<' and after the last '>'
         start_idx = result.find("<")
         end_idx = result.rfind(">") + 1
         if start_idx >= 0 and end_idx > 0:
@@ -186,29 +190,29 @@ async def format_as_xml(question: str) -> str:
             return clean_xml
         return result
     except Exception as e:
-        return f"Ошибка при форматировании XML: {str(e)}\nИсходный ответ:\n{result}"
+        return f"XML formatting error: {str(e)}\nOriginal response:\n{result}"
 
 
 async def format_as_csv(question: str) -> str:
-    """Форматирует ответ в CSV."""
+    """Format the response as CSV."""
     model = llm()
     
     headers = "title,director,year,rating,genres,review"
     instructions = f"""
-    Ответь на вопрос о фильме в формате CSV. Первая строка должна содержать заголовки:
+    Answer the question about a movie in CSV format. The first line should contain headers:
     {headers}
     
-    Во второй строке должны быть значения. Год и оценка должны быть числами.
-    Жанры должны быть перечислены в одной ячейке, разделенные точкой с запятой.
+    The second line should contain values. Year and rating should be numbers.
+    Genres should be listed in a single cell, separated by semicolons.
     """
     
-    # Создаем шаблон промпта
+    # Create prompt template
     template = """
     {instructions}
     
-    Вопрос о фильме: {question}
+    Question about a movie: {question}
     
-    Ответ в CSV:
+    Answer in CSV:
     """
     
     prompt = PromptTemplate(
@@ -216,66 +220,69 @@ async def format_as_csv(question: str) -> str:
         input_variables=["question"],
         partial_variables={"instructions": instructions}
     )
+      # Create and run the chain using RunnableSequence
+    chain = prompt | model
+    response = await chain.ainvoke({"question": question})
     
-    # Создаем и запускаем цепочку
-    chain = LLMChain(llm=model, prompt=prompt)
-    result = await chain.arun(question=question)
+    # Extract content from AIMessage if needed
+    result = response.content if hasattr(response, 'content') else response
     
-    # Обрабатываем результат
+    # Process the result
     try:
-        # Удаляем лишние строки до и после CSV
+        # Remove extra lines before and after CSV
         lines = [line.strip() for line in result.split("\n") if line.strip()]
         csv_lines = []
         
-        # Ищем строки, которые похожи на CSV (содержат запятые)
+        # Look for lines that resemble CSV (contain commas)
         for line in lines:
             if "," in line:
                 csv_lines.append(line)
         
-        if len(csv_lines) >= 2:  # У нас должно быть как минимум 2 строки (заголовки и данные)
-            return "\n".join(csv_lines[:2])  # Берем только первые две строки
+        if len(csv_lines) >= 2:  # We should have at least 2 lines (headers and data)
+            return "\n".join(csv_lines[:2])  # Take only the first two lines
         else:
-            return result  # Возвращаем исходный результат, если не удалось извлечь CSV
+            return result  # Return the original result if we couldn't extract CSV
     except Exception as e:
-        return f"Ошибка при форматировании CSV: {str(e)}\nИсходный ответ:\n{result}"
+        return f"CSV formatting error: {str(e)}\nOriginal response:\n{result}"
+
 
 async def format_as_yaml(question: str) -> str:
-    """Форматирует ответ в YAML."""
+    """Format the response as YAML."""
     model = llm()
     
     yaml_example = """
     movie:
-      title: Название фильма
-      director: Режиссер
-      year: 2020  # Год выпуска (число)
-      rating: 8.5  # Оценка (число от 1 до 10)
+      title: Movie title
+      director: Movie director
+      year: 2020  # Release year (number)
+      rating: 8.5  # Rating (number from 1 to 10)
       genres:
-        - Жанр 1
-        - Жанр 2
-      review: Краткий обзор фильма
+        - Genre 1
+        - Genre 2
+      review: Brief movie review
     """
     
     instructions = """
-    Ответь на вопрос о фильме в формате YAML. Используй следующую структуру:
+    Answer the question about a movie in YAML format. Use the following structure:
     
     movie:
-      title: Название фильма
-      director: Режиссер
-      year: 2020  # должно быть числом
-      rating: 8.5  # должно быть числом от 1 до 10
+      title: Movie title
+      director: Movie director
+      year: 2020  # must be a number
+      rating: 8.5  # must be a number from 1 to 10
       genres:
-        - Жанр 1
-        - Жанр 2
-      review: Краткий обзор фильма
+        - Genre 1
+        - Genre 2
+      review: Brief movie review
     """
     
-    # Создаем шаблон промпта
+    # Create prompt template
     template = """
     {instructions}
     
-    Вопрос о фильме: {question}
+    Question about a movie: {question}
     
-    Ответ в YAML:
+    Answer in YAML:
     """
     
     prompt = PromptTemplate(
@@ -283,20 +290,22 @@ async def format_as_yaml(question: str) -> str:
         input_variables=["question"],
         partial_variables={"instructions": instructions}
     )
+      # Create and run the chain using RunnableSequence
+    chain = prompt | model
+    response = await chain.ainvoke({"question": question})
     
-    # Создаем и запускаем цепочку
-    chain = LLMChain(llm=model, prompt=prompt)
-    result = await chain.arun(question=question)
+    # Extract content from AIMessage if needed
+    result = response.content if hasattr(response, 'content') else response
     
-    # Обрабатываем результат
+    # Process the result
     try:
-        # Извлекаем YAML из ответа
+        # Extract YAML from the response
         lines = result.split("\n")
         yaml_lines = []
         in_yaml = False
         
         for line in lines:
-            # Ищем начало YAML блока
+            # Look for the start of the YAML block
             if not in_yaml and line.strip().startswith("movie:"):
                 in_yaml = True
             
@@ -305,29 +314,29 @@ async def format_as_yaml(question: str) -> str:
         
         if yaml_lines:
             yaml_content = "\n".join(yaml_lines)
-            # Проверяем, что это валидный YAML, загрузив его и затем снова сериализовав
+            # Verify that it's valid YAML by loading it and then serializing it again
             parsed_yaml = yaml.safe_load(yaml_content)
             formatted_yaml = yaml.dump(parsed_yaml, default_flow_style=False, allow_unicode=True)
             return formatted_yaml
         else:
             return result
     except Exception as e:
-        return f"Ошибка при форматировании YAML: {str(e)}\nИсходный ответ:\n{result}"
+        return f"YAML formatting error: {str(e)}\nOriginal response:\n{result}"
 
 
 async def format_as_pydantic(question: str) -> str:
-    """Форматирует ответ с использованием PydanticOutputParser."""
+    """Format the response using PydanticOutputParser."""
     model = llm()
     
-    # Используем модель MovieReview
+    # Use the MovieReview model
     parser = PydanticOutputParser(pydantic_object=MovieReview)
     
-    # Получаем инструкции для форматирования
+    # Get formatting instructions
     format_instructions = parser.get_format_instructions()
     
-    # Создаем шаблон промпта
+    # Create prompt template
     template = """
-    Ответь на следующий вопрос о фильме, используя структурированный формат:
+    Answer the following question about a movie using a structured format:
     
     {question}
     
@@ -339,27 +348,29 @@ async def format_as_pydantic(question: str) -> str:
         input_variables=["question"],
         partial_variables={"format_instructions": format_instructions}
     )
+      # Create and run the chain using RunnableSequence
+    chain = prompt | model
+    response = await chain.ainvoke({"question": question})
     
-    # Создаем и запускаем цепочку
-    chain = LLMChain(llm=model, prompt=prompt)
-    result = await chain.arun(question=question)
+    # Extract content from AIMessage if needed
+    result = response.content if hasattr(response, 'content') else response
     
-    # Парсим результат
+    # Parse the result
     try:
         parsed_obj = parser.parse(result)
         return parsed_obj.json(ensure_ascii=False, indent=2)
     except Exception as e:
-        # Если парсинг не удался, используем OutputFixingParser
+        # If parsing failed, use OutputFixingParser
         fixing_parser = OutputFixingParser.from_llm(parser=parser, llm=model)
         try:
             fixed_obj = fixing_parser.parse(result)
             return fixed_obj.json(ensure_ascii=False, indent=2)
         except Exception as e2:
-            return f"Ошибка парсинга: {str(e2)}\nИсходный ответ:\n{result}"
+            return f"Parsing error: {str(e2)}\nOriginal response:\n{result}"
 
 
 async def run_tool(name: str, arguments: Dict[str, Any]) -> Dict[str, Any]:
-    """Запускает инструмент с указанными аргументами."""
+    """Runs the tool with the specified arguments."""
     question = arguments.get("question", "")
     output_format = arguments.get("output_format", "json")
     
@@ -375,7 +386,7 @@ async def run_tool(name: str, arguments: Dict[str, Any]) -> Dict[str, Any]:
         elif output_format == "pydantic":
             result = await format_as_pydantic(question)
         else:
-            result = f"Неподдерживаемый формат: {output_format}"
+            result = f"Unsupported format: {output_format}"
         
         return {
             "result": result,
