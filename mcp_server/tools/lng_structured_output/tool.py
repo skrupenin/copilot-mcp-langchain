@@ -123,13 +123,14 @@ async def format_as_xml(question: str) -> str:
     # Use XMLOutputParser
     parser = XMLOutputParser(root_tag="response")
     
-    xml_format = """
+    # Define the XML structure we want
+    xml_structure = """
     <response>
       <movie>
         <title>Movie title</title>
         <director>Movie director</director>
-        <year>Release year (number)</year>
-        <rating>Rating (number from 1 to 10)</rating>
+        <year>Release year (number only)</year>
+        <rating>Rating (number only from 1 to 10)</rating>
         <genres>
           <genre>Genre 1</genre>
           <genre>Genre 2</genre>
@@ -140,23 +141,11 @@ async def format_as_xml(question: str) -> str:
     </response>
     """
     
-    instructions = """
+    # Get formatting instructions from the parser
+    instructions = f"""
     Answer the question about a movie in XML format. Use the following structure:
     
-    <response>
-      <movie>
-        <title>Movie title</title>
-        <director>Movie director</director>
-        <year>Release year (number only)</year>
-        <rating>Rating (number only from 1 to 10)</rating>
-        <genres>
-          <genre>Genre 1</genre>
-          <genre>Genre 2</genre>
-          <!-- Add more genres if needed -->
-        </genres>
-        <review>Brief movie review</review>
-      </movie>
-    </response>
+    {xml_structure}
     """
     
     # Create prompt template
@@ -171,26 +160,37 @@ async def format_as_xml(question: str) -> str:
     prompt = PromptTemplate(
         template=template,
         input_variables=["question"],
-        partial_variables={"instructions": instructions}
+        partial_variables={"format_instructions": instructions}
     )
-      # Create and run the chain using RunnableSequence
-    chain = prompt | model
-    response = await chain.ainvoke({"question": question})
     
-    # Extract content from AIMessage if needed
-    result = response.content if hasattr(response, 'content') else response
+    # Create and run the chain using RunnableSequence, incorporating the parser
+    chain = prompt | model | parser
     
-    # Process the result
     try:
-        # Remove everything before the first '<' and after the last '>'
-        start_idx = result.find("<")
-        end_idx = result.rfind(">") + 1
-        if start_idx >= 0 and end_idx > 0:
-            clean_xml = result[start_idx:end_idx]
-            return clean_xml
-        return result
+        # The parser will automatically format the response as XML
+        response = await chain.ainvoke({"question": question})
+        
+        # Return the XML string - the parser has already formatted it properly
+        return response
     except Exception as e:
-        return f"XML formatting error: {str(e)}\nOriginal response:\n{result}"
+        # If parsing fails, fall back to manual extraction
+        try:
+            # Get the raw response without using the parser
+            raw_chain = prompt | model
+            raw_response = await raw_chain.ainvoke({"question": question})
+            
+            # Extract content from AIMessage if needed
+            result = raw_response.content if hasattr(raw_response, 'content') else raw_response
+            
+            # Manual cleanup as fallback
+            start_idx = result.find("<")
+            end_idx = result.rfind(">") + 1
+            if start_idx >= 0 and end_idx > 0:
+                clean_xml = result[start_idx:end_idx]
+                return clean_xml
+            return result
+        except Exception as e2:
+            return f"XML formatting error: {str(e2)}\nOriginal response:\n{result}"
 
 
 async def format_as_csv(question: str) -> str:
