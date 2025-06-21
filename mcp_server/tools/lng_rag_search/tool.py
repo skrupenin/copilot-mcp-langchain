@@ -96,8 +96,10 @@ async def run_tool(name: str, parameters: dict) -> list[types.Content]:
             # Format the prompt with the provided parameters
             prompt = prompt_template.format(context=context, query=query)
             
+            model = llm()
+
             # Get response from LLM
-            response = llm.invoke(prompt)
+            response = model.invoke(prompt)
             
             # Check if the response has content and convert it to string
             if hasattr(response, "content"):

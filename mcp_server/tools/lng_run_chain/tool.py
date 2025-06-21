@@ -44,19 +44,21 @@ async def run_tool(name: str, parameters: dict) -> list[types.Content]:
     try:
         input_text = parameters.get("input_text", None)
         
+        model = llm()
+
         # Create first prompt template
         prompt1 = PromptTemplate(
             input_variables=["input_text"],
             template="Process the following text and create a summary: {input_text}",
         )
-        chain1 = LLMChain(llm=llm, prompt=prompt1, output_key="summary")
+        chain1 = LLMChain(llm=model, prompt=prompt1, output_key="summary")
         
         # Create second prompt template
         prompt2 = PromptTemplate(
             input_variables=["summary"],
             template="Based on the following summary, provide recommendations: {summary}",
         )
-        chain2 = LLMChain(llm=llm, prompt=prompt2, output_key="recommendations")
+        chain2 = LLMChain(llm=model, prompt=prompt2, output_key="recommendations")
 
         # Create a sequential chain to run both prompts in order
         sequential_chain = SequentialChain(

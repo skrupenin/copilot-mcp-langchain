@@ -63,7 +63,7 @@ async def run_tool(name: str, parameters: dict) -> list[types.Content]:
         
         if vector_store is None:
             # If no vector store exists yet, create a new one
-            vector_store = FAISS.from_documents(documents, embeddings)
+            vector_store = FAISS.from_documents(documents, embeddings())
             state_manager.set("vector_store", vector_store)
             return [types.TextContent(type="text", text=f"Created new vector database with {len(documents)} text chunks.")]
         else:

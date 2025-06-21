@@ -48,7 +48,7 @@ async def run_tool(name: str, parameters: dict) -> list[types.Content]:
         prompt = prompt_template.format(**parameters)
         
         # Initialize LLM and get response
-        response = llm.invoke(prompt)
+        response = llm().invoke(prompt)
 
         # Check if the response has content and convert it to string
         if hasattr(response, "content"):

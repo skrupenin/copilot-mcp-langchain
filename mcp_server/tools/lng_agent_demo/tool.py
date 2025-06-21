@@ -5,8 +5,44 @@ from langchain.callbacks.manager import CallbackManager
 from langchain.callbacks.streaming_stdout import StreamingStdOutCallbackHandler
 from langchain.chains import LLMChain
 from langchain.tools import BaseTool
-from langchain_openai import ChatOpenAI
 from langchain.prompts import PromptTemplate
+from mcp_server.llm import llm 
+
+async def tool_info() -> dict:
+    """Returns information about the lng_agent_demo tool."""
+    return {
+        "name": "lng_agent_demo",
+        "description": """Demonstrates a LangChain agent that can process text using three different tools:
+        
+**Parameters:**
+- `text` (string, required): The text to process.
+- `task` (string, required): The task description for the agent.
+
+**Available Agent Tools:**
+1. `reverse_text_tool`: Reverses the order of characters in a text.
+2. `capitalize_words_tool`: Capitalizes the first letter of each word in a text.
+3. `count_characters_tool`: Counts the number of characters in a text.
+
+**Example Usage:**
+- Provide text: "hello world"
+- Provide task: "Capitalize this text and then count its characters"
+
+The agent will decide which tools to use based on the task description.""",
+        "schema": {
+            "type": "object",
+            "properties": {
+                "text": {
+                    "type": "string",
+                    "description": "The text to process with the agent"
+                },
+                "task": {
+                    "type": "string",
+                    "description": "The task description for the agent"
+                }
+            },
+            "required": ["text", "task"]
+        }
+    }
 
 # Define our three string processing tools as functions
 def reverse_text(text):
@@ -59,42 +95,6 @@ class CountCharactersTool(BaseTool):
         result = count_characters(text)
         return json.dumps(result)
 
-async def tool_info() -> dict:
-    """Returns information about the lng_agent_demo tool."""
-    return {
-        "name": "lng_agent_demo",
-        "description": """Demonstrates a LangChain agent that can process text using three different tools:
-        
-**Parameters:**
-- `text` (string, required): The text to process.
-- `task` (string, required): The task description for the agent.
-
-**Available Agent Tools:**
-1. `reverse_text_tool`: Reverses the order of characters in a text.
-2. `capitalize_words_tool`: Capitalizes the first letter of each word in a text.
-3. `count_characters_tool`: Counts the number of characters in a text.
-
-**Example Usage:**
-- Provide text: "hello world"
-- Provide task: "Capitalize this text and then count its characters"
-
-The agent will decide which tools to use based on the task description.""",
-        "schema": {
-            "type": "object",
-            "properties": {
-                "text": {
-                    "type": "string",
-                    "description": "The text to process with the agent"
-                },
-                "task": {
-                    "type": "string",
-                    "description": "The task description for the agent"
-                }
-            },
-            "required": ["text", "task"]
-        }
-    }
-
 async def run_tool(name: str, parameters: dict) -> list[types.Content]:
     """Runs the LangChain agent demo with the specified parameters."""
     
@@ -106,27 +106,23 @@ async def run_tool(name: str, parameters: dict) -> list[types.Content]:
         if not text:
             return [types.TextContent(type="text", text='{"error": "No text provided to process."}')]
         if not task:
-            return [types.TextContent(type="text", text='{"error": "No task provided for the agent."}')]
-        
-        # Initialize the tools
+            return [types.TextContent(type="text", text='{"error": "No task provided for the agent."}')]        # Initialize the tools
         tools = [
             ReverseTextTool(),
             CapitalizeWordsTool(),
             CountCharactersTool()
         ]
         
-        # Initialize the LLM
+        # Create a callback_manager for console output
         callback_manager = CallbackManager([StreamingStdOutCallbackHandler()])
-        llm = ChatOpenAI(
-            temperature=0,
-            callback_manager=callback_manager,
-            verbose=True
-        )
+
+        # Create LLM with our callback_manager         
+        model = llm(callbacks=callback_manager, verbose=True)
         
-        # Create the agent
+        # Create the agent with our LLM
         agent = initialize_agent(
             tools=tools,
-            llm=llm,
+            llm=model,
             agent=AgentType.CHAT_ZERO_SHOT_REACT_DESCRIPTION,
             verbose=True
         )

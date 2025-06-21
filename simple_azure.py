@@ -20,11 +20,11 @@ llm = AzureChatOpenAI(
     seed             = 1234
 )
 
-prompt = "Hello, how are you feeling today?"
+query = "Tell me about artificial intelligence in the style of a pirate."
 print("-----------------------------------------------------------")
-print(prompt)
+print(query)
 
-response = llm.invoke(prompt)
+response = llm.invoke(query)
 print("-----------------------------------------------------------")
 print(response)
 print("-----------------------------------------------------------")
