@@ -1,4 +1,4 @@
-from langchain_openai import OpenAI, OpenAIEmbeddings
+from langchain_openai import OpenAI, OpenAIEmbeddings, AzureOpenAIEmbeddings
 from langchain_openai import AzureChatOpenAI
 from mcp_server.config import LLM_PROVIDER, OPENAI_API_KEY, AZURE_OPENAI_API_KEY, AZURE_OPENAI_API_VERSION, AZURE_OPENAI_ENDPOINT, AZURE_OPENAI_API_DEPLOYMENT, AZURE_OPENAI_API_EMBEDDING_DEPLOYMENT
 from typing import Optional, Dict, Any
@@ -30,13 +30,14 @@ def llm(callbacks=None, verbose=False, **kwargs):
 def embeddings(callbacks=None, **kwargs):
     if LLM_PROVIDER == "azure":
         print("Using Azure OpenAI Embeddings.")
-        return OpenAIEmbeddings(
-            openai_api_key=AZURE_OPENAI_API_KEY,
-            openai_api_version=AZURE_OPENAI_API_VERSION,
-            deployment="text-embedding-ada-002",  # Use appropriate embedding model deployment
-            model_kwargs={"azure_endpoint": AZURE_OPENAI_ENDPOINT},
-            callbacks=callbacks,
-            **kwargs
+        
+        # For Azure, we need to use the Azure OpenAI format
+        return AzureOpenAIEmbeddings(
+            model=AZURE_OPENAI_API_EMBEDDING_DEPLOYMENT,
+            deployment=AZURE_OPENAI_API_EMBEDDING_DEPLOYMENT,
+            api_version=AZURE_OPENAI_API_VERSION,
+            api_key=AZURE_OPENAI_API_KEY,
+            azure_endpoint=AZURE_OPENAI_ENDPOINT
         )
     else:
         print("Using OpenAI Embeddings.")

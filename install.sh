@@ -42,19 +42,19 @@ print(result)"
 # lng_count_words
 python -c "import asyncio
 from mcp_server.tools.lng_count_words.tool import run_tool
-result = asyncio.run(run_tool('lng_count_words', {'text': 'Мама мыла раму'}))
+result = asyncio.run(run_tool('lng_count_words', {'text': 'Hello pirate!'}))
 print(result)"
 
 # lng_run_chain
 python -c "import asyncio
 from mcp_server.tools.lng_run_chain.tool import run_tool
-result = asyncio.run(run_tool('lng_run_chain', {'input_text': 'Мама мыла раму'}))
+result = asyncio.run(run_tool('lng_run_chain', {'input_text': 'Hello pirate!'}))
 print(result)"
 
 # lng_agent_demo
 python -c "import asyncio
 from mcp_server.tools.lng_agent_demo.tool import run_tool
-result = asyncio.run(run_tool('lng_agent_demo', {'text': 'Hello world!', 'task': 'Reverse this text and then capitalize it'}))
+result = asyncio.run(run_tool('lng_agent_demo', {'text': 'Hello pirate!', 'task': 'Reverse this text and then capitalize it'}))
 print(result)"
 
 # to check several MCP tools without MCP
@@ -75,8 +75,8 @@ python -c "import asyncio
 from mcp_server.tools.lng_rag_add_data.tool import run_tool as add_data_tool
 from mcp_server.tools.lng_rag_search.tool import run_tool as search_tool
 async def test_rag_tools():
-    add_result = await add_data_tool('lng_rag_add_data', {'text': 'Мама мыла раму'})
+    add_result = await add_data_tool('lng_rag_add_data', {'text': 'Hello pirate!'})
     print('Add data result:', add_result)
-    search_result = await search_tool('lng_rag_search', {'query': 'Мама'})
+    search_result = await search_tool('lng_rag_search', {'query': 'Pirate'})
     print('Search result:', search_result)
 asyncio.run(test_rag_tools())"
