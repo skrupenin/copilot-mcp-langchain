@@ -1,6 +1,6 @@
 from langchain_openai import OpenAI, OpenAIEmbeddings
 from langchain_openai import AzureChatOpenAI
-from mcp_server.config import LLM_PROVIDER, OPENAI_API_KEY, AZURE_OPENAI_API_KEY, AZURE_OPENAI_API_VERSION, AZURE_OPENAI_ENDPOINT, AZURE_OPENAI_API_DEPLOYMENT
+from mcp_server.config import LLM_PROVIDER, OPENAI_API_KEY, AZURE_OPENAI_API_KEY, AZURE_OPENAI_API_VERSION, AZURE_OPENAI_ENDPOINT, AZURE_OPENAI_API_DEPLOYMENT, AZURE_OPENAI_API_EMBEDDING_DEPLOYMENT
 from typing import Optional, Dict, Any
 
 def llm(callbacks=None, verbose=False, **kwargs):
@@ -41,7 +41,6 @@ def embeddings(callbacks=None, **kwargs):
     else:
         print("Using OpenAI Embeddings.")
         return OpenAIEmbeddings(
-            openai_api_key=OPENAI_API_KEY,
-            callbacks=callbacks,
+            api_key=OPENAI_API_KEY,
             **kwargs
         )
