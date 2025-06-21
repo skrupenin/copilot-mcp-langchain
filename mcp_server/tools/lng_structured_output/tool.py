@@ -376,17 +376,82 @@ async def format_as_pydantic(question: str) -> str:
     
     # Extract content from AIMessage if needed
     result = response.content if hasattr(response, 'content') else response
-    
-    # Parse the result
+      # Process the result to handle Markdown code blocks
     try:
-        parsed_obj = parser.parse(result)
-        return parsed_obj.json(ensure_ascii=False, indent=2)
+        # Extract clean content if it's in a code block
+        clean_result = result
+        if "```json" in result or "```" in result:
+            # Extract content between code block markers
+            code_blocks = []
+            lines = result.split("\n")
+            in_code_block = False
+            current_block = []
+            
+            for line in lines:
+                if line.strip().startswith("```"):
+                    if in_code_block:
+                        # End of a code block, add it to our list
+                        code_blocks.append("\n".join(current_block))
+                        current_block = []
+                    in_code_block = not in_code_block
+                    continue  # Skip the marker line
+                
+                if in_code_block:
+                    current_block.append(line)
+            
+            # Use the first code block we found (if any)
+            if code_blocks:
+                clean_result = code_blocks[0]
+        
+        # Now try to parse the cleaned result
+        parsed_obj = parser.parse(clean_result)
+        # Use model_dump_json instead of json method for newer Pydantic versions
+        if hasattr(parsed_obj, "model_dump_json"):
+            return parsed_obj.model_dump_json(indent=2)
+        else:
+            # Fallback for older Pydantic versions
+            return parsed_obj.json(indent=2)
     except Exception as e:
-        # If parsing failed, use OutputFixingParser
-        fixing_parser = OutputFixingParser.from_llm(parser=parser, llm=model)
+        # If parsing failed, try to extract JSON from the response and create a MovieReview object directly
         try:
-            fixed_obj = fixing_parser.parse(result)
-            return fixed_obj.json(ensure_ascii=False, indent=2)
+            # Try to find JSON in the response
+            if "```json" in result or "```" in result:
+                # Extract content between code block markers
+                code_blocks = []
+                lines = result.split("\n")
+                in_code_block = False
+                current_block = []
+                
+                for line in lines:
+                    if line.strip().startswith("```"):
+                        if in_code_block:
+                            # End of a code block, add it to our list
+                            code_blocks.append("\n".join(current_block))
+                            current_block = []
+                        in_code_block = not in_code_block
+                        continue  # Skip the marker line
+                    
+                    if in_code_block:
+                        current_block.append(line)
+                
+                # Use the first code block we found (if any)
+                if code_blocks:
+                    json_data = json.loads(code_blocks[0])
+                    # Create a MovieReview object from the JSON data
+                    movie_review = MovieReview(**json_data)
+                    # Serialize it back to JSON
+                    if hasattr(movie_review, "model_dump_json"):
+                        return movie_review.model_dump_json(indent=2)
+                    else:
+                        return movie_review.json(indent=2)
+            
+            # If we couldn't extract a code block or the above failed, use the OutputFixingParser
+            fixing_parser = OutputFixingParser.from_llm(parser=parser, llm=model)
+            fixed_obj = fixing_parser.parse(clean_result)
+            if hasattr(fixed_obj, "model_dump_json"):
+                return fixed_obj.model_dump_json(indent=2)
+            else:
+                return fixed_obj.json(indent=2)
         except Exception as e2:
             return f"Parsing error: {str(e2)}\nOriginal response:\n{result}"
 

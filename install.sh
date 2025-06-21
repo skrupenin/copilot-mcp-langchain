@@ -58,9 +58,10 @@ result = asyncio.run(run_tool('lng_agent_demo', {'input_text': 'Hello pirate!', 
 print(result)"
 
 # lng_structured_output
+# possible output formats: json, xml, csv, yaml, pydantic
 python -c "import asyncio
 from mcp_server.tools.lng_structured_output.tool import run_tool
-result = asyncio.run(run_tool('lng_structured_output', {'question': 'Tell me more about Matrix', 'output_format': 'json'}))
+result = asyncio.run(run_tool('lng_structured_output', {'question': 'Tell me more about Matrix', 'output_format': 'xml'}))
 print(result)"
 
 # to check several MCP tools without MCP
