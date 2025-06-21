@@ -7,7 +7,7 @@ async def tool_info() -> dict:
         "description": """Counts the number of words in the provided text.
 
 **Parameters:**
-- `text` (string, required): The text to count words in.
+- `input_text` (string, required): The text to count words in.
 
 **Example Usage:**
 - Provide any text input to count the words.
@@ -17,21 +17,20 @@ This tool is useful for text analysis, helping to understand the length and comp
         "schema": {
             "type": "object",
             "properties": {
-                "text": {
+                "input_text": {
                     "type": "string",
                     "description": "The text to count words in"
                 }
             },
-            "required": ["text"]
+            "required": ["input_text"]
         }
     }
 
 async def run_tool(name: str, parameters: dict) -> list[types.Content]:
     """Counts the number of words in the provided text."""
-    
     try:
-        # Extract the text parameter
-        text = parameters.get("text", "")
+        # Extract the input_text parameter
+        text = parameters.get("input_text", "")
         
         if not text:
             return [types.TextContent(type="text", text='{"error": "No text provided to count words."}')]

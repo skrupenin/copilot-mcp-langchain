@@ -13,7 +13,7 @@ async def tool_info() -> dict:
         "description": """Adds text data to the RAG (Retrieval Augmented Generation) vector database.
 
 **Parameters:**
-- `text` (string, required): The text content to add to the vector database
+- `input_text` (string, required): The text content to add to the vector database
 - `metadata` (object, optional): Additional metadata to associate with this text
 
 **Example Usage:**
@@ -24,9 +24,9 @@ This tool is part of a RAG workflow that allows storage of text data in a vector
 later semantic search and retrieval.""",
         "schema": {
             "type": "object",
-            "required": ["text"],
+            "required": ["input_text"],
             "properties": {
-                "text": {
+                "input_text": {
                     "type": "string",
                     "description": "The text content to add to the vector database",
                 },
@@ -40,9 +40,9 @@ later semantic search and retrieval.""",
 
 async def run_tool(name: str, parameters: dict) -> list[types.Content]:
     """Adds text data to the RAG vector database."""
-    text = parameters.get("text", None)
+    text = parameters.get("input_text", None)
     if not text:
-        return [types.TextContent(type="text", text="Error: 'text' parameter is required.")]
+        return [types.TextContent(type="text", text="Error: 'input_text' parameter is required.")]
     
     metadata = parameters.get("metadata", {})
     

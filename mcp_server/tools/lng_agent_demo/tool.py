@@ -15,7 +15,7 @@ async def tool_info() -> dict:
         "description": """Demonstrates a LangChain agent that can process text using three different tools:
         
 **Parameters:**
-- `text` (string, required): The text to process.
+- `input_text` (string, required): The text to process.
 - `task` (string, required): The task description for the agent.
 
 **Available Agent Tools:**
@@ -24,14 +24,14 @@ async def tool_info() -> dict:
 3. `count_characters_tool`: Counts the number of characters in a text.
 
 **Example Usage:**
-- Provide text: "hello world"
+- Provide input_text: "hello world"
 - Provide task: "Capitalize this text and then count its characters"
 
 The agent will decide which tools to use based on the task description.""",
         "schema": {
             "type": "object",
             "properties": {
-                "text": {
+                "input_text": {
                     "type": "string",
                     "description": "The text to process with the agent"
                 },
@@ -40,7 +40,7 @@ The agent will decide which tools to use based on the task description.""",
                     "description": "The task description for the agent"
                 }
             },
-            "required": ["text", "task"]
+            "required": ["input_text", "task"]
         }
     }
 
@@ -100,7 +100,7 @@ async def run_tool(name: str, parameters: dict) -> list[types.Content]:
     
     try:
         # Extract parameters
-        text = parameters.get("text", "")
+        text = parameters.get("input_text", "")
         task = parameters.get("task", "")
         
         if not text:
