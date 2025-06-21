@@ -21,8 +21,6 @@ from mcp_server.state_manager import state_manager
 # Initialize the shared state with default values if needed
 # Example: state_manager.set("app_start_time", datetime.now().isoformat())
 
-tools.register_tools()
-
 @click.command()
 @click.option("--port", default=8000, help="Port to listen on for SSE")
 @click.option(

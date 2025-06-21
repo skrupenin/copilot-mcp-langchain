@@ -48,3 +48,5 @@ async def run_tool(name: str, arguments: dict) -> list:
             module = import_module(tool["module_path"])
             return await module.run_tool(name, arguments)
     raise ValueError(f"Tool '{name}' not found.")
+
+register_tools()
