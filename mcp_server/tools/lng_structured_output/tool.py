@@ -296,20 +296,28 @@ async def format_as_yaml(question: str) -> str:
     
     # Extract content from AIMessage if needed
     result = response.content if hasattr(response, 'content') else response
-    
-    # Process the result
+      # Process the result
     try:
-        # Extract YAML from the response
+        # Extract YAML from the response, handling Markdown code blocks
         lines = result.split("\n")
         yaml_lines = []
         in_yaml = False
+        in_code_block = False
         
         for line in lines:
+            # Check for the start of a code block
+            if line.strip().startswith("```"):
+                # Toggle code block state
+                in_code_block = not in_code_block
+                # Skip the code block markers
+                continue
+                
             # Look for the start of the YAML block
             if not in_yaml and line.strip().startswith("movie:"):
                 in_yaml = True
             
-            if in_yaml:
+            # Include the line if we're in a YAML block or in a code block (after skipping the markers)
+            if in_yaml or in_code_block:
                 yaml_lines.append(line)
         
         if yaml_lines:
@@ -319,7 +327,21 @@ async def format_as_yaml(question: str) -> str:
             formatted_yaml = yaml.dump(parsed_yaml, default_flow_style=False, allow_unicode=True)
             return formatted_yaml
         else:
-            return result
+            # If we couldn't extract YAML, try parsing the whole response as YAML
+            # This might work if the response is already valid YAML
+            try:
+                # Remove code block markers if present
+                clean_result = result
+                if "```yaml" in result or "```" in result:
+                    clean_result = "\n".join([
+                        line for line in result.split("\n") 
+                        if not line.strip().startswith("```")
+                    ])
+                parsed_yaml = yaml.safe_load(clean_result)
+                formatted_yaml = yaml.dump(parsed_yaml, default_flow_style=False, allow_unicode=True)
+                return formatted_yaml
+            except:
+                return result
     except Exception as e:
         return f"YAML formatting error: {str(e)}\nOriginal response:\n{result}"
 
