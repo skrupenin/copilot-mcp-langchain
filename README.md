@@ -33,17 +33,24 @@ With this setup, `GitHub Copilot` gains access to new, well-documented tools tha
   - `mcp_client.py` - Client implementation
   - `mcp_server/` - Server with custom tools
 
+- **Install file** `install.sh`: 
+  - Setup virtal environment 
+  - Setup libraties
+  - Smoke tests
+
 - **Custom Langchain Tools**:
-  - Word counting
-  - Tools information retrieval
-  - RAG (Retrieval Augmented Generation) functionality
-  - Prompt template management
-  - Chain execution
-  - And more in mcp_server/tools/
+  - `lng_cont_words` - word counting, demonstrates python function calling
+  - `lng_get_tools_info` - tools information retrieval, collects all the information about tools in one place, that helps in `Github Copilot`.
+  - `lng_rag_add_data` and `lng_rag_search` - demonstrates RAG (Retrieval Augmented Generation) functionality 
+  - `lng_save_prompt_template` and `lng_use_prompt_template` - demonstrates Prompt template management
+  - `lng_run_chain` - demostrates Chain execution 
+  - `lng_agent_demo` - demonstrates Agent functionality
+  - `lng_structured_output` - demonstrates Structured output
+  - And more in `mcp_server/tools/`
 
 ## Use Cases
 
-While LLMs can handle simple tasks, more complex operations like processing Excel files or extracting specific data benefit greatly from custom MCP tools. The LLM can still help generate the code for these tools, providing the best of both worlds.
+While LLMs can handle simple tasks, more complex operations like processing Excel files or extracting specific data benefit greatly from custom `MCP` tools. The LLM can still help generate the code for these tools, providing the best of both worlds.
 
 ## Getting Started
 

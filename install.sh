@@ -57,6 +57,12 @@ from mcp_server.tools.lng_agent_demo.tool import run_tool
 result = asyncio.run(run_tool('lng_agent_demo', {'input_text': 'Hello pirate!', 'task': 'Reverse this text and then capitalize it'}))
 print(result)"
 
+# lng_structured_output
+python -c "import asyncio
+from mcp_server.tools.lng_structured_output.tool import run_tool
+result = asyncio.run(run_tool('lng_structured_output', {'question': 'Расскажи о фильме Матрица', 'output_format': 'json'}))
+print(result)"
+
 # to check several MCP tools without MCP
 
 # lng_save_prompt_template and lng_use_prompt_template
