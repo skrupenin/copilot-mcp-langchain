@@ -6,7 +6,7 @@ import traceback
 
 # logging configuration
 # Create a file logger instead of outputting to stdout, so as not to interfere with the MCP protocol
-log_file = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'mcp_server.log')
+log_file = os.path.join(os.path.dirname(os.path.abspath(__file__)), '../mcp_server.log')
 logging.basicConfig(
     level=logging.DEBUG,
     format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',

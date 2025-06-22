@@ -134,3 +134,6 @@ async def test_rag_tools():
     search_result = await search_tool('lng_rag_search', {'query': 'Pirate'})
     print('Search result:', search_result)
 asyncio.run(test_rag_tools())"
+
+# clean all caches 
+Get-ChildItem -Path . -Include __pycache__ -Recurse -Force | Remove-Item -Recurse -Force

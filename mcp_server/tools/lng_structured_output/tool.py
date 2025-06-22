@@ -459,8 +459,7 @@ async def format_as_pydantic(question: str) -> str:
         except Exception as e2:
             return f"Parsing error: {str(e2)}\nOriginal response:\n{result}"
 
-
-async def run_tool(name: str, arguments: Dict[str, Any]) -> Dict[str, Any]:
+async def run_tool(name: str, arguments: Dict[str, Any]) -> List[types.TextContent]:
     """Runs the tool with the specified arguments."""
     question = arguments.get("question", "")
     output_format = arguments.get("output_format", "json")
@@ -479,12 +478,7 @@ async def run_tool(name: str, arguments: Dict[str, Any]) -> Dict[str, Any]:
         else:
             result = f"Unsupported format: {output_format}"
         
-        return {
-            "result": result,
-            "format": output_format
-        }
+        return [types.TextContent(type="text", text=result)]
     except Exception as e:
-        return {
-            "error": str(e),
-            "format": output_format
-        }
+        error_text = f"An error occurred while formatting to {output_format}: {str(e)}"
+        return [types.TextContent(type="text", text=error_text)]
