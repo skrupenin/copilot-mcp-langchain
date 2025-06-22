@@ -16,7 +16,7 @@ async def tool_info() -> dict:
 
 **Example Usage:**
 - Ask complex reasoning questions like math problems or logical puzzles
-- The system will show step-by-step reasoning and analysis of the reasoning process
+- The system will show step-by-step reasoning process
 - See how the model breaks down complex problems into manageable steps
 
 This tool shows how prompting LLMs to think step by step improves performance on complex reasoning tasks.""",
@@ -40,7 +40,7 @@ This tool shows how prompting LLMs to think step by step improves performance on
 async def run_tool(name: str, parameters: dict) -> list[types.Content]:
     """Demonstrates Chain of Thought (CoT) reasoning with LangChain."""
     
-    try: 
+    try:
         question = parameters.get("question")
         include_examples = parameters.get("include_examples", True)
         
@@ -62,7 +62,7 @@ Let's think step by step:
 3. So, the average speed is 120 miles / 2 hours = 60 miles per hour.
 Therefore, the train's average speed is 60 miles per hour.
 """
-    
+        
         # Define template for CoT
         if include_examples:
             cot_template = f"""You are an assistant that solves problems by carefully reasoning step by step.
@@ -75,7 +75,7 @@ Let's think step by step:"""
 
 Question: {question}
 Let's think step by step:"""
-    
+        
         # Create prompt from template
         cot_prompt = PromptTemplate(template=cot_template, input_variables=["question"])
         
@@ -94,17 +94,9 @@ Let's think step by step:"""
 
 ## Step-by-Step Reasoning Process
 {cot_result}
-
-## Analysis of the Reasoning Chain
-Let's examine the reasoning process above:
-
-1. **Initial Problem Understanding**: The question requires tracking a changing quantity through multiple operations
-2. **Sequential Operations**: The model breaks down the problem into discrete mathematical steps
-3. **Intermediate States**: Each step captures the state of the system after each operation
-4. **Logical Flow**: The reasoning follows a clear cause-effect relationship between actions and results
-5. **Conclusion Verification**: The final answer is derived directly from the preceding steps
 """
+        
         # Use proper MCP type for markdown content
         return [types.TextContent(type="text", text=markdown_content)]
     except Exception as e:
-        return [types.TextContent(type="text", text=f"Error saving prompt template: {str(e)}")]
+        return [types.TextContent(type="text", text=f"Error processing question: {str(e)}")]
