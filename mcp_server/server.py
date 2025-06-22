@@ -4,8 +4,8 @@ import os
 import logging
 import traceback
 
-# Настройка логирования
-# Создадим файловый логгер вместо вывода в stdout, чтобы не мешать протоколу MCP
+# logging configuration
+# Create a file logger instead of outputting to stdout, so as not to interfere with the MCP protocol
 log_file = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'mcp_server.log')
 logging.basicConfig(
     level=logging.DEBUG,
@@ -40,6 +40,20 @@ except Exception as e:
     logger.error(f"Error importing modules: {e}")
     logger.error(traceback.format_exc())
     raise
+
+# Importing problematic libraries early to catch any issues before starting the server
+try:
+    logger.info("Attempting to pre-import problematic libraries")
+       
+    logger.info("Importing FAISS")
+    from mcp_server.tools.lng_rag_add_data.tool import problem_imports
+    problem_imports()
+    logger.info("Successfully imported FAISS")
+    
+    logger.info("Pre-imports completed successfully")
+except Exception as e:
+    logger.error(f"Error during pre-imports: {e}")
+    logger.exception("Stack trace:")
 
 # Initialize the shared state with default values if needed
 # Example: state_manager.set("app_start_time", datetime.now().isoformat())

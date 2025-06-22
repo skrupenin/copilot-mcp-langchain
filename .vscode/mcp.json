@@ -3,13 +3,7 @@
       "langchain-mcp":{
           "type": "stdio",
           "command": "${workspaceFolder}\\langchain_env\\Scripts\\python.exe",
-          "args": ["${workspaceFolder}\\start_mcp.py"],
-          "env": {
-              "VIRTUAL_ENV": "${workspaceFolder}\\langchain_env",
-              "VIRTUAL_ENV_PROMPT": "langchain_env",
-              "PYTHONPATH": "${workspaceFolder}",
-              "PATH": "${workspaceFolder}\\langchain_env\\Scripts;${env:PATH}"
-          }
+          "args": ["${workspaceFolder}\\mcp_server\\server.py"]
       }
     }
 }

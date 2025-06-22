@@ -2,9 +2,14 @@ import mcp.types as types
 from mcp_server.state_manager import state_manager
 from langchain.schema import Document
 from langchain.text_splitter import RecursiveCharacterTextSplitter
-from langchain_community.vectorstores import FAISS
 import os
 from mcp_server.llm import embeddings
+
+def problem_imports():
+    global FAISS
+    from langchain_community.vectorstores import FAISS
+
+problem_imports()
 
 async def tool_info() -> dict:
     """Returns information about the lng_rag_add_data tool."""
