@@ -67,8 +67,24 @@ print(result)"
 # lng_chain_of_thought
 python -c "import asyncio
 from mcp_server.tools.lng_chain_of_thought.tool import run_tool
-result = asyncio.run(run_tool('lng_chain_of_thought', {'question': 'If John has 5 apples and he gives 2 to Mary, then buys 3 more, how many apples does John have now?'}))
-print(result)"
+async def test_cot_with_memory():
+    # First request - starts a new session
+    result1 = await run_tool('lng_chain_of_thought', {
+        'question': 'If John has 5 apples and he gives 2 to Mary, how many apples does John have left?',
+        'session_id': 'apple_problem',
+        'new_session': True
+    })
+    print('First question result:')
+    print(result1)
+    
+    # Second request - continues the session
+    result2 = await run_tool('lng_chain_of_thought', {
+        'question': 'If John then buys 3 more apples, how many does he have now?',
+        'session_id': 'apple_problem'
+    })
+    print('Second question with memory:')
+    print(result2)
+asyncio.run(test_cot_with_memory())"
 
 # to check several MCP tools without MCP
 

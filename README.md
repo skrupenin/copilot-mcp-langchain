@@ -46,7 +46,7 @@ With this setup, `GitHub Copilot` gains access to new, well-documented tools tha
   - `lng_run_chain` - demostrates Chain execution 
   - `lng_agent_demo` - demonstrates Agent functionality
   - `lng_structured_output` - demonstrates Structured output
-  - `lng_chain_of_thought` - demonstrates Chain of Thought reasoning approach
+  - `lng_chain_of_thought` - demonstrates Chain of Thought reasoning approach with Memory usage
   - And more in `mcp_server/tools/`
 
 ## Use Cases
