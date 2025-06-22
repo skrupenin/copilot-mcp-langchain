@@ -64,6 +64,12 @@ from mcp_server.tools.lng_structured_output.tool import run_tool
 result = asyncio.run(run_tool('lng_structured_output', {'question': 'Tell me more about Matrix', 'output_format': 'xml'}))
 print(result)"
 
+# lng_chain_of_thought
+python -c "import asyncio
+from mcp_server.tools.lng_chain_of_thought.tool import run_tool
+result = asyncio.run(run_tool('lng_chain_of_thought', {'question': 'If John has 5 apples and he gives 2 to Mary, then buys 3 more, how many apples does John have now?'}))
+print(result)"
+
 # to check several MCP tools without MCP
 
 # lng_save_prompt_template and lng_use_prompt_template
