@@ -59,9 +59,34 @@ print(result)"
 
 # lng_structured_output
 # possible output formats: json, xml, csv, yaml, pydantic
+# json
+python -c "import asyncio
+from mcp_server.tools.lng_structured_output.tool import run_tool
+result = asyncio.run(run_tool('lng_structured_output', {'question': 'Tell me more about Matrix', 'output_format': 'json'}))
+print(result)"
+
+# xml
 python -c "import asyncio
 from mcp_server.tools.lng_structured_output.tool import run_tool
 result = asyncio.run(run_tool('lng_structured_output', {'question': 'Tell me more about Matrix', 'output_format': 'xml'}))
+print(result)"
+
+# csv
+python -c "import asyncio
+from mcp_server.tools.lng_structured_output.tool import run_tool
+result = asyncio.run(run_tool('lng_structured_output', {'question': 'Tell me more about Matrix', 'output_format': 'csv'}))
+print(result)"
+
+# yaml
+python -c "import asyncio
+from mcp_server.tools.lng_structured_output.tool import run_tool
+result = asyncio.run(run_tool('lng_structured_output', {'question': 'Tell me more about Matrix', 'output_format': 'yaml'}))
+print(result)"
+
+# pydantic
+python -c "import asyncio
+from mcp_server.tools.lng_structured_output.tool import run_tool
+result = asyncio.run(run_tool('lng_structured_output', {'question': 'Tell me more about Matrix', 'output_format': 'pydantic'}))
 print(result)"
 
 # lng_chain_of_thought

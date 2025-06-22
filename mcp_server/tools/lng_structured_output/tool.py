@@ -147,10 +147,10 @@ async def format_as_xml(question: str) -> str:
     
     {xml_structure}
     """
-    
+
     # Create prompt template
     template = """
-    {instructions}
+    {format_instructions}
     
     Question about a movie: {question}
     
@@ -181,8 +181,8 @@ async def format_as_xml(question: str) -> str:
             
             # Extract content from AIMessage if needed
             result = raw_response.content if hasattr(raw_response, 'content') else raw_response
-            
             # Manual cleanup as fallback
+
             start_idx = result.find("<")
             end_idx = result.rfind(">") + 1
             if start_idx >= 0 and end_idx > 0:
@@ -190,7 +190,11 @@ async def format_as_xml(question: str) -> str:
                 return clean_xml
             return result
         except Exception as e2:
-            return f"XML formatting error: {str(e2)}\nOriginal response:\n{result}"
+            # Safely handle the case where result might not be defined
+            raw_result = "Response not available due to error"
+            if 'raw_response' in locals():
+                raw_result = raw_response.content if hasattr(raw_response, 'content') else str(raw_response)
+            return f"XML formatting error: {str(e2)}\nOriginal response:\n{raw_result}"
 
 
 async def format_as_csv(question: str) -> str:
