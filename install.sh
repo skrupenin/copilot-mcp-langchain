@@ -23,6 +23,9 @@ pip install faiss-cpu
 pip install "mcp[cli]"
 pip show mcp
 
+# install FastAPI and Uvicorn for HTTP server
+pip install fastapi uvicorn requests
+
 # to check connection to the OpenAI/Azure LLM provider
 python simple_openai.py 
 python simple_azure.py 

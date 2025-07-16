@@ -97,3 +97,73 @@ This project is based on concepts from the blog post: [Как расширить
 ## Repository
 
 The original repository is available at: [https://github.com/codenjoyme/copilot-mcp-langchain](https://github.com/codenjoyme/copilot-mcp-langchain)
+
+## Alternative HTTP Proxy Setup (When MCP is Not Available)
+
+If you're experiencing issues with MCP connectivity or want to test the system without full MCP integration, this project provides an alternative HTTP-based architecture that allows you to quickly test and interact with LangChain tools.
+
+### Architecture Overview
+
+The alternative setup consists of three components:
+
+1. **Component 1**: `mcp_server/server.py` - The original MCP server with LangChain tools
+2. **Component 2**: `mcp_proxy.py` - HTTP proxy server (runs in background)
+3. **Component 3**: `mcp_execute.py` - Client for quick requests
+
+### Quick Start
+
+#### 1. Start the HTTP Test Server
+
+Open a terminal and run:
+```bash
+python mcp_proxy.py
+```
+
+The server will start on `http://127.0.0.1:8080` and provide:
+- `GET /health` - Server health check
+- `POST /execute` - Execute tools
+
+#### 2. Test the System
+
+Open another terminal and test the system:
+
+**Check server health:**
+```bash
+python mcp_execute.py health
+```
+
+**Execute tools:**
+```bash
+# Count words in text
+python mcp_execute.py exec f1e_lng_count_words --params '{\"input_text\": \"Hello world this is a test\"}'
+
+# Math calculations
+python mcp_execute.py exec f1e_lng_math_calculator --params '{\"expression\": \"2 + 3 * 4\"}'
+
+# Any custom tool
+python mcp_execute.py exec f1e_custom_tool --params '{\"param1\": \"value1\"}'
+```
+
+#### 3. View Available Examples
+
+```bash
+python mcp_execute.py examples
+```
+
+### Troubleshooting
+
+If you encounter issues:
+
+1. **Server not starting**: Check if port 8080 is available
+2. **Connection refused**: Ensure the test server is running
+3. **JSON parsing errors**: Use single quotes for PowerShell parameters
+4. **Tool errors**: Check the server console for detailed error messages
+
+### Browser Testing
+
+You can also test the system directly in your browser:
+
+- Health check: `http://127.0.0.1:8080/health`
+- Use tools like Postman or curl for POST requests to `/execute`
+
+This alternative setup provides a reliable fallback when MCP is not available while maintaining full access to your LangChain tools.
