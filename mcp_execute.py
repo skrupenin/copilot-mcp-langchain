@@ -63,10 +63,12 @@ def check_health(host: str = "127.0.0.1", port: int = 8080):
         if response.status_code == 200:
             health = response.json()
             status = health.get("status", "unknown")
-            mcp_running = health.get("mcp_running", False)
+            mcp_running = health.get("mcp_initialized", False)  
+            tools_count = health.get("tools_count", 0)
             
             print(f"🏥 Server Status: {status}")
             print(f"🔧 MCP Running: {mcp_running}")
+            print(f"🛠️  Tools Available: {tools_count}")
             
             if status == "healthy" and mcp_running:
                 print("✅ System is ready!")
