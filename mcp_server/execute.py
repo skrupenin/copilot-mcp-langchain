@@ -179,23 +179,23 @@ def main():
         
         make_request(args.tool, params, args.host, args.port, args.timeout)
         
-    elif args.command == "examples":
+    elif args.command == "examples":        
         print("🔧 Usage Examples:")
         print()
         print("1. Check server health:")
-        print("   python mcp_execute.py health")
+        print("   python mcp_server/execute.py health")
         print()
         print("2. All tools info:")
-        print('   python mcp_execute.py exec lng_get_tools_info --params \'{}\'')
+        print('   python mcp_server/execute.py exec lng_get_tools_info --params \'{}\'')
         print()
         print("3. Count words in text:")
-        print('   python mcp_execute.py exec lng_count_words --params \'{\\"input_text\\": \\"Hello world\\"}\'')
+        print('   python mcp_server/execute.py exec lng_count_words --params \'{\\"input_text\\": \\"Hello world\\"}\'')
         print()
         print("4. Math calculation:")
-        print('   python mcp_execute.py exec lng_math_calculator --params \'{\\"expression\\": \\"2 + 3 * 4\\"}\'')
+        print('   python mcp_server/execute.py exec lng_math_calculator --params \'{\\"expression\\": \\"2 + 3 * 4\\"}\'')
         print()
         print("5. Chain of thought reasoning:")
-        print('   python mcp_execute.py exec lng_chain_of_thought --params \'{\\"question\\": \\"What is 15 * 24?\\"}\'')
+        print('   python mcp_server/execute.py exec lng_chain_of_thought --params \'{\\"question\\": \\"What is 15 * 24?\\"}\'')
         print()
         
     else:
