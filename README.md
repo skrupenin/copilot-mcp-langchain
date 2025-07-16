@@ -84,7 +84,30 @@ While LLMs can handle simple tasks, more complex operations like processing Exce
 2. Set up your environment variables in a `.env` file
 3. Install `Python` dependencies as described in `install.sh`
 4. Configure `.vscode/mcp.json` for your MCP server
-5. Start using the enhanced `GitHub Copilot` capabilities
+5. Configure MCP settings in VS Code (see MCP Configuration section below)
+6. Start using the enhanced `GitHub Copilot` capabilities
+
+## MCP Configuration
+
+### Enabling/Disabling MCP in VS Code
+
+To control whether MCP (Model Context Protocol) is enabled or disabled, you need to modify the `.vscode/settings.json` file:
+
+#### To Enable MCP:
+```json
+{
+    "chat.mcp.enabled": true,
+    "github.copilot.chat.codeGeneration.useInstructionFiles": false
+}
+```
+
+#### To Disable MCP:
+```json
+{
+    "chat.mcp.enabled": false,
+    "github.copilot.chat.codeGeneration.useInstructionFiles": true
+}
+```
 
 ## API Keys
 
