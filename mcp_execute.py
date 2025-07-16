@@ -63,12 +63,12 @@ def check_health(host: str = "127.0.0.1", port: int = 8080):
         if response.status_code == 200:
             health = response.json()
             status = health.get("status", "unknown")
-            mcp_executening = health.get("mcp_executening", False)
+            mcp_running = health.get("mcp_running", False)
             
             print(f"🏥 Server Status: {status}")
-            print(f"🔧 MCP Running: {mcp_executening}")
+            print(f"🔧 MCP Running: {mcp_running}")
             
-            if status == "healthy" and mcp_executening:
+            if status == "healthy" and mcp_running:
                 print("✅ System is ready!")
                 return True
             else:
@@ -86,16 +86,70 @@ def check_health(host: str = "127.0.0.1", port: int = 8080):
         print(f"❌ Health check error: {e}")
         return False
 
+def list_tools(host: str = "127.0.0.1", port: int = 8080):
+    """Получение списка доступных инструментов"""
+    try:
+        url = f"http://{host}:{port}/tools"
+        response = requests.get(url, timeout=10)
+        
+        if response.status_code == 200:
+            tools_info = response.json()
+            tools = tools_info.get("tools", [])
+            count = tools_info.get("count", 0)
+            initialized = tools_info.get("initialized", False)
+            
+            print(f"🔧 Available Tools ({count} total)")
+            print(f"📊 MCP Initialized: {initialized}")
+            print("="*60)
+            
+            for i, tool in enumerate(tools, 1):
+                name = tool.get("name", "Unknown")
+                description = tool.get("description", "No description")
+                
+                print(f"{i}. {name}")
+                print(f"   📝 {description[:100]}{'...' if len(description) > 100 else ''}")
+                
+                # Показываем параметры
+                schema = tool.get("inputSchema", {})
+                properties = schema.get("properties", {})
+                required = schema.get("required", [])
+                
+                if properties:
+                    print("   📋 Parameters:")
+                    for param_name, param_info in properties.items():
+                        param_type = param_info.get("type", "unknown")
+                        param_desc = param_info.get("description", "No description")
+                        is_required = param_name in required
+                        req_mark = "✅" if is_required else "⚪"
+                        print(f"      {req_mark} {param_name} ({param_type}): {param_desc}")
+                
+                print()
+                
+            return True
+        else:
+            print(f"❌ HTTP Error {response.status_code}: {response.text}")
+            return False
+            
+    except requests.exceptions.ConnectionError:
+        print("❌ Server is not available")
+        print("💡 Start it with: python mcp_proxy_full.py")
+        return False
+    except Exception as e:
+        print(f"❌ Error listing tools: {e}")
+        return False
+
 def main():
     parser = argparse.ArgumentParser(description="Simple MCP Client")
     parser.add_argument("--host", default="127.0.0.1", help="Proxy server host")
     parser.add_argument("--port", type=int, default=8080, help="Proxy server port")
     parser.add_argument("--timeout", type=int, default=30, help="Request timeout in seconds")
-    
     subparsers = parser.add_subparsers(dest="command", help="Available commands")
     
     # Health check command
     health_parser = subparsers.add_parser("health", help="Check server health")
+    
+    # List tools command
+    list_parser = subparsers.add_parser("list", help="List available tools")
     
     # Execute command
     exec_parser = subparsers.add_parser("exec", help="Execute a tool")
@@ -104,11 +158,13 @@ def main():
     
     # Quick examples
     examples_parser = subparsers.add_parser("examples", help="Show usage examples")
-    
     args = parser.parse_args()
     
     if args.command == "health":
         check_health(args.host, args.port)
+        
+    elif args.command == "list":
+        list_tools(args.host, args.port)
         
     elif args.command == "exec":
         params = {}
@@ -128,16 +184,16 @@ def main():
         print("   python mcp_execute.py health")
         print()
         print("2. All tools info:")
-        print('   python mcp_execute.py exec f1e_lng_get_tools_info --params \'{}\'')
+        print('   python mcp_execute.py exec lng_get_tools_info --params \'{}\'')
         print()
         print("3. Count words in text:")
-        print('   python mcp_execute.py exec f1e_lng_count_words --params \'{\\"input_text\\": \\"Hello world\\"}\'')
+        print('   python mcp_execute.py exec lng_count_words --params \'{\\"input_text\\": \\"Hello world\\"}\'')
         print()
         print("4. Math calculation:")
-        print('   python mcp_execute.py exec f1e_lng_math_calculator --params \'{\\"expression\\": \\"2 + 3 * 4\\"}\'')
+        print('   python mcp_execute.py exec lng_math_calculator --params \'{\\"expression\\": \\"2 + 3 * 4\\"}\'')
         print()
         print("5. Chain of thought reasoning:")
-        print('   python mcp_execute.py exec f1e_lng_chain_of_thought --params \'{\\"question\\": \\"What is 15 * 24?\\"}\'')
+        print('   python mcp_execute.py exec lng_chain_of_thought --params \'{\\"question\\": \\"What is 15 * 24?\\"}\'')
         print()
         
     else:
