@@ -3,6 +3,7 @@ import sys
 import os
 import logging
 import traceback
+import json
 
 # logging configuration
 # Create a file logger instead of outputting to stdout, so as not to interfere with the MCP protocol
@@ -15,6 +16,126 @@ logging.basicConfig(
     ]
 )
 logger = logging.getLogger('mcp_server')
+
+# # Classes for intercepting and logging MCP communication
+class LoggingReadStream:
+    """Wrapper for the read stream with logging of incoming messages"""
+    
+    def __init__(self, original_stream):
+        self.original_stream = original_stream
+    
+    def __aiter__(self):
+        return self
+      
+    async def __anext__(self):
+        try:
+            message = await self.original_stream.__anext__()
+            # Log incoming message
+            try:
+                # Extract clean JSON-RPC from SessionMessage
+                if hasattr(message, 'message') and hasattr(message.message, 'root'):
+                    # This is a SessionMessage with JSONRPCMessage inside
+                    json_rpc_message = message.message.root
+                    if hasattr(json_rpc_message, 'model_dump'):
+                        message_dict = json_rpc_message.model_dump()
+                    elif hasattr(json_rpc_message, 'dict'):
+                        message_dict = json_rpc_message.dict()
+                    else:
+                        message_dict = json_rpc_message
+                elif hasattr(message, 'model_dump'):
+                    message_dict = message.model_dump()
+                elif hasattr(message, 'dict'):
+                    message_dict = message.dict()
+                else:
+                    message_dict = message
+                
+                message_json = json.dumps(message_dict, ensure_ascii=False, separators=(',', ':'))
+                logger.info(f"[<] {message_json}")
+            except Exception as e:
+                logger.error(f"Error logging incoming message: {e}")
+                logger.info(f"[<] {str(message)}")
+            
+            return message
+        except StopAsyncIteration:
+            raise
+        except Exception as e:
+            logger.error(f"Error in read stream: {e}")
+            raise
+    
+    async def __aenter__(self):
+        if hasattr(self.original_stream, '__aenter__'):
+            await self.original_stream.__aenter__()
+        return self
+    
+    async def __aexit__(self, exc_type, exc_val, exc_tb):
+        if hasattr(self.original_stream, '__aexit__'):
+            return await self.original_stream.__aexit__(exc_type, exc_val, exc_tb)
+        return False
+    
+    def __getattr__(self, name):
+        # Proxy all other attributes to the original stream
+        return getattr(self.original_stream, name)
+
+class LoggingWriteStream:
+    """Wrapper for the write stream with logging of outgoing messages"""
+    
+    def __init__(self, original_stream):
+        self.original_stream = original_stream
+    
+    async def send(self, message):
+        # Log outgoing message
+        try:
+            # Extract clean JSON-RPC from SessionMessage
+            if hasattr(message, 'message') and hasattr(message.message, 'root'):
+                # This is a SessionMessage with JSONRPCMessage inside
+                json_rpc_message = message.message.root
+                if hasattr(json_rpc_message, 'model_dump'):
+                    message_dict = json_rpc_message.model_dump()
+                elif hasattr(json_rpc_message, 'dict'):
+                    message_dict = json_rpc_message.dict()
+                else:
+                    message_dict = json_rpc_message
+            elif hasattr(message, 'model_dump'):
+                message_dict = message.model_dump()
+            elif hasattr(message, 'dict'):
+                message_dict = message.dict()
+            else:
+                message_dict = message
+            
+            message_json = json.dumps(message_dict, ensure_ascii=False, separators=(',', ':'))
+            logger.info(f"[>] {message_json}")
+        except Exception as e:
+            logger.error(f"Error logging outgoing message: {e}")
+            logger.info(f"[>] {str(message)}")
+        
+        # Send message through the original stream
+        return await self.original_stream.send(message)
+    
+    async def __aenter__(self):
+        if hasattr(self.original_stream, '__aenter__'):
+            await self.original_stream.__aenter__()
+        return self
+    
+    async def __aexit__(self, exc_type, exc_val, exc_tb):
+        if hasattr(self.original_stream, '__aexit__'):
+            return await self.original_stream.__aexit__(exc_type, exc_val, exc_tb)
+        return False
+    
+    def close(self):
+        if hasattr(self.original_stream, 'close'):
+            return self.original_stream.close()
+    
+    async def aclose(self):
+        if hasattr(self.original_stream, 'aclose'):
+            return await self.original_stream.aclose()
+    
+    def __getattr__(self, name):
+        # Proxy all other attributes to the original stream
+        return getattr(self.original_stream, name)
+
+def wrap_streams(read_stream, write_stream):
+    """Wraps streams for logging communication"""
+    return LoggingReadStream(read_stream), LoggingWriteStream(write_stream)
 
 logger.info(f"Python executable: {sys.executable}")
 logger.info(f"Python version: {sys.version}")
@@ -119,8 +240,13 @@ def main(port: int, transport: str) -> int:
                         request.scope, request.receive, request._send
                     ) as streams:
                         logger.info("SSE streams created, running app")
+                        # Wrap streams for logging communication
+                        read_stream, write_stream = wrap_streams(streams[0], streams[1])
+                        logger.info("MCP communication logging started for SSE transport")
+                        
+                        logger.info("Running app with wrapped streams")
                         await app.run(
-                            streams[0], streams[1], app.create_initialization_options()
+                            read_stream, write_stream, app.create_initialization_options()
                         )
                     logger.info("App run completed for SSE connection")
                     return Response()
@@ -155,8 +281,13 @@ def main(port: int, transport: str) -> int:
                 try:
                     async with stdio_server() as streams:
                         logger.info("Stdio streams created, running app")
+                        # Wrap streams for logging communication
+                        read_stream, write_stream = wrap_streams(streams[0], streams[1])
+                        logger.info("MCP communication logging started for stdio transport")
+                        
+                        logger.info("Running app with wrapped streams")
                         await app.run(
-                            streams[0], streams[1], app.create_initialization_options()
+                            read_stream, write_stream, app.create_initialization_options()
                         )
                         logger.info("App run completed for stdio connection")
                 except Exception as e:
