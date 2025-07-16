@@ -1,5 +1,5 @@
 If there is no MCP enabled, follow instructions:
-- Open a terminal and run:
+- Open a terminal and run in background:
 ```bash
 python mcp_server/proxy.py
 ```
