@@ -106,13 +106,13 @@ If you're experiencing issues with MCP connectivity or want to test the system w
 
 The alternative setup consists of three components:
 
-1. **Component 1**: `mcp_server/server.py` - The original MCP server with LangChain tools
-2. **Component 2**: `mcp_proxy.py` - HTTP proxy server (runs in background)
+1. **Component 1**: `mcp_server/server.py` - The original MCP server with LangChain tools (will run automatically with Component 2)
+2. **Component 2**: `mcp_proxy.py` - Full HTTP proxy server with complete MCP protocol implementation
 3. **Component 3**: `mcp_execute.py` - Client for quick requests
 
 ### Quick Start
 
-#### 1. Start the HTTP Test Server
+#### 1. Start the MCP HTTP Proxy Server
 
 Open a terminal and run:
 ```bash
@@ -120,8 +120,9 @@ python mcp_proxy.py
 ```
 
 The server will start on `http://127.0.0.1:8080` and provide:
-- `GET /health` - Server health check
-- `POST /execute` - Execute tools
+- `GET /health` - Server health check with MCP connection status
+- `GET /tools` - List all available LangChain tools
+- `POST /execute` - Execute tools using full MCP protocol
 
 #### 2. Test the System
 
@@ -132,16 +133,25 @@ Open another terminal and test the system:
 python mcp_execute.py health
 ```
 
+**List available tools:**
+```bash
+python mcp_execute.py list
+```
+
 **Execute tools:**
 ```bash
 # Count words in text
-python mcp_execute.py exec f1e_lng_count_words --params '{\"input_text\": \"Hello world this is a test\"}'
+python mcp_execute.py exec lng_count_words --params '{\"input_text\": \"Hello world this is a test\"}'
 
 # Math calculations
-python mcp_execute.py exec f1e_lng_math_calculator --params '{\"expression\": \"2 + 3 * 4\"}'
+python mcp_execute.py exec lng_math_calculator --params '{\"expression\": \"2 + 3 * 4\"}'
 
-# Any custom tool
-python mcp_execute.py exec f1e_custom_tool --params '{\"param1\": \"value1\"}'
+# Chain of thought reasoning
+python mcp_execute.py exec lng_chain_of_thought --params '{\"question\": \"What is 15 * 24?\"}'
+
+# RAG functionality
+python mcp_execute.py exec lng_rag_add_data --params '{\"input_text\": \"Your document content\"}'
+python mcp_execute.py exec lng_rag_search --params '{\"query\": \"search term\"}'
 ```
 
 #### 3. View Available Examples
