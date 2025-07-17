@@ -13,166 +13,119 @@ import logging
 import asyncio
 from http.server import HTTPServer, BaseHTTPRequestHandler
 from urllib.parse import urlparse
+from mcp.client.session import ClientSession
+from mcp.client.stdio import StdioServerParameters, stdio_client
 
 # Простое логирование
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 logger = logging.getLogger(__name__)
 
 class MCPClient:
-    """Клиент для работы с MCP сервером через subprocess"""
-    
+    """Клиент для работы с MCP сервером через правильный MCP протокол"""
     def __init__(self):
-        self.process = None
+        self.session = None
+        self.client = None
+        self.streams = None
         self.initialized = False
         self.tools_list = []
-        self.next_id = 1
         self.lock = threading.Lock()
         
-    def get_next_id(self):
-        """Получить следующий ID для JSON-RPC запроса"""
-        with self.lock:
-            current_id = self.next_id
-            self.next_id += 1
-            return current_id
-    
-    def start_mcp_server(self):
-        """Запуск MCP сервера как подпроцесса"""
+    def start_and_initialize(self):
+        """Синхронная инициализация MCP сервера"""
         try:
-            logger.info("Starting MCP server subprocess...")
-              # Запускаем MCP сервер как подпроцесс
+            logger.info("Starting MCP client connection...")
+            
+            # Простая инициализация в синхронном режиме
+            import subprocess
+            import json
+            
+            # Запускаем MCP сервер как подпроцесс
             self.process = subprocess.Popen(
                 [sys.executable, "-m", "mcp_server.server"],
                 stdin=subprocess.PIPE,
                 stdout=subprocess.PIPE,
                 stderr=subprocess.PIPE,
                 text=True,
-                bufsize=1,  # Буферизация построчно
+                bufsize=1,
                 universal_newlines=True,
-                encoding='utf-8',  # Явно указываем UTF-8 кодировку
-                errors='replace'   # Заменяем проблемные символы
+                encoding='utf-8',
+                errors='replace'
             )
             
-            logger.info(f"MCP server started with PID: {self.process.pid}")
+            logger.info("MCP server process started")
             
-            # Выполняем инициализацию MCP
-            self.initialize_mcp()
-            
-        except Exception as e:
-            logger.error(f"Failed to start MCP server: {e}")
-            raise
-    
-    def initialize_mcp(self):
-        """Выполнение полного цикла инициализации MCP"""
-        try:
-            # Шаг 1: Отправляем initialize запрос
-            logger.info("Step 1: Sending initialize request...")
+            # Отправляем initialize запрос
             initialize_request = {
                 "jsonrpc": "2.0",
-                "id": self.get_next_id(),
+                "id": 1,
                 "method": "initialize",
                 "params": {
-                    "protocolVersion": "2025-03-26",
-                    "capabilities": {"roots": {"listChanged": True}},
-                    "clientInfo": {
-                        "name": "MCP HTTP Proxy",
-                        "version": "1.0.0"
-                    }
+                    "protocolVersion": "2024-11-05",
+                    "capabilities": {"tools": {}},
+                    "clientInfo": {"name": "proxy-client", "version": "1.0.0"}
                 }
             }
             
-            response = self.send_request(initialize_request)
-            if response and "error" not in response:
-                logger.info("✅ Initialize request successful")
-            else:
-                logger.error(f"❌ Initialize request failed: {response}")
-                return False
-            
-            # Шаг 2: Отправляем notifications/initialized
-            logger.info("Step 2: Sending initialized notification...")
-            initialized_notification = {
-                "method": "notifications/initialized",
-                "jsonrpc": "2.0"
-            }
-            
-            # Для уведомлений не ждем ответа
-            self.send_notification(initialized_notification)
-            
-            # Шаг 3: Получаем список инструментов
-            logger.info("Step 3: Requesting tools list...")
-            tools_request = {
-                "jsonrpc": "2.0",
-                "id": self.get_next_id(),
-                "method": "tools/list",
-                "params": {}
-            }
-            
-            response = self.send_request(tools_request)
-            if response and "result" in response:
-                self.tools_list = response["result"].get("tools", [])
-                logger.info(f"✅ Retrieved {len(self.tools_list)} tools")
-                self.initialized = True
-                return True
-            else:
-                logger.error(f"❌ Tools list request failed: {response}")
-                return False
-                
-        except Exception as e:
-            logger.error(f"MCP initialization failed: {e}")
-            return False
-    
-    def send_request(self, request):
-        """Отправка JSON-RPC запроса и получение ответа"""
-        try:
-            if not self.process:
-                raise Exception("MCP server not started")
-            
-            # Отправляем запрос
-            request_json = json.dumps(request) + "\n"
-            logger.debug(f"Sending request: {request_json.strip()}")
-            
+            request_json = json.dumps(initialize_request) + "\n"
             self.process.stdin.write(request_json)
             self.process.stdin.flush()
             
-            # Читаем ответ
-            response_line = self.process.stdout.readline()
-            if not response_line:
-                raise Exception("No response from MCP server")
+            # Читаем ответ на initialize
+            response_line = self.process.stdout.readline().strip()
+            if response_line:
+                response_data = json.loads(response_line)
+                if "error" not in response_data:
+                    logger.info("Initialize successful")
+                    
+                    # Отправляем initialized notification
+                    initialized_notification = {
+                        "method": "notifications/initialized",
+                        "jsonrpc": "2.0"
+                    }
+                    notification_json = json.dumps(initialized_notification) + "\n"
+                    self.process.stdin.write(notification_json)
+                    self.process.stdin.flush()
+                    
+                    # Запрашиваем список инструментов
+                    tools_request = {
+                        "jsonrpc": "2.0",
+                        "id": 2,
+                        "method": "tools/list",
+                        "params": {}
+                    }
+                    tools_json = json.dumps(tools_request) + "\n"
+                    self.process.stdin.write(tools_json)
+                    self.process.stdin.flush()
+                    
+                    # Читаем список инструментов
+                    tools_response = self.process.stdout.readline().strip()
+                    if tools_response:
+                        tools_data = json.loads(tools_response)
+                        if "result" in tools_data and "tools" in tools_data["result"]:
+                            self.tools_list = tools_data["result"]["tools"]
+                            self.initialized = True
+                            logger.info(f"✅ MCP initialized with {len(self.tools_list)} tools")
+                            return True
             
-            response = json.loads(response_line.strip())
-            logger.debug(f"Received response: {response}")
-            
-            return response
+            logger.error("Failed to initialize MCP properly")
+            return False
             
         except Exception as e:
-            logger.error(f"Error sending request: {e}")
-            return {"error": {"message": str(e)}}
-    
-    def send_notification(self, notification):
-        """Отправка уведомления (без ожидания ответа)"""
-        try:
-            if not self.process:
-                raise Exception("MCP server not started")
-            
-            # Отправляем уведомление
-            notification_json = json.dumps(notification) + "\n"
-            logger.debug(f"Sending notification: {notification_json.strip()}")
-            
-            self.process.stdin.write(notification_json)
-            self.process.stdin.flush()
-            
-        except Exception as e:
-            logger.error(f"Error sending notification: {e}")
-    
+            logger.error(f"Failed to initialize MCP client: {e}")
+            self.initialized = False
+            return False
     def call_tool(self, tool_name, arguments):
-        """Вызов конкретного инструмента"""
+        """Синхронный вызов инструмента через JSON-RPC"""
         try:
-            if not self.initialized:
-                raise Exception("MCP not initialized")
+            if not self.initialized or not self.process:
+                raise Exception("MCP client not initialized")
             
-            # Создаем запрос на вызов инструмента
+            logger.info(f"Calling tool: {tool_name} with arguments: {arguments}")
+            
+            # Создаем JSON-RPC запрос для вызова инструмента
             call_request = {
                 "jsonrpc": "2.0",
-                "id": self.get_next_id(),
+                "id": 4,
                 "method": "tools/call",
                 "params": {
                     "name": tool_name,
@@ -180,17 +133,18 @@ class MCPClient:
                 }
             }
             
-            logger.info(f"Calling tool: {tool_name} with arguments: {arguments}")
-            response = self.send_request(call_request)
+            request_json = json.dumps(call_request) + "\n"
+            self.process.stdin.write(request_json)
+            self.process.stdin.flush()
             
-            if response and "result" in response:
-                result = response["result"]
+            # Читаем ответ
+            response_line = self.process.stdout.readline().strip()
+            if response_line:
+                response_data = json.loads(response_line)
                 logger.info(f"✅ Tool {tool_name} executed successfully")
-                return result
+                return response_data
             else:
-                error_msg = response.get("error", {}).get("message", "Unknown error")
-                logger.error(f"❌ Tool {tool_name} failed: {error_msg}")
-                return {"error": error_msg}
+                raise Exception("No response from MCP server")
                 
         except Exception as e:
             logger.error(f"Error calling tool {tool_name}: {e}")
@@ -203,19 +157,15 @@ class MCPClient:
             "count": len(self.tools_list),
             "initialized": self.initialized
         }
-    
     def stop(self):
-        """Остановка MCP сервера"""
-        if self.process:
-            try:
+        """Остановка MCP клиента"""
+        try:
+            if self.process:
                 self.process.terminate()
                 self.process.wait(timeout=5)
-                logger.info("MCP server stopped")
-            except subprocess.TimeoutExpired:
-                self.process.kill()
-                logger.warning("MCP server forcefully killed")
-            except Exception as e:
-                logger.error(f"Error stopping MCP server: {e}")
+                logger.info("MCP client stopped")
+        except Exception as e:
+            logger.error(f"Error stopping MCP client: {e}")
 
 # Глобальный экземпляр MCP клиента
 mcp_client = MCPClient()
@@ -261,14 +211,40 @@ class MCPHandler(BaseHTTPRequestHandler):
                 params = request_data.get('params', {})
                 
                 logger.info(f"Executing tool: {tool} with params: {params}")
-                
-                # Выполняем реальный вызов инструмента через MCP
+                  # Выполняем реальный вызов инструмента через MCP
                 start_time = time.time()
                 mcp_result = mcp_client.call_tool(tool, params)
                 execution_time = time.time() - start_time
-                
-                # Обрабатываем результат
-                if "error" in mcp_result:
+                  # Обрабатываем результат
+                if "result" in mcp_result and "content" in mcp_result["result"]:
+                    # Успешное выполнение - извлекаем содержимое из JSON-RPC ответа
+                    self.send_response(200)
+                    self.send_header('Content-type', 'application/json')
+                    self.end_headers()
+                    
+                    # Извлекаем текст из результата JSON-RPC
+                    result_text = []
+                    content_items = mcp_result["result"]["content"]
+                    
+                    for item in content_items:
+                        if isinstance(item, dict) and "text" in item:
+                            # Пытаемся распарсить JSON из text поля
+                            try:
+                                parsed_json = json.loads(item["text"])
+                                result_text.append(parsed_json)
+                            except json.JSONDecodeError:
+                                # Если не JSON, просто добавляем текст
+                                result_text.append(item["text"])
+                        else:
+                            result_text.append(str(item))
+                    
+                    response = {
+                        "success": True,
+                        "result": result_text,
+                        "execution_time": execution_time,
+                        "timestamp": time.time()
+                    }
+                elif "error" in mcp_result:
                     # Ошибка выполнения
                     self.send_response(500)
                     self.send_header('Content-type', 'application/json')
@@ -281,24 +257,14 @@ class MCPHandler(BaseHTTPRequestHandler):
                         "timestamp": time.time()
                     }
                 else:
-                    # Успешное выполнение
+                    # Неожиданный формат ответа
                     self.send_response(200)
                     self.send_header('Content-type', 'application/json')
                     self.end_headers()
                     
-                    # Извлекаем текст из результата MCP
-                    result_text = []
-                    content = mcp_result.get("content", [])
-                    
-                    for item in content:
-                        if isinstance(item, dict) and "text" in item:
-                            result_text.append(item["text"])
-                        else:
-                            result_text.append(str(item))
-                    
                     response = {
                         "success": True,
-                        "result": result_text,
+                        "result": [str(mcp_result)],
                         "execution_time": execution_time,
                         "timestamp": time.time()
                     }
@@ -334,9 +300,10 @@ def run_server(host='127.0.0.1', port=8080):
     # Запускаем MCP сервер
     try:
         logger.info("🚀 Starting MCP HTTP Proxy Server...")
-        mcp_client.start_mcp_server()
         
-        if not mcp_client.initialized:
+        # Используем синхронную инициализацию
+        success = mcp_client.start_and_initialize()
+        if not success:
             logger.error("❌ Failed to initialize MCP server")
             return
         

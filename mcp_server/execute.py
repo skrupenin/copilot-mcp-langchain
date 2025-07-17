@@ -29,7 +29,7 @@ def make_request(tool: str, params: Dict[str, Any] = None, host: str = "127.0.0.
         start_time = time.time()
         response = requests.post(url, json=payload, timeout=timeout)
         end_time = time.time()
-        
+
         if response.status_code == 200:
             result = response.json()
             
@@ -37,9 +37,15 @@ def make_request(tool: str, params: Dict[str, Any] = None, host: str = "127.0.0.
             print("📄 Result:")
             
             if result.get("success"):
-                # Красивый вывод результата
+                # Универсальный pretty print для результатов
                 for item in result.get("result", []):
-                    print(f"  {item}")
+                    if isinstance(item, (dict, list)):
+                        # Используем json.dumps для красивого форматирования (как в Parameters)
+                        formatted_json = json.dumps(item, indent=2, ensure_ascii=False)
+                        print(formatted_json)
+                    else:
+                        # Для простых значений (строки, числа)
+                        print(f"  {item}")
             else:
                 print(f"❌ Error: {result.get('error', 'Unknown error')}")
                 
