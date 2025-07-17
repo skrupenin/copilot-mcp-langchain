@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """
-Полноценный HTTP прокси сервер для MCP
-Реализует полный цикл инициализации MCP и выполнения инструментов
+Full-featured HTTP proxy server for MCP
+Implements complete MCP initialization cycle and tool execution
 """
 
 import json
@@ -12,18 +12,18 @@ import threading
 import time
 import logging
 import asyncio
-import psutil  # Добавляем psutil для работы с процессами
+import psutil  # Add psutil for process management
 from http.server import HTTPServer, BaseHTTPRequestHandler
 from urllib.parse import urlparse
 from mcp.client.session import ClientSession
 from mcp.client.stdio import StdioServerParameters, stdio_client
 
-# Простое логирование
+# Simple logging
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 logger = logging.getLogger(__name__)
 
 class MCPClient:
-    """Клиент для работы с MCP сервером через правильный MCP протокол"""
+    """Client for working with MCP server through proper MCP protocol"""
     def __init__(self):
         self.session = None
         self.client = None
@@ -33,15 +33,15 @@ class MCPClient:
         self.lock = threading.Lock()
         
     def start_and_initialize(self):
-        """Синхронная инициализация MCP сервера"""
+        """Synchronous MCP server initialization"""
         try:
             logger.info("Starting MCP client connection...")
             
-            # Простая инициализация в синхронном режиме
+            # Simple initialization in synchronous mode
             import subprocess
             import json
             
-            # Запускаем MCP сервер как подпроцесс
+            # Launch MCP server as subprocess
             self.process = subprocess.Popen(
                 [sys.executable, "-m", "mcp_server.server"],
                 stdin=subprocess.PIPE,
@@ -56,7 +56,7 @@ class MCPClient:
             
             logger.info("MCP server process started")
             
-            # Отправляем initialize запрос
+            # Send initialize request
             initialize_request = {
                 "jsonrpc": "2.0",
                 "id": 1,
@@ -72,14 +72,14 @@ class MCPClient:
             self.process.stdin.write(request_json)
             self.process.stdin.flush()
             
-            # Читаем ответ на initialize
+            # Read initialize response
             response_line = self.process.stdout.readline().strip()
             if response_line:
                 response_data = json.loads(response_line)
                 if "error" not in response_data:
                     logger.info("Initialize successful")
                     
-                    # Отправляем initialized notification
+                    # Send initialized notification
                     initialized_notification = {
                         "method": "notifications/initialized",
                         "jsonrpc": "2.0"
@@ -88,7 +88,7 @@ class MCPClient:
                     self.process.stdin.write(notification_json)
                     self.process.stdin.flush()
                     
-                    # Запрашиваем список инструментов
+                    # Request list of tools
                     tools_request = {
                         "jsonrpc": "2.0",
                         "id": 2,
@@ -99,7 +99,7 @@ class MCPClient:
                     self.process.stdin.write(tools_json)
                     self.process.stdin.flush()
                     
-                    # Читаем список инструментов
+                    # Read list of tools
                     tools_response = self.process.stdout.readline().strip()
                     if tools_response:
                         tools_data = json.loads(tools_response)
@@ -117,14 +117,14 @@ class MCPClient:
             self.initialized = False
             return False
     def call_tool(self, tool_name, arguments):
-        """Синхронный вызов инструмента через JSON-RPC"""
+        """Synchronous tool call via JSON-RPC"""
         try:
             if not self.initialized or not self.process:
                 raise Exception("MCP client not initialized")
             
             logger.info(f"Calling tool: {tool_name} with arguments: {arguments}")
             
-            # Создаем JSON-RPC запрос для вызова инструмента
+            # Create JSON-RPC request for tool call
             call_request = {
                 "jsonrpc": "2.0",
                 "id": 4,
@@ -139,7 +139,7 @@ class MCPClient:
             self.process.stdin.write(request_json)
             self.process.stdin.flush()
             
-            # Читаем ответ
+            # Read response
             response_line = self.process.stdout.readline().strip()
             if response_line:
                 response_data = json.loads(response_line)
@@ -153,14 +153,14 @@ class MCPClient:
             return {"error": str(e)}
     
     def get_tools_info(self):
-        """Получение информации о доступных инструментах"""
+        """Getting information about available tools"""
         return {
             "tools": self.tools_list,
             "count": len(self.tools_list),
             "initialized": self.initialized
         }
     def stop(self):
-        """Остановка MCP клиента"""
+        """Stopping MCP client"""
         try:
             if self.process:
                 self.process.terminate()
@@ -169,54 +169,54 @@ class MCPClient:
         except Exception as e:
             logger.error(f"Error stopping MCP client: {e}")
 
-# Глобальный экземпляр MCP клиента
+# Global MCP client instance
 mcp_client = MCPClient()
 
 def kill_existing_proxy_processes(port=8080):
-    """Автоматически завершает процесс, использующий наш порт"""
+    """Automatically terminates process using our port"""
     try:
         import os
         import socket
         
         logger.info(f"🔍 Checking if port {port} is in use...")
         
-        # Проверяем, занят ли порт
+        # Check if port is in use
         sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-        sock.settimeout(1)  # Таймаут 1 секунда
+        sock.settimeout(1)  # Timeout 1 second
         result = sock.connect_ex(('127.0.0.1', port))
         sock.close()
         
         if result != 0:
-            # Порт свободен
+            # Port is free
             logger.info(f"✅ Port {port} is free, no cleanup needed")
             return
         
-        # Порт занят - ищем процесс, который его использует
+        # Port is in use - look for the process using it
         logger.info(f"🔄 Port {port} is in use, looking for the process...")
         killed_count = 0
         current_pid = os.getpid()
         for process in psutil.process_iter(['pid', 'name', 'cmdline']):
             try:
-                # Проверяем соединения процесса
+                # Check process connections
                 connections = process.net_connections(kind='inet')
                 for conn in connections:
                     if (conn.laddr.port == port and 
                         conn.laddr.ip in ['127.0.0.1', '0.0.0.0'] and
                         conn.status == 'LISTEN'):
                         
-                        # Не завершаем себя
+                        # Don't terminate ourselves
                         if process.pid == current_pid:
                             logger.info(f"⏭️ Skipping current process PID: {current_pid}")
                             continue
                         
-                        # Проверяем, что это действительно наш proxy сервер
+                        # Check that this is really our proxy server
                         cmdline = process.info.get('cmdline', [])
                         if any('proxy.py' in str(arg) for arg in cmdline):
                             logger.info(f"🔄 Terminating proxy process PID: {process.pid} using port {port}")
                             process.terminate()
                             killed_count += 1
                             
-                            # Ждем немного для graceful shutdown
+                            # Wait a bit for graceful shutdown
                             try:
                                 process.wait(timeout=3)
                                 logger.info(f"✅ Process PID: {process.pid} terminated gracefully")
@@ -224,7 +224,7 @@ def kill_existing_proxy_processes(port=8080):
                                 logger.warning(f"⚡ Force killing process PID: {process.pid}")
                                 process.kill()
                             
-                            # Проверяем, освободился ли порт
+                            # Check if port is freed
                             time.sleep(1)
                             test_sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
                             test_sock.settimeout(1)
@@ -238,7 +238,7 @@ def kill_existing_proxy_processes(port=8080):
                             logger.warning(f"⚠️ Port {port} is used by non-proxy process PID: {process.pid}")
                         
             except (psutil.NoSuchProcess, psutil.AccessDenied, psutil.ZombieProcess, OSError):
-                # Процесс недоступен или уже завершен
+                # Process is inaccessible or already terminated
                 continue
         
         if killed_count == 0:
@@ -252,10 +252,10 @@ def kill_existing_proxy_processes(port=8080):
         logger.error(f"❌ Error during port cleanup: {e}")
 
 class MCPHandler(BaseHTTPRequestHandler):
-    """Обработчик HTTP запросов для MCP"""
+    """HTTP request handler for MCP"""
     
     def do_GET(self):
-        """Обработка GET запросов"""
+        """Handle GET requests"""
         if self.path == '/health':
             self.send_response(200)
             self.send_header('Content-type', 'application/json')
@@ -280,10 +280,10 @@ class MCPHandler(BaseHTTPRequestHandler):
             self.end_headers()
     
     def do_POST(self):
-        """Обработка POST запросов"""
+        """Handle POST requests"""
         if self.path == '/execute':
             try:
-                # Читаем данные запроса
+                # Read request data
                 content_length = int(self.headers['Content-Length'])
                 post_data = self.rfile.read(content_length)
                 request_data = json.loads(post_data.decode('utf-8'))
@@ -292,29 +292,29 @@ class MCPHandler(BaseHTTPRequestHandler):
                 params = request_data.get('params', {})
                 
                 logger.info(f"Executing tool: {tool} with params: {params}")
-                  # Выполняем реальный вызов инструмента через MCP
+                  # Execute real tool call via MCP
                 start_time = time.time()
                 mcp_result = mcp_client.call_tool(tool, params)
                 execution_time = time.time() - start_time
-                  # Обрабатываем результат
+                  # Process result
                 if "result" in mcp_result and "content" in mcp_result["result"]:
-                    # Успешное выполнение - извлекаем содержимое из JSON-RPC ответа
+                    # Successful execution - extract content from JSON-RPC response
                     self.send_response(200)
                     self.send_header('Content-type', 'application/json')
                     self.end_headers()
                     
-                    # Извлекаем текст из результата JSON-RPC
+                    # Extract text from JSON-RPC result
                     result_text = []
                     content_items = mcp_result["result"]["content"]
                     
                     for item in content_items:
                         if isinstance(item, dict) and "text" in item:
-                            # Пытаемся распарсить JSON из text поля
+                            # Try to parse JSON from text field
                             try:
                                 parsed_json = json.loads(item["text"])
                                 result_text.append(parsed_json)
                             except json.JSONDecodeError:
-                                # Если не JSON, просто добавляем текст
+                                # If not JSON, just add text
                                 result_text.append(item["text"])
                         else:
                             result_text.append(str(item))
@@ -326,7 +326,7 @@ class MCPHandler(BaseHTTPRequestHandler):
                         "timestamp": time.time()
                     }
                 elif "error" in mcp_result:
-                    # Ошибка выполнения
+                    # Execution error
                     self.send_response(500)
                     self.send_header('Content-type', 'application/json')
                     self.end_headers()
@@ -338,7 +338,7 @@ class MCPHandler(BaseHTTPRequestHandler):
                         "timestamp": time.time()
                     }
                 else:
-                    # Неожиданный формат ответа
+                    # Unexpected response format
                     self.send_response(200)
                     self.send_header('Content-type', 'application/json')
                     self.end_headers()
@@ -372,20 +372,20 @@ class MCPHandler(BaseHTTPRequestHandler):
             self.end_headers()
     
     def log_message(self, format, *args):
-        """Переопределяем логирование для более чистого вывода"""
+        """Override logging for cleaner output"""
         logger.info(format % args)
 
 def run_server(host='127.0.0.1', port=8080):
-    """Запуск HTTP сервера"""
+    """Start HTTP server"""
     
-    # Автоматически завершаем существующие процессы proxy
+    # Automatically terminate existing proxy processes
     kill_existing_proxy_processes()
     
-    # Запускаем MCP сервер
+    # Start MCP server
     try:
         logger.info("🚀 Starting MCP HTTP Proxy Server...")
         
-        # Используем синхронную инициализацию
+        # Use synchronous initialization
         success = mcp_client.start_and_initialize()
         if not success:
             logger.error("❌ Failed to initialize MCP server")
@@ -397,7 +397,7 @@ def run_server(host='127.0.0.1', port=8080):
         logger.error(f"❌ Failed to start MCP server: {e}")
         return
     
-    # Запускаем HTTP сервер
+    # Start HTTP server
     server_address = (host, port)
     httpd = HTTPServer(server_address, MCPHandler)
     

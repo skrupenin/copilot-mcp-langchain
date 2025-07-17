@@ -88,7 +88,7 @@ def register_tools():
                 module_path = f"mcp_server.tools.{tool_name}.tool"
                 register_tool(tool_name, module_path)
                 logger.info(f"Registered tool: {tool_name}")
-                # Используем логгер вместо print
+                # Using logger instead of print
                 tool_count += 1
             else:
                 logger.warning(f"Directory {item.name} does not contain tool.py file")

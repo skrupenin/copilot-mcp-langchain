@@ -8,34 +8,34 @@ async def tool_info() -> dict:
     """Returns information about the lng_math_calculator tool."""
     return {
         "name": "lng_math_calculator",
-        "description": """Виконує математичні обчислення і операції.
+        "description": """Performs mathematical calculations and operations.
 
-**Параметри:**
-- `expression` (string, required): Математичний вираз для обчислення.
+**Parameters:**
+- `expression` (string, required): Mathematical expression for calculation.
 
-**Підтримувані операції:**
-- Базові арифметичні операції: +, -, *, /
-- Степінь: ** або ^
-- Дужки для групування: ()
-- Математичні функції: sin, cos, tan, log, ln, sqrt, abs
-- Константи: pi, e
-- Цілочисельне ділення: //
-- Остача від ділення: %
+**Supported operations:**
+- Basic arithmetic operations: +, -, *, /
+- Power: ** or ^
+- Parentheses for grouping: ()
+- Mathematical functions: sin, cos, tan, log, ln, sqrt, abs
+- Constants: pi, e
+- Integer division: //
+- Modulo: %
 
-**Приклади використання:**
+**Usage examples:**
 - "2 + 3 * 4" → 14
 - "sqrt(16) + 2^3" → 12
 - "sin(pi/2)" → 1
 - "(10 + 5) * 2" → 30
 - "log(100)" → 2
 
-Цей інструмент корисний для виконання складних математичних обчислень.""",
+This tool is useful for performing complex mathematical calculations.""",
         "schema": {
             "type": "object",
             "properties": {
                 "expression": {
                     "type": "string",
-                    "description": "Математичний вираз для обчислення"
+                    "description": "Mathematical expression for calculation"
                 }
             },
             "required": ["expression"]
@@ -43,21 +43,21 @@ async def tool_info() -> dict:
     }
 
 async def run_tool(name: str, parameters: dict) -> list[types.Content]:
-    """Виконує математичні обчислення."""
+    """Performs mathematical calculations."""
     try:
-        # Отримуємо вираз
+        # Get the expression
         expression = parameters.get("expression", "")
         
         if not expression:
-            return [types.TextContent(type="text", text='{"error": "Не надано математичний вираз для обчислення."}')]
+            return [types.TextContent(type="text", text='{"error": "No mathematical expression provided for calculation."}')]
         
-        # Очищуємо та підготовлюємо вираз
+        # Clean and prepare the expression
         cleaned_expression = clean_expression(expression)
         
-        # Обчислюємо результат
+        # Calculate the result
         result = safe_eval(cleaned_expression)
         
-        # Створюємо JSON результат
+        # Create JSON result
         result_dict = {
             "originalExpression": expression,
             "cleanedExpression": cleaned_expression,
@@ -65,31 +65,30 @@ async def run_tool(name: str, parameters: dict) -> list[types.Content]:
             "resultType": type(result).__name__
         }
         
-        # Конвертуємо в JSON рядок
+        # Convert to JSON string
         json_result = json.dumps(result_dict, indent=2, ensure_ascii=False)
         
         return [types.TextContent(type="text", text=json_result)]
         
     except Exception as e:
         error_result = {
-            "error": f"Помилка при обчисленні: {str(e)}",
+            "error": f"Error during calculation: {str(e)}",
             "originalExpression": parameters.get("expression", "")
         }
         return [types.TextContent(type="text", text=json.dumps(error_result, ensure_ascii=False))]
 
 def clean_expression(expr: str) -> str:
-    """Очищає та підготовлює математичний вираз."""
-    # Видаляємо зайві пробіли
+    """Cleans and prepares the mathematical expression."""
+    # Remove extra spaces
     expr = expr.strip()
     
-    # Замінюємо ^ на **
+    # Replace ^ with **
     expr = expr.replace('^', '**')
     
-    # Замінюємо константи
+    # Replace constants
     expr = expr.replace('pi', str(math.pi))
     expr = expr.replace('e', str(math.e))
-    
-    # Замінюємо математичні функції
+    # Replace mathematical functions
     math_functions = {
         'sin': 'math.sin',
         'cos': 'math.cos',
@@ -104,15 +103,15 @@ def clean_expression(expr: str) -> str:
     }
     
     for func, replacement in math_functions.items():
-        # Використовуємо регулярні вирази для точної заміни функцій
+        # Use regular expressions for precise function replacement
         pattern = r'\b' + func + r'\b'
         expr = re.sub(pattern, replacement, expr)
     
     return expr
 
 def safe_eval(expr: str):
-    """Безпечно обчислює математичний вираз."""
-    # Список дозволених імен
+    """Safely evaluates a mathematical expression."""
+    # List of allowed names
     allowed_names = {
         '__builtins__': {},
         'math': math,
@@ -123,33 +122,31 @@ def safe_eval(expr: str):
         'sum': sum,
         'pow': pow
     }
-    
-    # Список заборонених символів/функцій
+    # List of forbidden symbols/functions
     forbidden = ['import', '__', 'exec', 'eval', 'open', 'file', 'input', 'raw_input']
     
-    # Перевіряємо на заборонені елементи
+    # Check for forbidden elements
     for item in forbidden:
         if item in expr:
-            raise ValueError(f"Заборонений елемент '{item}' у виразі")
+            raise ValueError(f"Forbidden element '{item}' in expression")
     
     try:
-        # Безпечно обчислюємо вираз
+        # Safely evaluate the expression
         result = eval(expr, allowed_names, {})
-        
-        # Перевіряємо тип результату
+        # Check result type
         if isinstance(result, (int, float, complex)):
-            # Округлюємо float до розумної кількості знаків після коми
+            # Round float to reasonable number of decimal places
             if isinstance(result, float):
                 return round(result, 10)
             return result
         else:
-            raise ValueError(f"Неочікуваний тип результату: {type(result)}")
+            raise ValueError(f"Unexpected result type: {type(result)}")
             
     except ZeroDivisionError:
-        raise ValueError("Ділення на нуль")
+        raise ValueError("Division by zero")    
     except OverflowError:
-        raise ValueError("Результат занадто великий")
+        raise ValueError("Result too large")
     except ValueError as e:
-        raise ValueError(f"Помилка значення: {str(e)}")
+        raise ValueError(f"Value error: {str(e)}")
     except Exception as e:
-        raise ValueError(f"Помилка обчислення: {str(e)}")
+        raise ValueError(f"Calculation error: {str(e)}")
