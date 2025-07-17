@@ -6,11 +6,13 @@
 
 import json
 import sys
+import os
 import subprocess
 import threading
 import time
 import logging
 import asyncio
+import psutil  # Добавляем psutil для работы с процессами
 from http.server import HTTPServer, BaseHTTPRequestHandler
 from urllib.parse import urlparse
 from mcp.client.session import ClientSession
@@ -170,6 +172,85 @@ class MCPClient:
 # Глобальный экземпляр MCP клиента
 mcp_client = MCPClient()
 
+def kill_existing_proxy_processes(port=8080):
+    """Автоматически завершает процесс, использующий наш порт"""
+    try:
+        import os
+        import socket
+        
+        logger.info(f"🔍 Checking if port {port} is in use...")
+        
+        # Проверяем, занят ли порт
+        sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        sock.settimeout(1)  # Таймаут 1 секунда
+        result = sock.connect_ex(('127.0.0.1', port))
+        sock.close()
+        
+        if result != 0:
+            # Порт свободен
+            logger.info(f"✅ Port {port} is free, no cleanup needed")
+            return
+        
+        # Порт занят - ищем процесс, который его использует
+        logger.info(f"🔄 Port {port} is in use, looking for the process...")
+        killed_count = 0
+        current_pid = os.getpid()
+        for process in psutil.process_iter(['pid', 'name', 'cmdline']):
+            try:
+                # Проверяем соединения процесса
+                connections = process.net_connections(kind='inet')
+                for conn in connections:
+                    if (conn.laddr.port == port and 
+                        conn.laddr.ip in ['127.0.0.1', '0.0.0.0'] and
+                        conn.status == 'LISTEN'):
+                        
+                        # Не завершаем себя
+                        if process.pid == current_pid:
+                            logger.info(f"⏭️ Skipping current process PID: {current_pid}")
+                            continue
+                        
+                        # Проверяем, что это действительно наш proxy сервер
+                        cmdline = process.info.get('cmdline', [])
+                        if any('proxy.py' in str(arg) for arg in cmdline):
+                            logger.info(f"🔄 Terminating proxy process PID: {process.pid} using port {port}")
+                            process.terminate()
+                            killed_count += 1
+                            
+                            # Ждем немного для graceful shutdown
+                            try:
+                                process.wait(timeout=3)
+                                logger.info(f"✅ Process PID: {process.pid} terminated gracefully")
+                            except psutil.TimeoutExpired:
+                                logger.warning(f"⚡ Force killing process PID: {process.pid}")
+                                process.kill()
+                            
+                            # Проверяем, освободился ли порт
+                            time.sleep(1)
+                            test_sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+                            test_sock.settimeout(1)
+                            test_result = test_sock.connect_ex(('127.0.0.1', port))
+                            test_sock.close()
+                            
+                            if test_result != 0:
+                                logger.info(f"✅ Port {port} is now free")
+                                return
+                        else:
+                            logger.warning(f"⚠️ Port {port} is used by non-proxy process PID: {process.pid}")
+                        
+            except (psutil.NoSuchProcess, psutil.AccessDenied, psutil.ZombieProcess, OSError):
+                # Процесс недоступен или уже завершен
+                continue
+        
+        if killed_count == 0:
+            logger.warning(f"⚠️ Port {port} is in use but couldn't find/terminate the process")
+        else:
+            logger.info(f"✅ Terminated {killed_count} process(es) using port {port}")
+            
+    except ImportError:
+        logger.warning("⚠️ psutil not available, skipping port cleanup")
+    except Exception as e:
+        logger.error(f"❌ Error during port cleanup: {e}")
+
 class MCPHandler(BaseHTTPRequestHandler):
     """Обработчик HTTP запросов для MCP"""
     
@@ -297,6 +378,9 @@ class MCPHandler(BaseHTTPRequestHandler):
 def run_server(host='127.0.0.1', port=8080):
     """Запуск HTTP сервера"""
     
+    # Автоматически завершаем существующие процессы proxy
+    kill_existing_proxy_processes()
+    
     # Запускаем MCP сервер
     try:
         logger.info("🚀 Starting MCP HTTP Proxy Server...")
@@ -333,4 +417,5 @@ def run_server(host='127.0.0.1', port=8080):
         print("✅ Server stopped")
 
 if __name__ == "__main__":
+    kill_existing_proxy_processes()
     run_server()

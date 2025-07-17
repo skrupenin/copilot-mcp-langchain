@@ -25,6 +25,7 @@ pip show mcp
 
 # install FastAPI and Uvicorn for HTTP server
 pip install fastapi uvicorn requests
+pip install psutil
 
 # to check connection to the OpenAI/Azure LLM provider
 python simple_openai.py 

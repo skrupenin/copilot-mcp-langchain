@@ -35,7 +35,7 @@ def make_request(tool: str, params: Dict[str, Any] = None, host: str = "127.0.0.
             
             print(f"✅ Success! (took {end_time - start_time:.2f}s)")
             print("📄 Result:")
-            
+
             if result.get("success"):
                 # Универсальный pretty print для результатов
                 for item in result.get("result", []):
@@ -56,7 +56,7 @@ def make_request(tool: str, params: Dict[str, Any] = None, host: str = "127.0.0.
         print(f"⏰ Request timed out after {timeout} seconds")
     except requests.exceptions.ConnectionError:
         print("🔌 Connection error - is the proxy server running?")
-        print("💡 Start it with: python simple_proxy.py")
+        print("💡 Start it with: python mcp_server/proxy.py")
     except Exception as e:
         print(f"❌ Error: {e}")
 
