@@ -1,4 +1,4 @@
 {
-    "chat.mcp.enabled": false,
-    "github.copilot.chat.codeGeneration.useInstructionFiles": true
+    "chat.mcp.enabled": true,
+    "github.copilot.chat.codeGeneration.useInstructionFiles": false
 }
