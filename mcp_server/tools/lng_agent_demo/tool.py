@@ -1,12 +1,17 @@
 import mcp.types as types
 import json
+import logging
 from langchain.agents import initialize_agent, AgentType
 from langchain.callbacks.manager import CallbackManager
 from langchain.callbacks.streaming_stdout import StreamingStdOutCallbackHandler
+from langchain.callbacks.base import BaseCallbackHandler
 from langchain.chains import LLMChain
 from langchain.tools import BaseTool
 from langchain.prompts import PromptTemplate
-from mcp_server.llm import llm 
+from mcp_server.llm import llm
+
+# Initialize logger for agent demo
+logger = logging.getLogger('mcp_server.tools.lng_agent_demo')
 
 async def tool_info() -> dict:
     """Returns information about the lng_agent_demo tool."""
@@ -113,11 +118,16 @@ async def run_tool(name: str, parameters: dict) -> list[types.Content]:
             CountCharactersTool()
         ]
         
-        # Create a callback_manager for console output
-        callback_manager = CallbackManager([StreamingStdOutCallbackHandler()])
+        # Create a callback_manager with both console output and logging
+        callback_manager = CallbackManager([
+            StreamingStdOutCallbackHandler(),  # Console output
+            AgentLoggingCallbackHandler()      # Log file output
+        ])
 
         # Create LLM with our callback_manager         
         model = llm(callbacks=callback_manager, verbose=True)
+        
+        logger.info(f"Starting agent demo with text: '{text}' and task: '{task}'")
         
         # Create the agent with our LLM
         agent = initialize_agent(
@@ -160,3 +170,129 @@ Explain your thought process and each step you take."""
         return [types.TextContent(type="text", text=json.dumps(response, indent=2))]
     except Exception as e:
         return [types.TextContent(type="text", text=json.dumps({"error": str(e)}))]
+
+class AgentLoggingCallbackHandler(BaseCallbackHandler):
+    """Custom callback handler that logs all agent actions to the log file with readable formatting."""
+    
+    def _log_separator(self, title=""):
+        """Add a visual separator in logs for better readability."""
+        separator = "=" * 60
+        if title:
+            logger.info(f"{separator} {title} {separator}")
+        else:
+            logger.info(separator)
+    
+    def _format_dict(self, data, indent=2):
+        """Format dictionary data for readable logging."""
+        if isinstance(data, dict):
+            formatted_lines = []
+            for key, value in data.items():
+                if isinstance(value, (dict, list)) and len(str(value)) > 100:
+                    formatted_lines.append(f"{' ' * indent}{key}:")
+                    if isinstance(value, dict):
+                        for sub_key, sub_value in value.items():
+                            formatted_lines.append(f"{' ' * (indent + 2)}{sub_key}: {sub_value}")
+                    elif isinstance(value, list):
+                        for i, item in enumerate(value):
+                            formatted_lines.append(f"{' ' * (indent + 2)}[{i}]: {item}")
+                else:
+                    formatted_lines.append(f"{' ' * indent}{key}: {value}")
+            return "\n".join(formatted_lines)
+        return str(data)
+    
+    def on_agent_action(self, action, **kwargs):
+        """Called when agent takes an action."""
+        self._log_separator("AGENT ACTION")
+        logger.info(f"🔧 Tool Selected: {action.tool}")
+        logger.info(f"📝 Tool Input: {action.tool_input}")
+        if hasattr(action, 'log') and action.log:
+            logger.info(f"🤔 Agent Reasoning:")
+            # Split multi-line reasoning into separate log entries for readability
+            for line in str(action.log).split('\n'):
+                if line.strip():
+                    logger.info(f"    {line.strip()}")
+    
+    def on_agent_finish(self, finish, **kwargs):
+        """Called when agent finishes."""
+        self._log_separator("AGENT FINISH")
+        logger.info(f"✅ Final Output:")
+        logger.info(self._format_dict(finish.return_values))
+        if hasattr(finish, 'log') and finish.log:
+            logger.info(f"📋 Final Agent Log:")
+            for line in str(finish.log).split('\n'):
+                if line.strip():
+                    logger.info(f"    {line.strip()}")
+    
+    def on_tool_start(self, serialized, input_str, **kwargs):
+        """Called when tool starts."""
+        tool_name = serialized.get("name", "Unknown")
+        logger.info(f"🚀 TOOL START: {tool_name}")
+        logger.info(f"📨 Input: {input_str}")
+    
+    def on_tool_end(self, output, **kwargs):
+        """Called when tool ends."""
+        logger.info(f"✅ TOOL END - Output: {output}")
+    
+    def on_tool_error(self, error, **kwargs):
+        """Called when tool encounters error."""
+        logger.error(f"❌ TOOL ERROR: {error}")
+    
+    def on_llm_start(self, serialized, prompts, **kwargs):
+        """Called when LLM starts."""
+        logger.info(f"🤖 LLM START - Processing {len(prompts)} prompt(s)")
+        for i, prompt in enumerate(prompts):
+            logger.info(f"📤 LLM PROMPT [{i}]:")
+            # Format multi-line prompts
+            for line in str(prompt).split('\n'):
+                if line.strip():
+                    logger.info(f"    {line.strip()}")
+    
+    def on_llm_end(self, response, **kwargs):
+        """Called when LLM ends."""
+        logger.info(f"📥 LLM END - Response received")
+        
+        # Extract meaningful information from the response
+        if hasattr(response, 'generations') and response.generations:
+            for i, generation_list in enumerate(response.generations):
+                for j, generation in enumerate(generation_list):
+                    if hasattr(generation, 'text'):
+                        logger.info(f"💬 Response Text [{i}.{j}]:")
+                        for line in generation.text.split('\n'):
+                            if line.strip():
+                                logger.info(f"    {line.strip()}")
+                    
+                    # Log token usage if available
+                    if hasattr(generation, 'generation_info') and generation.generation_info:
+                        info = generation.generation_info
+                        if 'finish_reason' in info:
+                            logger.info(f"🏁 Finish Reason: {info['finish_reason']}")
+        
+        # Log token usage from llm_output if available
+        if hasattr(response, 'llm_output') and response.llm_output and 'token_usage' in response.llm_output:
+            usage = response.llm_output['token_usage']
+            logger.info(f"📊 Token Usage: {usage.get('total_tokens', 'N/A')} total "
+                       f"({usage.get('prompt_tokens', 'N/A')} prompt + {usage.get('completion_tokens', 'N/A')} completion)")
+    
+    def on_llm_error(self, error, **kwargs):
+        """Called when LLM encounters error."""
+        logger.error(f"❌ LLM ERROR: {error}")
+    
+    def on_chain_start(self, serialized, inputs, **kwargs):
+        """Called when chain starts."""
+        chain_name = serialized.get("name", "Unknown")
+        logger.info(f"🔗 CHAIN START: {chain_name}")
+        logger.info(f"📨 Inputs: {self._format_dict(inputs)}")
+    
+    def on_chain_end(self, outputs, **kwargs):
+        """Called when chain ends."""
+        logger.info(f"🔗 CHAIN END")
+        logger.info(f"📤 Outputs: {self._format_dict(outputs)}")
+    
+    def on_chain_error(self, error, **kwargs):
+        """Called when chain encounters error."""
+        logger.error(f"❌ CHAIN ERROR: {error}")
+    
+    def on_text(self, text, **kwargs):
+        """Called on any text."""
+        if text.strip():
+            logger.info(f"💭 AGENT TEXT: {text.strip()}")
