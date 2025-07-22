@@ -1,4 +1,8 @@
 If there is no MCP enabled, follow instructions:
+- Activate virtual env 
+```bash
+. ./langchain_env/Scripts/activate
+```
 - Open a terminal and run in background:
 ```bash
 python mcp_server/proxy.py
