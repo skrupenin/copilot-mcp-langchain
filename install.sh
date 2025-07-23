@@ -27,6 +27,14 @@ pip show mcp
 pip install fastapi uvicorn requests
 pip install psutil
 
+# then ask for API keys and update .env file
+# we need to set LLM_PROVIDER
+# and either
+# AZURE_OPENAI_API_KEY
+# AZURE_OPENAI_ENDPOINT
+# or 
+# OPENAI_API_KEY
+
 # to check connection to the OpenAI/Azure LLM provider
 python simple_openai.py 
 python simple_azure.py 
