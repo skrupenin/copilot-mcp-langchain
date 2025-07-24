@@ -2,8 +2,8 @@
     "mcpServers": {
       "langchain-mcp":{
           "type": "stdio",
-          "command": "C:\\Java\\CopipotTraining\\hello-langchain\\.virtualenv\\Scripts\\python.exe",
-          "args": ["C:\\Java\\CopipotTraining\\hello-langchain\\mcp_server\\server.py"]
+          "command": "${workspaceFolder}\\.virtualenv\\Scripts\\python.exe",
+          "args": ["${workspaceFolder}\\mcp_server\\server.py"]
       }
     }
   }
