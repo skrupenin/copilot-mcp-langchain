@@ -1,0 +1,2 @@
+- Follow `./activate-virtualenv.agent.md`
+- Follow `./check-mcp-enabled.agent.md`
