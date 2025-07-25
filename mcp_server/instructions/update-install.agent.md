@@ -1,0 +1,2 @@
+- If you suggest any `pip install xxxxx` add this library to the `install.sh` also with a short description in the comment about tool which used this library.
+  + Please do not ask about this, just add it.
