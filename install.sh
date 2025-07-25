@@ -30,3 +30,6 @@ pip install psutil
 
 # Для инструмента lng_save_screenshot (скриншоты всех экранов)
 pip install mss
+
+# Для автоматизации окон и отправки хоткеев (lng_send_hotkey)
+pip install pywinauto
