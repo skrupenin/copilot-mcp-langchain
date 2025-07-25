@@ -1,3 +1,4 @@
 - Follow `./activate-virtualenv.agent.md`
 - Follow `./check-mcp-enabled.agent.md`
 - Follow `./update-install.agent.md`
+- Follow `./read-debug-info.agent.md`
