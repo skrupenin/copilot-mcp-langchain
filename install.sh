@@ -27,3 +27,6 @@ pip show mcp
 # install FastAPI and Uvicorn for HTTP server
 pip install fastapi uvicorn requests
 pip install psutil
+
+# Для инструмента lng_save_screenshot (скриншоты всех экранов)
+pip install mss
