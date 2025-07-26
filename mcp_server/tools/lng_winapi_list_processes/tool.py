@@ -7,17 +7,17 @@ import ctypes.wintypes
 async def tool_info() -> dict:
     return {
         "name": "lng_winapi_list_processes",
-        "description": "Возвращает список процессов, соответствующих фильтру: pid, имя, путь. Можно отфильтровать только процессы с окнами.",
+        "description": "Returns a list of processes matching the filter: pid, name, path. Only processes with windows can be filtered.",
         "schema": {
             "type": "object",
             "properties": {
                 "filter": {
                     "type": "string",
-                    "description": "Фильтр для поиска по имени или пути процесса (регистронезависимо)."
+                    "description": "Filter for searching by process name or path (case insensitive)."
                 },
                 "only_with_windows": {
                     "type": "boolean",
-                    "description": "Показывать только процессы, у которых есть хотя бы одно окно, которое можно развернуть на весь экран (основное окно)."
+                    "description": "Show only processes that have at least one window that can be maximized (main window)."
                 }
             },
             "required": []
@@ -35,15 +35,15 @@ async def run_tool(name: str, arguments: dict) -> list[types.Content]:
             lpdwProcessId = ctypes.wintypes.DWORD()
             user32.GetWindowThreadProcessId(hwnd, ctypes.byref(lpdwProcessId))
             if lpdwProcessId.value == pid:
-                # Проверяем, что это главное окно (видимое, не дочернее, можно развернуть)
+                # Check that this is the main window (visible, not child, can be expanded)
                 if user32.IsWindowVisible(hwnd) and user32.GetParent(hwnd) == 0:
-                    # Проверяем, что окно не имеет стиля WS_DISABLED
+                    # Check that the window does not have the WS_DISABLED style
                     style = user32.GetWindowLongW(hwnd, -16)  # GWL_STYLE
                     WS_DISABLED = 0x08000000
                     if not (style & WS_DISABLED):
                         nonlocal found
                         found = True
-                        return False  # Прерываем перебор
+                        return False  # Stop enumeration
             return True
         CMPFUNC = ctypes.WINFUNCTYPE(ctypes.c_bool, ctypes.wintypes.HWND, ctypes.wintypes.LPARAM)
         user32.EnumWindows(CMPFUNC(callback), 0)
