@@ -3,6 +3,9 @@ import pywinauto
 import json
 import time
 from pywinauto.keyboard import send_keys
+import win32gui
+import win32con
+import win32api
 
 async def tool_info() -> dict:
     return {
@@ -19,9 +22,10 @@ SEQUENCE MODE:
 • sequence: Array of actions executed in order
   Format: [{"type": "hotkey", "value": "^+p"}, {"type": "text", "value": "console"}, {"type": "key", "value": "ENTER"}]
   
-DELAY SUPPORT:
+DELAY & FOCUS SUPPORT:
 • delay: Pause between actions in milliseconds (default: 100ms)
 • Per-action delay: {"type": "delay", "value": 500}
+• Window refocus: {"type": "focus", "value": "any"} - forces window focus
 
 MODIFIERS: ^ = Ctrl, + = Shift, % = Alt, ~ = Win
 
@@ -56,8 +60,8 @@ With delays: sequence=[{"type":"hotkey","value":"^+i"},{"type":"delay","value":5
                         "properties": {
                             "type": {
                                 "type": "string",
-                                "enum": ["hotkey", "key", "text", "delay"],
-                                "description": "Type of action: hotkey, key, text, or delay"
+                                "enum": ["hotkey", "key", "text", "delay", "focus"],
+                                "description": "Type of action: hotkey, key, text, delay, or focus"
                             },
                             "value": {
                                 "description": "Value for the action: key combination, system key, text, or delay in ms"
@@ -74,6 +78,10 @@ With delays: sequence=[{"type":"hotkey","value":"^+i"},{"type":"delay","value":5
                     "type": "string",
                     "enum": ["auto", "hotkey", "key", "text"],
                     "description": "Input type for single actions: 'auto' - auto-detection, others for explicit type."
+                },
+                "use_winapi": {
+                    "type": "boolean",
+                    "description": "Use Windows API method for hotkeys instead of send_keys (may be more reliable)."
                 }
             },
             "required": ["pid"]
@@ -88,6 +96,7 @@ async def run_tool(name: str, arguments: dict) -> list[types.Content]:
     sequence = arguments.get("sequence")
     delay = arguments.get("delay", 100)  # Default 100ms delay
     input_type = arguments.get("input_type", "auto")
+    use_winapi = arguments.get("use_winapi", True)  # Default to WinAPI method
     
     if pid is None:
         return [types.TextContent(type="text", text=json.dumps({"error": "pid required"}))]
@@ -102,20 +111,194 @@ async def run_tool(name: str, arguments: dict) -> list[types.Content]:
         # Connect to application and get main window
         app = pywinauto.Application(backend="uia").connect(process=pid)
         main_window = None
+        
+        # Try to find the best window for interaction
         for w in app.windows():
             title = w.window_text()
             class_name = w.element_info.class_name
-            if title and (class_name.lower().startswith("notepad++") or 
-                         class_name.lower().startswith("chrome") or 
-                         class_name.lower() == "notepad" or 
-                         class_name.lower() == "scintilla"):
+            
+            # Prioritize main Chrome window
+            if title and (class_name.lower().startswith("chrome_widgetwin_1") or 
+                         class_name.lower().startswith("chrome") and "1" in class_name):
                 main_window = w
                 break
+                
+        # Fallback to other Chrome windows
+        if not main_window:
+            for w in app.windows():
+                title = w.window_text()
+                class_name = w.element_info.class_name
+                if (class_name.lower().startswith("notepad++") or 
+                    class_name.lower().startswith("chrome") or 
+                    class_name.lower() == "notepad" or 
+                    class_name.lower() == "scintilla"):
+                    main_window = w
+                    break
+                    
         if not main_window:
             main_window = app.top_window()
         
-        main_window.set_focus()
-        time.sleep(0.1)
+        # Enhanced focus management
+        try:
+            main_window.set_focus()
+            time.sleep(0.2)  # Increased delay for focus
+            
+            # Try to bring window to front
+            main_window.restore()
+            main_window.set_focus()
+            time.sleep(0.1)
+        except:
+            # If focus fails, continue anyway
+            pass
+        
+        # Helper function to send hotkey via SendInput (global)
+        def send_hotkey_sendinput(hotkey_str):
+            """Global hotkey method using SendInput"""
+            try:
+                # Parse hotkey string
+                ctrl = '^' in hotkey_str
+                shift = '+' in hotkey_str  
+                alt = '%' in hotkey_str
+                
+                # Extract the key
+                key_char = hotkey_str.replace('^', '').replace('+', '').replace('%', '').lower()
+                
+                # Map to virtual key codes
+                vk_map = {
+                    'i': 0x49, 't': 0x54, 'p': 0x50, 'n': 0x4E, 'r': 0x52, 
+                    'w': 0x57, 'l': 0x4C, 'f': 0x46, 'h': 0x48, 'a': 0x41, 
+                    's': 0x53, 'c': 0x43, 'v': 0x56, 'x': 0x58, 'z': 0x5A, 'y': 0x59
+                }
+                
+                if key_char not in vk_map:
+                    return False
+                    
+                vk_code = vk_map[key_char]
+                
+                # Use win32api for SendInput-like behavior
+                if ctrl:
+                    win32api.keybd_event(win32con.VK_CONTROL, 0, 0, 0)
+                if shift:
+                    win32api.keybd_event(win32con.VK_SHIFT, 0, 0, 0)
+                if alt:
+                    win32api.keybd_event(win32con.VK_MENU, 0, 0, 0)
+                
+                # Main key
+                win32api.keybd_event(vk_code, 0, 0, 0)
+                time.sleep(0.01)
+                win32api.keybd_event(vk_code, 0, win32con.KEYEVENTF_KEYUP, 0)
+                
+                # Release modifiers
+                if alt:
+                    win32api.keybd_event(win32con.VK_MENU, 0, win32con.KEYEVENTF_KEYUP, 0)
+                if shift:
+                    win32api.keybd_event(win32con.VK_SHIFT, 0, win32con.KEYEVENTF_KEYUP, 0)
+                if ctrl:
+                    win32api.keybd_event(win32con.VK_CONTROL, 0, win32con.KEYEVENTF_KEYUP, 0)
+                
+                return True
+            except:
+                return False
+        
+        # Helper function to send hotkey via Windows API
+        def send_hotkey_winapi(hwnd, hotkey_str):
+            """Alternative method using Windows API messages"""
+            try:
+                # Parse hotkey string
+                ctrl = '^' in hotkey_str
+                shift = '+' in hotkey_str  
+                alt = '%' in hotkey_str
+                
+                # Extract the key
+                key_char = hotkey_str.replace('^', '').replace('+', '').replace('%', '').lower()
+                
+                # Map to virtual key codes
+                vk_map = {
+                    'i': 0x49,  # I key
+                    't': 0x54,  # T key
+                    'p': 0x50,  # P key
+                    'n': 0x4E,  # N key
+                    'r': 0x52,  # R key
+                    'w': 0x57,  # W key
+                    'l': 0x4C,  # L key
+                    'f': 0x46,  # F key
+                    'h': 0x48,  # H key
+                    'a': 0x41,  # A key
+                    's': 0x53,  # S key
+                    'c': 0x43,  # C key
+                    'v': 0x56,  # V key
+                    'x': 0x58,  # X key
+                    'z': 0x5A,  # Z key
+                    'y': 0x59,  # Y key
+                }
+                
+                if key_char not in vk_map:
+                    return False
+                    
+                vk_code = vk_map[key_char]
+                
+                # Try multiple approaches
+                success = False
+                
+                # Method 1: Direct WM_KEYDOWN/WM_KEYUP messages
+                try:
+                    # Send key down events for modifiers
+                    if ctrl:
+                        win32gui.PostMessage(hwnd, win32con.WM_KEYDOWN, win32con.VK_CONTROL, 0)
+                    if shift:
+                        win32gui.PostMessage(hwnd, win32con.WM_KEYDOWN, win32con.VK_SHIFT, 0)
+                    if alt:
+                        win32gui.PostMessage(hwnd, win32con.WM_KEYDOWN, win32con.VK_MENU, 0)
+                    
+                    # Send main key
+                    win32gui.PostMessage(hwnd, win32con.WM_KEYDOWN, vk_code, 0)
+                    time.sleep(0.01)
+                    win32gui.PostMessage(hwnd, win32con.WM_KEYUP, vk_code, 0)
+                    
+                    # Send key up events for modifiers
+                    if alt:
+                        win32gui.PostMessage(hwnd, win32con.WM_KEYUP, win32con.VK_MENU, 0)
+                    if shift:
+                        win32gui.PostMessage(hwnd, win32con.WM_KEYUP, win32con.VK_SHIFT, 0)
+                    if ctrl:
+                        win32gui.PostMessage(hwnd, win32con.WM_KEYUP, win32con.VK_CONTROL, 0)
+                    
+                    success = True
+                except:
+                    pass
+                
+                # Method 2: Send to all child windows too
+                try:
+                    def enum_child_windows(hwnd, lparam):
+                        try:
+                            # Send the same key sequence to child windows
+                            if ctrl:
+                                win32gui.PostMessage(hwnd, win32con.WM_KEYDOWN, win32con.VK_CONTROL, 0)
+                            if shift:
+                                win32gui.PostMessage(hwnd, win32con.WM_KEYDOWN, win32con.VK_SHIFT, 0)
+                            if alt:
+                                win32gui.PostMessage(hwnd, win32con.WM_KEYDOWN, win32con.VK_MENU, 0)
+                            
+                            win32gui.PostMessage(hwnd, win32con.WM_KEYDOWN, vk_code, 0)
+                            win32gui.PostMessage(hwnd, win32con.WM_KEYUP, vk_code, 0)
+                            
+                            if alt:
+                                win32gui.PostMessage(hwnd, win32con.WM_KEYUP, win32con.VK_MENU, 0)
+                            if shift:
+                                win32gui.PostMessage(hwnd, win32con.WM_KEYUP, win32con.VK_SHIFT, 0)
+                            if ctrl:
+                                win32gui.PostMessage(hwnd, win32con.WM_KEYUP, win32con.VK_CONTROL, 0)
+                        except:
+                            pass
+                        return True
+                    
+                    win32gui.EnumChildWindows(hwnd, enum_child_windows, 0)
+                except:
+                    pass
+                
+                return success
+            except Exception as e:
+                return False
         
         # Helper function to escape text for send_keys
         def escape_for_send_keys(s):
@@ -134,9 +317,32 @@ async def run_tool(name: str, arguments: dict) -> list[types.Content]:
         
         # Helper function to execute a single action
         def execute_action(action_type, value):
+            # Ensure window focus before each important action
+            if action_type in ["hotkey", "key"]:
+                try:
+                    main_window.set_focus()
+                    time.sleep(0.05)
+                except:
+                    pass
+            
             if action_type == "hotkey":
-                send_keys(str(value))
-                return {"type": "hotkey", "value": value}
+                hotkey_str = str(value)
+                
+                # Try SendInput method first for common hotkeys (global input)
+                if any(combo in hotkey_str for combo in ['^+i', '^+p', '^t', '^w', '^r']):
+                    if send_hotkey_sendinput(hotkey_str):
+                        return {"type": "hotkey", "value": value, "method": "sendinput"}
+                
+                # Try WinAPI method second
+                if any(combo in hotkey_str for combo in ['^+i', '^+p', '^t', '^w', '^r']):
+                    hwnd = main_window.handle
+                    if send_hotkey_winapi(hwnd, hotkey_str):
+                        return {"type": "hotkey", "value": value, "method": "winapi"}
+                
+                # Fallback to send_keys
+                send_keys(hotkey_str)
+                return {"type": "hotkey", "value": value, "method": "send_keys"}
+                
             elif action_type == "key":
                 key_to_send = str(value)
                 if key_to_send.upper() in CODES:
@@ -154,6 +360,15 @@ async def run_tool(name: str, arguments: dict) -> list[types.Content]:
                 delay_ms = int(value)
                 time.sleep(delay_ms / 1000)
                 return {"type": "delay", "value": delay_ms}
+            elif action_type == "focus":
+                # Special action to refocus window
+                try:
+                    main_window.set_focus()
+                    main_window.restore()
+                    time.sleep(0.1)
+                    return {"type": "focus", "value": "window_focused"}
+                except Exception as e:
+                    return {"type": "focus", "value": f"focus_failed: {str(e)}"}
             else:
                 raise ValueError(f"Unknown action type: {action_type}")
         
