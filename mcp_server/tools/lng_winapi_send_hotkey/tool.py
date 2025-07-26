@@ -131,6 +131,8 @@ async def run_tool(name: str, arguments: dict) -> list[types.Content]:
                 s = s.replace(')', '{)}')
                 s = s.replace('[', '{[}')
                 s = s.replace(']', '{]}')
+                # Handle spaces properly
+                s = s.replace(' ', '{SPACE}')
                 return s
             
             escaped_text = escape_for_send_keys(text_to_send)
