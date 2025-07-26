@@ -51,11 +51,14 @@ async def run_tool(name: str, arguments: dict) -> list[types.Content]:
         main_window.set_focus()
         time.sleep(0.1)
         # Исправлено: экранируем пробелы для send_keys
+        def escape_for_send_keys(s):
+            # двойное экранирование скобок для печати как символов
+            return s.replace(' ', '{SPACE}').replace('(', '{{(}}').replace(')', '{{)}}')
         if key:
-            send_keys(key.replace(' ', '{SPACE}'))
+            send_keys(escape_for_send_keys(key))
             result = {"success": True, "pid": pid, "key": key, "window_title": main_window.window_text(), "window_class": main_window.element_info.class_name}
         else:
-            send_keys(hotkey.replace(' ', '{SPACE}'))
+            send_keys(hotkey)
             result = {"success": True, "pid": pid, "hotkey": hotkey, "window_title": main_window.window_text(), "window_class": main_window.element_info.class_name}
         return [types.TextContent(type="text", text=json.dumps(result))]
     except Exception as e:
