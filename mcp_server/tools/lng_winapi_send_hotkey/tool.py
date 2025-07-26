@@ -146,36 +146,71 @@ async def run_tool(name: str, arguments: dict) -> list[types.Content]:
             # If focus fails, continue anyway
             pass
         
-        # Helper function to send hotkey via SendInput (global)
+        # Universal virtual key code mapping for all letters and common keys
+        VK_MAP = {
+            'a': 0x41, 'b': 0x42, 'c': 0x43, 'd': 0x44, 'e': 0x45, 'f': 0x46, 'g': 0x47, 'h': 0x48,
+            'i': 0x49, 'j': 0x4A, 'k': 0x4B, 'l': 0x4C, 'm': 0x4D, 'n': 0x4E, 'o': 0x4F, 'p': 0x50,
+            'q': 0x51, 'r': 0x52, 's': 0x53, 't': 0x54, 'u': 0x55, 'v': 0x56, 'w': 0x57, 'x': 0x58,
+            'y': 0x59, 'z': 0x5A,
+            '0': 0x30, '1': 0x31, '2': 0x32, '3': 0x33, '4': 0x34, '5': 0x35, '6': 0x36, '7': 0x37,
+            '8': 0x38, '9': 0x39,
+            'f1': 0x70, 'f2': 0x71, 'f3': 0x72, 'f4': 0x73, 'f5': 0x74, 'f6': 0x75, 'f7': 0x76,
+            'f8': 0x77, 'f9': 0x78, 'f10': 0x79, 'f11': 0x7A, 'f12': 0x7B,
+            'space': 0x20, 'enter': 0x0D, 'tab': 0x09, 'esc': 0x1B, 'escape': 0x1B,
+            'backspace': 0x08, 'delete': 0x2E, 'insert': 0x2D, 'home': 0x24, 'end': 0x23,
+            'pageup': 0x21, 'pagedown': 0x22, 'up': 0x26, 'down': 0x28, 'left': 0x25, 'right': 0x27
+        }
+        
+        # Helper function to parse hotkey string into components
+        def parse_hotkey(hotkey_str):
+            """Parse hotkey string like '^+t' into modifiers and key"""
+            hotkey_str = hotkey_str.lower()
+            
+            ctrl = '^' in hotkey_str
+            shift = '+' in hotkey_str and not hotkey_str.startswith('+')  # Handle cases like '+a' vs '^+a'
+            alt = '%' in hotkey_str
+            win = '~' in hotkey_str
+            
+            # Extract the main key by removing all modifiers
+            key_part = hotkey_str.replace('^', '').replace('%', '').replace('~', '')
+            # Handle shift modifier carefully - it can be both modifier and part of key
+            if ctrl or alt or win:
+                key_part = key_part.replace('+', '')
+            elif hotkey_str.startswith('+') and len(hotkey_str) > 1:
+                # This is shift+key combination
+                shift = True
+                key_part = hotkey_str[1:]
+            
+            # Handle special key formats like {F4}
+            if key_part.startswith('{') and key_part.endswith('}'):
+                key_part = key_part[1:-1].lower()
+            
+            return {
+                'ctrl': ctrl,
+                'shift': shift, 
+                'alt': alt,
+                'win': win,
+                'key': key_part
+            }
+        
+        # Helper function to send hotkey via SendInput (global) - Universal version
         def send_hotkey_sendinput(hotkey_str):
-            """Global hotkey method using SendInput"""
+            """Universal global hotkey method using SendInput"""
             try:
-                # Parse hotkey string
-                ctrl = '^' in hotkey_str
-                shift = '+' in hotkey_str  
-                alt = '%' in hotkey_str
+                parsed = parse_hotkey(hotkey_str)
+                key_name = parsed['key']
                 
-                # Extract the key
-                key_char = hotkey_str.replace('^', '').replace('+', '').replace('%', '').lower()
-                
-                # Map to virtual key codes
-                vk_map = {
-                    'i': 0x49, 't': 0x54, 'p': 0x50, 'n': 0x4E, 'r': 0x52, 
-                    'w': 0x57, 'l': 0x4C, 'f': 0x46, 'h': 0x48, 'a': 0x41, 
-                    's': 0x53, 'c': 0x43, 'v': 0x56, 'x': 0x58, 'z': 0x5A, 'y': 0x59
-                }
-                
-                if key_char not in vk_map:
+                if key_name not in VK_MAP:
                     return False
                     
-                vk_code = vk_map[key_char]
+                vk_code = VK_MAP[key_name]
                 
                 # Use win32api for SendInput-like behavior
-                if ctrl:
+                if parsed['ctrl']:
                     win32api.keybd_event(win32con.VK_CONTROL, 0, 0, 0)
-                if shift:
+                if parsed['shift']:
                     win32api.keybd_event(win32con.VK_SHIFT, 0, 0, 0)
-                if alt:
+                if parsed['alt']:
                     win32api.keybd_event(win32con.VK_MENU, 0, 0, 0)
                 
                 # Main key
@@ -183,54 +218,33 @@ async def run_tool(name: str, arguments: dict) -> list[types.Content]:
                 time.sleep(0.01)
                 win32api.keybd_event(vk_code, 0, win32con.KEYEVENTF_KEYUP, 0)
                 
-                # Release modifiers
-                if alt:
+                # Release modifiers in reverse order
+                if parsed['alt']:
                     win32api.keybd_event(win32con.VK_MENU, 0, win32con.KEYEVENTF_KEYUP, 0)
-                if shift:
+                if parsed['shift']:
                     win32api.keybd_event(win32con.VK_SHIFT, 0, win32con.KEYEVENTF_KEYUP, 0)
-                if ctrl:
+                if parsed['ctrl']:
                     win32api.keybd_event(win32con.VK_CONTROL, 0, win32con.KEYEVENTF_KEYUP, 0)
                 
                 return True
+            except Exception as e:
+                return False
+        
+        # Helper function to send hotkey via Windows API - Universal version
             except:
                 return False
         
-        # Helper function to send hotkey via Windows API
+        # Helper function to send hotkey via Windows API - Universal version
         def send_hotkey_winapi(hwnd, hotkey_str):
-            """Alternative method using Windows API messages"""
+            """Universal method using Windows API messages"""
             try:
-                # Parse hotkey string
-                ctrl = '^' in hotkey_str
-                shift = '+' in hotkey_str  
-                alt = '%' in hotkey_str
+                parsed = parse_hotkey(hotkey_str)
+                key_name = parsed['key']
                 
-                # Extract the key
-                key_char = hotkey_str.replace('^', '').replace('+', '').replace('%', '').lower()
-                
-                # Map to virtual key codes
-                vk_map = {
-                    'i': 0x49,  # I key
-                    't': 0x54,  # T key
-                    'p': 0x50,  # P key
-                    'n': 0x4E,  # N key
-                    'r': 0x52,  # R key
-                    'w': 0x57,  # W key
-                    'l': 0x4C,  # L key
-                    'f': 0x46,  # F key
-                    'h': 0x48,  # H key
-                    'a': 0x41,  # A key
-                    's': 0x53,  # S key
-                    'c': 0x43,  # C key
-                    'v': 0x56,  # V key
-                    'x': 0x58,  # X key
-                    'z': 0x5A,  # Z key
-                    'y': 0x59,  # Y key
-                }
-                
-                if key_char not in vk_map:
+                if key_name not in VK_MAP:
                     return False
                     
-                vk_code = vk_map[key_char]
+                vk_code = VK_MAP[key_name]
                 
                 # Try multiple approaches
                 success = False
@@ -238,11 +252,11 @@ async def run_tool(name: str, arguments: dict) -> list[types.Content]:
                 # Method 1: Direct WM_KEYDOWN/WM_KEYUP messages
                 try:
                     # Send key down events for modifiers
-                    if ctrl:
+                    if parsed['ctrl']:
                         win32gui.PostMessage(hwnd, win32con.WM_KEYDOWN, win32con.VK_CONTROL, 0)
-                    if shift:
+                    if parsed['shift']:
                         win32gui.PostMessage(hwnd, win32con.WM_KEYDOWN, win32con.VK_SHIFT, 0)
-                    if alt:
+                    if parsed['alt']:
                         win32gui.PostMessage(hwnd, win32con.WM_KEYDOWN, win32con.VK_MENU, 0)
                     
                     # Send main key
@@ -250,44 +264,15 @@ async def run_tool(name: str, arguments: dict) -> list[types.Content]:
                     time.sleep(0.01)
                     win32gui.PostMessage(hwnd, win32con.WM_KEYUP, vk_code, 0)
                     
-                    # Send key up events for modifiers
-                    if alt:
+                    # Send key up events for modifiers (reverse order)
+                    if parsed['alt']:
                         win32gui.PostMessage(hwnd, win32con.WM_KEYUP, win32con.VK_MENU, 0)
-                    if shift:
+                    if parsed['shift']:
                         win32gui.PostMessage(hwnd, win32con.WM_KEYUP, win32con.VK_SHIFT, 0)
-                    if ctrl:
+                    if parsed['ctrl']:
                         win32gui.PostMessage(hwnd, win32con.WM_KEYUP, win32con.VK_CONTROL, 0)
                     
                     success = True
-                except:
-                    pass
-                
-                # Method 2: Send to all child windows too
-                try:
-                    def enum_child_windows(hwnd, lparam):
-                        try:
-                            # Send the same key sequence to child windows
-                            if ctrl:
-                                win32gui.PostMessage(hwnd, win32con.WM_KEYDOWN, win32con.VK_CONTROL, 0)
-                            if shift:
-                                win32gui.PostMessage(hwnd, win32con.WM_KEYDOWN, win32con.VK_SHIFT, 0)
-                            if alt:
-                                win32gui.PostMessage(hwnd, win32con.WM_KEYDOWN, win32con.VK_MENU, 0)
-                            
-                            win32gui.PostMessage(hwnd, win32con.WM_KEYDOWN, vk_code, 0)
-                            win32gui.PostMessage(hwnd, win32con.WM_KEYUP, vk_code, 0)
-                            
-                            if alt:
-                                win32gui.PostMessage(hwnd, win32con.WM_KEYUP, win32con.VK_MENU, 0)
-                            if shift:
-                                win32gui.PostMessage(hwnd, win32con.WM_KEYUP, win32con.VK_SHIFT, 0)
-                            if ctrl:
-                                win32gui.PostMessage(hwnd, win32con.WM_KEYUP, win32con.VK_CONTROL, 0)
-                        except:
-                            pass
-                        return True
-                    
-                    win32gui.EnumChildWindows(hwnd, enum_child_windows, 0)
                 except:
                     pass
                 
@@ -323,13 +308,21 @@ async def run_tool(name: str, arguments: dict) -> list[types.Content]:
             if action_type == "hotkey":
                 hotkey_str = str(value)
                 
-                # Try SendInput method first for common hotkeys (global input)
-                if any(combo in hotkey_str for combo in ['^+i', '^+p', '^t', '^w', '^r']):
+                # Helper function to check if hotkey can be handled by our enhanced methods
+                def can_handle_hotkey(hotkey_str):
+                    try:
+                        parsed = parse_hotkey(hotkey_str)
+                        return parsed['key'] in VK_MAP
+                    except:
+                        return False
+                
+                # Try SendInput method first if we can parse the hotkey
+                if can_handle_hotkey(hotkey_str):
                     if send_hotkey_sendinput(hotkey_str):
                         return {"type": "hotkey", "value": value, "method": "sendinput"}
                 
-                # Try WinAPI method second
-                if any(combo in hotkey_str for combo in ['^+i', '^+p', '^t', '^w', '^r']):
+                # Try WinAPI method second if we can parse the hotkey
+                if can_handle_hotkey(hotkey_str):
                     hwnd = main_window.handle
                     if send_hotkey_winapi(hwnd, hotkey_str):
                         return {"type": "hotkey", "value": value, "method": "winapi"}
