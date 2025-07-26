@@ -78,10 +78,6 @@ With delays: sequence=[{"type":"hotkey","value":"^+i"},{"type":"delay","value":5
                     "type": "string",
                     "enum": ["auto", "hotkey", "key", "text"],
                     "description": "Input type for single actions: 'auto' - auto-detection, others for explicit type."
-                },
-                "use_winapi": {
-                    "type": "boolean",
-                    "description": "Use Windows API method for hotkeys instead of send_keys (may be more reliable)."
                 }
             },
             "required": ["pid"]
@@ -96,7 +92,6 @@ async def run_tool(name: str, arguments: dict) -> list[types.Content]:
     sequence = arguments.get("sequence")
     delay = arguments.get("delay", 100)  # Default 100ms delay
     input_type = arguments.get("input_type", "auto")
-    use_winapi = arguments.get("use_winapi", True)  # Default to WinAPI method
     
     if pid is None:
         return [types.TextContent(type="text", text=json.dumps({"error": "pid required"}))]
