@@ -30,7 +30,7 @@ With this setup, `GitHub Copilot` gains access to new, well-documented tools tha
   - `simple_both.py` - Flexible approach to switch between providers
 
 - **MCP Implementation**:
-  - `mcp_client.py` - Client implementation
+  - `mcp_server/test/server.py` - Client implementation for testing
   - `mcp_server/` - Server with custom tools
 
 - **Install file** `install.sh`: 
@@ -52,7 +52,7 @@ With this setup, `GitHub Copilot` gains access to new, well-documented tools tha
   ```
 
 - **Custom Langchain Tools**:
-  - `lng_cont_words` - word counting, demonstrates python function calling
+  - `lng_count_words` - word counting, demonstrates python function calling
   - `lng_get_tools_info` - tools information retrieval, collects all the information about tools in one place, that helps in `Github Copilot`.
   - `lng_rag_add_data` and `lng_rag_search` - demonstrates RAG (Retrieval Augmented Generation) functionality 
   - `lng_save_prompt_template` and `lng_use_prompt_template` - demonstrates Prompt template management
@@ -61,6 +61,17 @@ With this setup, `GitHub Copilot` gains access to new, well-documented tools tha
   - `lng_structured_output` - demonstrates Structured output
   - `lng_chain_of_thought` - demonstrates Chain of Thought reasoning approach with Memory usage
   - And more in `mcp_server/tools/`
+
+## Running tools in terminal
+You can run tools directly in the terminal using the `mcp_server/run.py` script. This allows you to quickly test and execute any tool without the overhead of the MCP server.
+```bash
+python -m mcp_server.run
+python -m mcp_server.run list
+python -m mcp_server.run schema lng_count_words
+python -m mcp_server.run run lng_count_words '{\"input_text\":\"Hello world\"}'
+python -m mcp_server.run run lng_math_calculator '{\"expression\":\"2+3*4\"}'
+python -m mcp_server.run batch lng_count_words '{\"input_text\":\"Hello\"}' lng_math_calculator '{\"expression\":\"2+3\"}'
+```
 
 ## Debug 
 

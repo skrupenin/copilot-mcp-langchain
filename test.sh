@@ -21,7 +21,7 @@ python simple_both.py
 ##########################################
 ### to test MCP server with MCP client ###
 ##########################################
-python mcp_client.py
+python mcp_server/test/server.py
 
 ##########################
 ### lng_get_tools_info ###
