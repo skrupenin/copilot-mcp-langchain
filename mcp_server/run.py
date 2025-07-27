@@ -94,31 +94,53 @@ def install_dependencies():
     disabled_tools = []
     
     def scan_directory(path: Path, prefix: str = ""):
-        """Recursively scan directories for settings.yaml files."""
+        """Recursively scan directories for settings.yaml files and tool.py files."""
         for item in path.iterdir():
             if item.is_dir() and not item.name.startswith('__'):
+                current_prefix = f"{prefix}{item.name}" if prefix else item.name
                 settings_file = item / "settings.yaml"
-                tool_name = f"{prefix}{item.name}" if prefix else item.name
+                tool_file = item / "tool.py"
                 
-                if settings_file.exists():
-                    try:
-                        with open(settings_file, 'r', encoding='utf-8') as f:
-                            settings = yaml.safe_load(f)
-                        
-                        enabled = settings.get('enabled', True)
-                        dependencies = settings.get('dependencies', [])
-                        description = settings.get('description', 'No description provided')
-                        
-                        if enabled:
-                            enabled_tools.append((tool_name, dependencies, description))
-                            all_dependencies.update(dependencies)
-                        else:
-                            disabled_tools.append((tool_name, description))
-                    except Exception as e:
-                        print(f"⚠️  Warning: Could not read {settings_file}: {e}")
-                else:
-                    # If no settings.yaml, recurse into subdirectories
-                    scan_directory(item, f"{tool_name}_")
+                # If this directory contains a tool.py, it's an actual tool
+                if tool_file.exists():
+                    # Check for settings.yaml in this directory or parent directories
+                    tool_enabled = True
+                    tool_dependencies = []
+                    tool_description = f"Tool: {current_prefix}"
+                    
+                    # Look for settings.yaml in current directory and walk up to find applicable settings
+                    search_path = item
+                    while search_path != tools_dir.parent and search_path.name != 'tools':
+                        potential_settings = search_path / "settings.yaml"
+                        if potential_settings.exists():
+                            try:
+                                with open(potential_settings, 'r', encoding='utf-8') as f:
+                                    settings = yaml.safe_load(f)
+                                
+                                # If tool is explicitly disabled at any level, respect that
+                                if not settings.get('enabled', True):
+                                    tool_enabled = False
+                                
+                                # Collect dependencies and description
+                                if 'dependencies' in settings:
+                                    tool_dependencies.extend(settings.get('dependencies', []))
+                                if 'description' in settings:
+                                    tool_description = settings.get('description', tool_description)
+                                
+                                break  # Use the first settings.yaml we find
+                            except Exception as e:
+                                print(f"⚠️  Warning: Could not read {potential_settings}: {e}")
+                        search_path = search_path.parent
+                    
+                    # Add tool to appropriate list
+                    if tool_enabled:
+                        enabled_tools.append((current_prefix, tool_dependencies, tool_description))
+                        all_dependencies.update(tool_dependencies)
+                    else:
+                        disabled_tools.append((current_prefix, tool_description))
+                
+                # Always recurse into subdirectories to find more tools
+                scan_directory(item, f"{current_prefix}_")
     
     # Scan the tools directory
     scan_directory(tools_dir)
