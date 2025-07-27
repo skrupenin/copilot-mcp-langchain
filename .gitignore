@@ -1,4 +1,4 @@
 __pycache__
-mcp_server.log
+mcp_server/logs/mcp_server.log
 work
 .env

@@ -11,7 +11,9 @@ import io
 sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding='utf-8')
 sys.stderr = io.TextIOWrapper(sys.stderr.buffer, encoding='utf-8')
 
-log_file = os.path.join(os.path.dirname(os.path.abspath(__file__)), '../mcp_out.log')
+log_file = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'logs/mcp_out.log')
+# Ensure logs directory exists
+os.makedirs(os.path.dirname(log_file), exist_ok=True)
 logging.basicConfig(
     level=logging.DEBUG,
     format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
@@ -20,11 +22,13 @@ logging.basicConfig(
     ]
 )
 logger = logging.getLogger('mcp_fake_logger')
-input_log_file = os.path.join(os.path.dirname(os.path.abspath(__file__)), '../mcp_in.log')
+input_log_file = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'logs/mcp_in.log')
+# Ensure logs directory exists for input file too
+os.makedirs(os.path.dirname(input_log_file), exist_ok=True)
 
 async def read_input_file():   
     """
-    Asynchronously reads lines from file (`../mcp_in.log`) in a loop.
+    Asynchronously reads lines from file (`logs/mcp_in.log`) in a loop.
     """
     while True:
         try:

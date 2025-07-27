@@ -79,11 +79,11 @@ To debug mcp protocol you can run server in terminal
 `.\langchain_env\Scripts\python.exe .\mcp_server\server.py`, 
 then update `mcp.json` from `"args": ["${workspaceFolder}\\mcp_server\\server.py"]` to 
 `"args": ["${workspaceFolder}\\mcp_server\\server_fake.py"]` and run fake server. 
-After that copy request from `mcp_out.log`: 
+After that copy request from `mcp_server/logs/mcp_out.log`: 
 ```
 2025-07-16 20:54:30,339 - mcp_fake_logger - INFO - [<] {"jsonrpc":"2.0","id":1,"method":"initialize","params":{"protocolVersion":"2025-03-26","capabilities":{"roots":{"listChanged":true}},"clientInfo":{"name":"Visual Studio Code - Insiders","version":"1.100.0-insider"}}}
 ```
-to the server console. Then copy output to the `mcp_in.log` and save. Then reiterate. 
+to the server console. Then copy output to the `mcp_server/logs/mcp_in.log` and save. Then reiterate. 
 
 ## Use Cases
 
