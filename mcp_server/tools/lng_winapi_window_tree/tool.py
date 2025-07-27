@@ -5,13 +5,13 @@ import json
 
 async def tool_info() -> dict:
     return {
-        "description": "Показывает дерево окон и контролов для указанного процесса (по pid) через WinAPI.",
+        "description": "Displays a tree of windows and controls for the specified process (by pid) via WinAPI.",
         "schema": {
             "type": "object",
             "properties": {
                 "pid": {
                     "type": "integer",
-                    "description": "PID процесса, для которого нужно построить дерево окон."
+                    "description": "PID of the process for which you want to build a window tree."
                 }
             },
             "required": ["pid"]
