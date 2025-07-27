@@ -37,9 +37,9 @@ async def run_tool(name: str, parameters: dict) -> list[types.Content]:
         
         # Add section about how tools work together
         markdown_content += "## How MCP Tools Work Together\n\n"
-        markdown_content += "1. First, you save a template using the `lng_save_prompt_template` tool\n"
+        markdown_content += "1. First, you save a template using the `lng_prompt_template_save` tool\n"
         markdown_content += "2. The template contains placeholders in curly braces, like {name} or {topic}\n"
-        markdown_content += "3. Later, you use the `lng_use_prompt_template` tool with specific values for those placeholders\n"
+        markdown_content += "3. Later, you use the `lng_prompt_template_use` tool with specific values for those placeholders\n"
         markdown_content += "4. The system fills in the template with your values and processes the completed prompt\n"
         markdown_content += "5. If you need information about available tools, you can use the `lng_get_tools_info` tool\n\n"
         markdown_content += "This workflow allows for flexible prompt engineering while maintaining a clean separation between the prompt structure and the specific content."

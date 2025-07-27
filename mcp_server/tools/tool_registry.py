@@ -1,12 +1,33 @@
 import os
 import logging
 import traceback
+import yaml
 from importlib import import_module
 from pathlib import Path
 
 logger = logging.getLogger('mcp_server.tools')
 
 tool_definitions = []
+
+def is_tool_disabled(tool_path: Path) -> tuple[bool, str]:
+    """Check if tool or tool group is disabled via settings.yaml"""
+    current_path = tool_path
+    
+    # Check current directory and all parent directories up to tools/
+    while current_path.name != 'tools' and current_path != current_path.parent:
+        settings_file = current_path / 'settings.yaml'
+        if settings_file.exists():
+            try:
+                with open(settings_file, 'r', encoding='utf-8') as f:
+                    settings = yaml.safe_load(f)
+                    if settings and not settings.get('enabled', True):
+                        reason = settings.get('reason', 'Tool is disabled via settings.yaml')
+                        return True, reason
+            except Exception as e:
+                logger.warning(f"Error reading settings file {settings_file}: {e}")
+        current_path = current_path.parent
+    
+    return False, ""
 
 def register_tool(name: str, module_path: str):
     """Registers a tool with its name and module path."""
@@ -89,6 +110,12 @@ def register_tools():
                 # Check if there's a tool.py file in the current directory
                 tool_file = item / 'tool.py'
                 if tool_file.exists():
+                    # Check if tool is disabled
+                    is_disabled, disable_reason = is_tool_disabled(item)
+                    if is_disabled:
+                        logger.info(f"Skipping disabled tool: {item.name} - {disable_reason}")
+                        continue
+                    
                     # Build tool name from all path parts
                     tool_name = '_'.join(current_prefix_parts)
                     # Build module path
@@ -101,6 +128,11 @@ def register_tools():
                     # If no tool.py in current directory, continue scanning subdirectories
                     # but only if we don't have a lng_ prefix yet or if this is a lng_ directory
                     if not prefix_parts or item.name.startswith('lng_'):
+                        # Check if the directory itself is disabled before scanning subdirectories
+                        is_disabled, disable_reason = is_tool_disabled(item)
+                        if is_disabled:
+                            logger.info(f"Skipping disabled tool group: {item.name} - {disable_reason}")
+                            continue
                         scan_directory(item, current_prefix_parts)
     
     # Start scanning from the tools directory
