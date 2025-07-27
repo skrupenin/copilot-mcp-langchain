@@ -151,20 +151,55 @@ def install_dependencies():
     
     # Install each dependency
     failed_packages = []
-    for package in sorted(all_dependencies):
+    for i, package in enumerate(sorted(all_dependencies), 1):
         try:
-            print(f"📥 Installing {package}...")
+            print(f"📥 Installing {package} ({i}/{len(all_dependencies)})...")
+            
+            # First check if package is already installed
+            check_result = subprocess.run([
+                sys.executable, "-m", "pip", "show", package
+            ], capture_output=True, text=True)
+            
+            if check_result.returncode == 0:
+                # Package already installed, get version info
+                version_info = check_result.stdout
+                version_line = [line for line in version_info.split('\n') if line.startswith('Version:')]
+                version = version_line[0].split(':')[1].strip() if version_line else "unknown"
+                print(f"   📦 {package} v{version} already installed")
+            else:
+                print(f"   🔄 Downloading and installing {package}...")
+            
+            # Install/upgrade the package with verbose output
             result = subprocess.run([
-                sys.executable, "-m", "pip", "install", package
+                sys.executable, "-m", "pip", "install", package, "--upgrade"
             ], capture_output=True, text=True, check=True)
-            print(f"✅ {package} installed successfully")
+            
+            # Show installation summary
+            if "Successfully installed" in result.stdout:
+                installed_info = [line for line in result.stdout.split('\n') if 'Successfully installed' in line]
+                if installed_info:
+                    print(f"   ✅ {installed_info[0].replace('Successfully installed', 'Installed:')}")
+            else:
+                print(f"   ✅ {package} installation completed")
+                
+            # Show size information if available
+            if "Downloading" in result.stdout:
+                download_lines = [line for line in result.stdout.split('\n') if 'Downloading' in line and 'MB' in line]
+                if download_lines:
+                    print(f"   📊 Downloaded: {download_lines[-1].split('(')[1].split(')')[0] if '(' in download_lines[-1] else 'package data'}")
+                    
+            print(f"   🎯 {package} ready for use!")
+            print()
+            
         except subprocess.CalledProcessError as e:
-            print(f"❌ Failed to install {package}: {e}")
+            print(f"   ❌ Failed to install {package}")
+            print(f"   🔍 Error details:")
             if e.stdout:
-                print(f"   stdout: {e.stdout}")
+                print(f"      stdout: {e.stdout}")
             if e.stderr:
-                print(f"   stderr: {e.stderr}")
+                print(f"      stderr: {e.stderr}")
             failed_packages.append(package)
+            print()
     
     if failed_packages:
         print(f"\n❌ Failed to install: {', '.join(failed_packages)}")
