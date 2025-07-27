@@ -130,15 +130,15 @@ asyncio.run(test_cot_with_memory())"
 ############################################################
 # demonstration of prompting with templates technique
 # it allows to save a prompt template and then use it with different parameters
-# lng_save_prompt_template - saves a template
-# lng_use_prompt_template - uses a saved template with parameters
+# lng_prompt_template_save - saves a template
+# lng_prompt_template_use - uses a saved template with parameters
 python -c "import asyncio
-from mcp_server.tools.lng_save_prompt_template.tool import run_tool as save_tool
-from mcp_server.tools.lng_use_prompt_template.tool import run_tool as use_tool
+from mcp_server.tools.lng_prompt_template.save.tool import run_tool as save_tool
+from mcp_server.tools.lng_prompt_template.use.tool import run_tool as use_tool
 async def test_tools():
-    save_result = await save_tool('lng_save_prompt_template', {'template': 'Tell me about {topic} in the style of {style}.'})
+    save_result = await save_tool('lng_prompt_template_save', {'template': 'Tell me about {topic} in the style of {style}.'})
     print('Save template result:', save_result)   
-    use_result = await use_tool('lng_use_prompt_template', {'topic': 'artificial intelligence', 'style': 'a pirate'})
+    use_result = await use_tool('lng_prompt_template_use', {'topic': 'artificial intelligence', 'style': 'a pirate'})
     print('Use template result:', use_result)
 asyncio.run(test_tools())"
 
@@ -148,8 +148,8 @@ asyncio.run(test_tools())"
 # it adds data to the RAG system and then searches for it
 # demonstration of RAG tools
 python -c "import asyncio
-from mcp_server.tools.lng_rag_add_data.tool import run_tool as add_data_tool
-from mcp_server.tools.lng_rag_search.tool import run_tool as search_tool
+from mcp_server.tools.lng_rag.add_data.tool import run_tool as add_data_tool
+from mcp_server.tools.lng_rag.search.tool import run_tool as search_tool
 async def test_rag_tools():
     add_result = await add_data_tool('lng_rag_add_data', {'input_text': 'Hello pirate!'})
     print('Add data result:', add_result)
@@ -166,7 +166,7 @@ asyncio.run(test_rag_tools())"
 #################################
 # try to find processes with windows
 python -c "import asyncio
-from mcp_server.tools.lng_winapi_list_processes.tool import run_tool
+from mcp_server.tools.lng_winapi.list_processes.tool import run_tool
 result = asyncio.run(run_tool('lng_winapi_list_processes', {'filter': 'chrome', 'only_with_windows': True}))
 print(result[0].text)"
 
@@ -175,7 +175,7 @@ print(result[0].text)"
 ##############################
 # show window element tree structure
 python -c "import asyncio
-from mcp_server.tools.lng_winapi_window_tree.tool import run_tool
+from mcp_server.tools.lng_winapi.window_tree.tool import run_tool
 result = asyncio.run(run_tool('lng_winapi_window_tree', {'pid': 18672}))
 print(result[0].text)"
 
@@ -184,25 +184,25 @@ print(result[0].text)"
 #####################################
 # deep analysis of window content (structure mode)
 python -c "import asyncio
-from mcp_server.tools.lng_winapi_get_window_content.tool import run_tool
+from mcp_server.tools.lng_winapi.get_window_content.tool import run_tool
 result = asyncio.run(run_tool('lng_winapi_get_window_content', {'pid': 18672, 'mode': 'structure', 'max_depth': 3}))
 print(result[0].text)"
 
 # text extraction mode
 python -c "import asyncio
-from mcp_server.tools.lng_winapi_get_window_content.tool import run_tool
+from mcp_server.tools.lng_winapi.get_window_content.tool import run_tool
 result = asyncio.run(run_tool('lng_winapi_get_window_content', {'pid': 18672, 'mode': 'text_only', 'max_depth': 2}))
 print(result[0].text)"
 
 # interactive elements only
 python -c "import asyncio
-from mcp_server.tools.lng_winapi_get_window_content.tool import run_tool
+from mcp_server.tools.lng_winapi.get_window_content.tool import run_tool
 result = asyncio.run(run_tool('lng_winapi_get_window_content', {'pid': 18672, 'mode': 'interactive', 'max_depth': 4}))
 print(result[0].text)"
 
 # full analysis with specific element types
 python -c "import asyncio
-from mcp_server.tools.lng_winapi_get_window_content.tool import run_tool
+from mcp_server.tools.lng_winapi.get_window_content.tool import run_tool
 result = asyncio.run(run_tool('lng_winapi_get_window_content', {'pid': 18672, 'mode': 'full', 'element_types': ['Button', 'Edit', 'Text'], 'max_depth': 2}))
 print(result[0].text)"
 
@@ -211,26 +211,26 @@ print(result[0].text)"
 ##############################
 # single hotkey (Ctrl+T for new tab)
 python -c "import asyncio
-from mcp_server.tools.lng_winapi_send_hotkey.tool import run_tool
+from mcp_server.tools.lng_winapi.send_hotkey.tool import run_tool
 result = asyncio.run(run_tool('lng_winapi_send_hotkey', {'pid': 18672, 'hotkey': '^t'}))
 print(result[0].text)"
 
 # system key (F12 for DevTools)
 python -c "import asyncio
-from mcp_server.tools.lng_winapi_send_hotkey.tool import run_tool
+from mcp_server.tools.lng_winapi.send_hotkey.tool import run_tool
 result = asyncio.run(run_tool('lng_winapi_send_hotkey', {'pid': 18672, 'key': 'F12'}))
 print(result[0].text)"
 
 # text input
 python -c "import asyncio
-from mcp_server.tools.lng_winapi_send_hotkey.tool import run_tool
+from mcp_server.tools.lng_winapi.send_hotkey.tool import run_tool
 result = asyncio.run(run_tool('lng_winapi_send_hotkey', {'pid': 18672, 'text': 'Hello Windows Automation!'}))
 print(result[0].text)"
 
 # complex sequence (open DevTools, navigate to Console, run JavaScript)
 python -c @"
 import asyncio
-from mcp_server.tools.lng_winapi_send_hotkey.tool import run_tool
+from mcp_server.tools.lng_winapi.send_hotkey.tool import run_tool
 
 async def test_complex_sequence():
     sequence = [

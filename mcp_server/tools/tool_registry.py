@@ -77,22 +77,34 @@ def register_tools():
     logger.info(f"Scanning tools directory: {current_dir}")
     
     tool_count = 0
-    # Scan the directory for tool folders
-    for item in current_dir.iterdir():
-        # Check if the item is a directory and starts with 'lng_'
-        if item.is_dir() and item.name.startswith('lng_'):
-            logger.info(f"Found potential tool directory: {item.name}")
-            # Check if there's a tool.py file in the directory
-            tool_file = item / 'tool.py'
-            if tool_file.exists():
-                tool_name = item.name
-                module_path = f"mcp_server.tools.{tool_name}.tool"
-                register_tool(tool_name, module_path)
-                logger.info(f"Registered tool: {tool_name}")
-                # Using logger instead of print
-                tool_count += 1
-            else:
-                logger.warning(f"Directory {item.name} does not contain tool.py file")
+    
+    def scan_directory(directory: Path, prefix_parts: list = []):
+        """Recursively scan directory for tools."""
+        nonlocal tool_count
+        
+        for item in directory.iterdir():
+            if item.is_dir() and not item.name.startswith('__'):
+                current_prefix_parts = prefix_parts + [item.name]
+                
+                # Check if there's a tool.py file in the current directory
+                tool_file = item / 'tool.py'
+                if tool_file.exists():
+                    # Build tool name from all path parts
+                    tool_name = '_'.join(current_prefix_parts)
+                    # Build module path
+                    module_path = f"mcp_server.tools.{'.'.join(current_prefix_parts)}.tool"
+                    
+                    register_tool(tool_name, module_path)
+                    logger.info(f"Registered tool: {tool_name} (module: {module_path})")
+                    tool_count += 1
+                else:
+                    # If no tool.py in current directory, continue scanning subdirectories
+                    # but only if we don't have a lng_ prefix yet or if this is a lng_ directory
+                    if not prefix_parts or item.name.startswith('lng_'):
+                        scan_directory(item, current_prefix_parts)
+    
+    # Start scanning from the tools directory
+    scan_directory(current_dir)
     
     logger.info(f"Registered a total of {tool_count} tools")
     
