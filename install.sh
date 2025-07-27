@@ -1,20 +1,43 @@
-python --version
+green=92  # stages info
+blue=94   # commands in eval_echo
+yellow=93 # useful info
+red=91    # errors
+
+color() {
+    message=$1
+    color=$2
+
+    echo "[${color}m"
+    echo $message
+    echo "[0m"
+}
+
+eval_echo() {
+    to_run=$1
+    echo "[${blue}m"
+    echo $to_run
+    echo "[0m"
+
+    eval $to_run
+}
+
+eval_echo "python --version"
 
 # create virtual environment
-pip install virtualenv
-python -m virtualenv .virtualenv
-. ./.virtualenv/Scripts/activate
+eval_echo "pip install virtualenv"
+eval_echo "python -m virtualenv .virtualenv"
+eval_echo ". ./.virtualenv/Scripts/activate"
 
 # install core MCP dependencies
-pip install "mcp[cli]"
-pip show mcp
+eval_echo "pip install 'mcp[cli]'"
+eval_echo "pip show mcp"
 
 # install python-dotenv
-pip install python-dotenv
+eval_echo "pip install python-dotenv"
 
 # install FastAPI and Uvicorn for HTTP server
-pip install fastapi uvicorn requests
+eval_echo "pip install fastapi uvicorn requests"
 
 # Tool-specific dependencies are now managed via `settings.yaml` files.
 # Run this to install dependencies for enabled tools:
-python -m mcp_server.run install_dependencies
+eval_echo "python -m mcp_server.run install_dependencies"
