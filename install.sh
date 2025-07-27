@@ -32,8 +32,8 @@ eval_echo ". ./.virtualenv/Scripts/activate"
 eval_echo "pip install 'mcp[cli]'"
 eval_echo "pip show mcp"
 
-# install python-dotenv
-eval_echo "pip install python-dotenv"
+# install oter stuff
+eval_echo "pip install python-dotenv yaml"
 
 # install FastAPI and Uvicorn for HTTP server
 eval_echo "pip install fastapi uvicorn requests"
