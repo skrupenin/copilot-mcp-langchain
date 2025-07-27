@@ -5,15 +5,15 @@ import mss.tools
 import mcp.types as types
 
 async def tool_info() -> dict:
-    """Возвращает информацию о инструменте lng_save_screenshot."""
+    """Returns information about the lng_save_screenshot tool."""
     return {
-        "description": "Сохраняет скриншоты всех экранов в указанной папке.",
+        "description": "Saves screenshots of all screens to the specified folder.",
         "schema": {
             "type": "object",
             "properties": {
                 "output_dir": {
                     "type": "string",
-                    "description": "Папка для сохранения скриншотов. По умолчанию './screenshot'."
+                    "description": "Folder to save screenshots. Defaults to './screenshot'."
                 }
             },
             "required": []
@@ -21,7 +21,7 @@ async def tool_info() -> dict:
     }
 
 async def run_tool(name: str, arguments: dict) -> list[types.Content]:
-    """Создаёт скриншоты всех экранов с помощью mss и сохраняет их в корне проекта."""
+    """Creates screenshots of all screens using mss and saves them in the project root."""
     project_root = os.path.abspath(os.path.dirname(os.path.dirname(os.path.dirname(__file__))))
     output_dir = arguments.get("output_dir", os.path.join(project_root, "screenshot"))
     os.makedirs(output_dir, exist_ok=True)
