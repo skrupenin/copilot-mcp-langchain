@@ -12,7 +12,6 @@ session_memories = {}
 async def tool_info() -> dict:
     """Returns information about the lng_chain_of_thought tool."""
     return {
-        "name": "lng_chain_of_thought",
         "description": """Demonstrates Chain of Thought (CoT) reasoning with LangChain using memory.
 
 **Parameters:**

@@ -14,7 +14,6 @@ problem_imports()
 async def tool_info() -> dict:
     """Returns information about the lng_rag_add_data tool."""
     return {
-        "name": "lng_rag_add_data",
         "description": """Adds text data to the RAG (Retrieval Augmented Generation) vector database.
 
 **Parameters:**

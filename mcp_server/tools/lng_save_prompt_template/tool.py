@@ -4,7 +4,6 @@ from mcp_server.state_manager import state_manager
 async def tool_info() -> dict:
     """Returns information about the lng_save_prompt_template tool."""
     return {
-        "name": "lng_save_prompt_template",
         "description": """Saves a prompt template for later use by the system.
 
 **Parameters:**

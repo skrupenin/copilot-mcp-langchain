@@ -3,7 +3,6 @@ import mcp.types as types
 async def tool_info() -> dict:
     """Returns information about the lng_count_words tool."""
     return {
-        "name": "lng_count_words",
         "description": """Counts the number of words in the provided text.
 
 **Parameters:**

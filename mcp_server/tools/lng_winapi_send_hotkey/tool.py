@@ -9,7 +9,6 @@ import win32api
 
 async def tool_info() -> dict:
     return {
-        "name": "lng_winapi_send_hotkey",
         "description": """Sends hotkeys, system keys, or text to the main window of a process by PID. Supports single actions and complex sequences.
 
 SINGLE ACTION MODES:

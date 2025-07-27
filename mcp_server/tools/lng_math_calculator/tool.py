@@ -7,7 +7,6 @@ import operator
 async def tool_info() -> dict:
     """Returns information about the lng_math_calculator tool."""
     return {
-        "name": "lng_math_calculator",
         "description": """Performs mathematical calculations and operations.
 
 **Parameters:**

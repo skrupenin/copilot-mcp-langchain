@@ -7,7 +7,6 @@ import mcp.types as types
 async def tool_info() -> dict:
     """Возвращает информацию о инструменте lng_save_screenshot."""
     return {
-        "name": "lng_save_screenshot",
         "description": "Сохраняет скриншоты всех экранов в указанной папке.",
         "schema": {
             "type": "object",

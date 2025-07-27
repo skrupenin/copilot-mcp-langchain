@@ -5,7 +5,6 @@ import json
 
 async def tool_info() -> dict:
     return {
-        "name": "lng_winapi_window_tree",
         "description": "Показывает дерево окон и контролов для указанного процесса (по pid) через WinAPI.",
         "schema": {
             "type": "object",

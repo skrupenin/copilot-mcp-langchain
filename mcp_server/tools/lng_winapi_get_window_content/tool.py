@@ -8,7 +8,6 @@ from pywinauto.controls.uiawrapper import UIAWrapper
 
 async def tool_info() -> dict:
     return {
-        "name": "lng_winapi_get_window_content",
         "description": """Deep analysis of Windows application content. Extracts comprehensive information from all UI elements including text, states, positions, and properties.
 
 CAPABILITIES:

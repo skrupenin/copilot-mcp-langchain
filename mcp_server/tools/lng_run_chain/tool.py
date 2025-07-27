@@ -7,7 +7,6 @@ from langchain.chains import LLMChain, SequentialChain
 async def tool_info() -> dict:
     """Returns information about the lng_run_chain tool."""
     return {
-        "name": "lng_run_chain",
         "description": """Runs the chain of prompts and other tools. 
 First prompt processes input text and creates a summary, then the second prompt 
 provides recommendations based on that summary. 

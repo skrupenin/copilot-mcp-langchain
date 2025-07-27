@@ -7,7 +7,6 @@ from mcp_server.llm import llm
 async def tool_info() -> dict:
     """Returns information about the lng_rag_search tool."""
     return {
-        "name": "lng_rag_search",
         "description": """Searches the RAG (Retrieval Augmented Generation) vector database with a query and returns relevant results.
 
 **Parameters:**

@@ -6,7 +6,6 @@ import ctypes.wintypes
 
 async def tool_info() -> dict:
     return {
-        "name": "lng_winapi_list_processes",
         "description": "Returns a list of processes matching the filter: pid, name, path. Only processes with windows can be filtered.",
         "schema": {
             "type": "object",

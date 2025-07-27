@@ -4,7 +4,6 @@ import mcp_server.tools.tool_registry as tools
 async def tool_info() -> dict:
     """Returns information about the lng_save_prompt_template tool."""
     return {
-        "name": "lng_get_tools_info",
         "description": """Returns information about the available langchain tools.
 
 **Parameters:**

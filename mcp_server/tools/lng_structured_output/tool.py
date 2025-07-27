@@ -18,7 +18,6 @@ import yaml
 async def tool_info() -> dict:
     """Returns information about the lng_structured_output tool."""
     return {
-        "name": "lng_structured_output",
         "description": """Demonstrates various structured output formats in LangChain using OutputParser.
 
 **Parameters:**

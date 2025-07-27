@@ -6,7 +6,6 @@ from mcp_server.llm import llm
 async def tool_info() -> dict:
     """Returns information about the lng_save_prompt_template tool."""
     return {
-        "name": "lng_use_prompt_template",
         "description": """Uses the previously saved prompt template with provided parameters.
 
 **Parameters:**

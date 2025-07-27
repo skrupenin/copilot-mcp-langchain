@@ -16,7 +16,6 @@ logger = logging.getLogger('mcp_server.tools.lng_agent_demo')
 async def tool_info() -> dict:
     """Returns information about the lng_agent_demo tool."""
     return {
-        "name": "lng_agent_demo",
         "description": """Demonstrates a LangChain agent that can process text using three different tools:
         
 **Parameters:**

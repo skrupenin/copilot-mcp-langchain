@@ -22,6 +22,7 @@ async def get_tool_info(name: str):
                     module = import_module(tool["module_path"])
                     logger.info(f"Successfully imported module for tool: {name}")
                     tool_info = await module.tool_info()
+                    tool_info["name"] = name
                     logger.info(f"Successfully retrieved info for tool: {name}")
                     return tool_info
                 except Exception as e:
