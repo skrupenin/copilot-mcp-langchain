@@ -107,13 +107,13 @@ def install_dependencies():
                         
                         enabled = settings.get('enabled', True)
                         dependencies = settings.get('dependencies', [])
-                        reason = settings.get('reason', 'No reason provided')
+                        description = settings.get('description', 'No description provided')
                         
                         if enabled:
-                            enabled_tools.append((tool_name, dependencies, reason))
+                            enabled_tools.append((tool_name, dependencies, description))
                             all_dependencies.update(dependencies)
                         else:
-                            disabled_tools.append((tool_name, reason))
+                            disabled_tools.append((tool_name, description))
                     except Exception as e:
                         print(f"⚠️  Warning: Could not read {settings_file}: {e}")
                 else:
@@ -128,18 +128,18 @@ def install_dependencies():
     
     if enabled_tools:
         print("✅ Enabled Tools:")
-        for tool_name, deps, reason in enabled_tools:
+        for tool_name, deps, description in enabled_tools:
             print(f"  🔧 {tool_name}")
             if deps:
                 print(f"     Dependencies: {', '.join(deps)}")
-            print(f"     Reason: {reason}")
+            print(f"     Description: {description}")
             print()
     
     if disabled_tools:
         print("❌ Disabled Tools:")
-        for tool_name, reason in disabled_tools:
+        for tool_name, description in disabled_tools:
             print(f"  🔧 {tool_name}")
-            print(f"     Reason: {reason}")
+            print(f"     Description: {description}")
             print()
     
     if not all_dependencies:

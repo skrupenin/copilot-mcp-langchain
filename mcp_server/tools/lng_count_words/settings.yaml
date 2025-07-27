@@ -1,3 +1,3 @@
 enabled: true
-reason: "Simple word counting tool"
+description: "Simple word counting tool with text statistics"
 dependencies: []

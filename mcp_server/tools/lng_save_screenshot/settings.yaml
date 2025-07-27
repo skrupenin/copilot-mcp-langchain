@@ -1,4 +1,4 @@
 enabled: true
-reason: "Screenshot capture tool"
+description: "Screenshot capture tool for all connected monitors"
 dependencies:
   - "mss"

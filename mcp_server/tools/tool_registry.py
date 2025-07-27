@@ -21,8 +21,8 @@ def is_tool_disabled(tool_path: Path) -> tuple[bool, str]:
                 with open(settings_file, 'r', encoding='utf-8') as f:
                     settings = yaml.safe_load(f)
                     if settings and not settings.get('enabled', True):
-                        reason = settings.get('reason', 'Tool is disabled via settings.yaml')
-                        return True, reason
+                        description = settings.get('description', 'Tool is disabled via settings.yaml')
+                        return True, description
             except Exception as e:
                 logger.warning(f"Error reading settings file {settings_file}: {e}")
         current_path = current_path.parent
@@ -111,9 +111,9 @@ def register_tools():
                 tool_file = item / 'tool.py'
                 if tool_file.exists():
                     # Check if tool is disabled
-                    is_disabled, disable_reason = is_tool_disabled(item)
+                    is_disabled, description = is_tool_disabled(item)
                     if is_disabled:
-                        logger.info(f"Skipping disabled tool: {item.name} - {disable_reason}")
+                        logger.info(f"Skipping disabled tool: {item.name} - {description}")
                         continue
                     
                     # Build tool name from all path parts
@@ -127,9 +127,9 @@ def register_tools():
                 else:
                     # If no tool.py in current directory, continue scanning subdirectories
                     # Check if the directory itself is disabled before scanning subdirectories
-                    is_disabled, disable_reason = is_tool_disabled(item)
+                    is_disabled, description = is_tool_disabled(item)
                     if is_disabled:
-                        logger.info(f"Skipping disabled tool group: {item.name} - {disable_reason}")
+                        logger.info(f"Skipping disabled tool group: {item.name} - {description}")
                         continue
                     # Always recurse into subdirectories to find tools at any depth
                     scan_directory(item, current_prefix_parts)
