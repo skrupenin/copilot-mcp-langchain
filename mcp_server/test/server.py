@@ -50,7 +50,7 @@ async def main():
                 print("-----------------------------------------------------------")
                 template = "Tell me about {topic} in the style of {style}."
                 print(f"\nSaving a prompt template:\n{template}")
-                save_result = await session.call_tool("lng_prompt_template_save", {"template": template})
+                save_result = await session.call_tool("lng_llm_prompt_template_save", {"template": template})
                 print("Prompt template saved with result:")
                 save_dict = to_json_serializable(save_result)
                 print(json.dumps(save_dict, indent=4))
@@ -59,7 +59,7 @@ async def main():
                 print("-----------------------------------------------------------")
                 parameters = {"topic": "artificial intelligence", "style": "a pirate"}
                 print(f"Using the saved prompt template with parameters:\n{parameters}")
-                use_result = await session.call_tool("lng_prompt_template_use", parameters)
+                use_result = await session.call_tool("lng_llm_prompt_template_use", parameters)
                 print("Generated response:")
                 use_dict = to_json_serializable(use_result)
                 print(json.dumps(use_dict, indent=4))

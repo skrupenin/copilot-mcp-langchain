@@ -1,0 +1,3 @@
+enabled: true
+reason: "Simple word counting tool"
+dependencies: []

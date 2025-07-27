@@ -1,0 +1,3 @@
+enabled: true  
+reason: "Tool registry information provider"
+dependencies: []

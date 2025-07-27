@@ -1,18 +1,16 @@
 """
 Universal tool runner for MCP tools.
 Allows quick testing and execution of any tool without MCP server overhead.
-Usage        print("  python -m mcp_server.run batch <tool1> [args1] <tool2> [args2]   # Run multiple tools")
-        print("")
-        print("Examples:")
-        print('  python -m mcp_server.run run lng_count_words {"input_text":"Hello world"}')
-        print('  python -m mcp_server.run run lng_math_calculator {"expression":"2+3*4"}')
-        print('  python -m mcp_server.run run lng_get_tools_info')
-        print('  python -m mcp_server.run batch lng_count_words {"input_text":"Hello"} lng_math_calculator {"expression":"2+3"}')n -m mcp_server.run run <tool_name> [json_args]
+Usage: python -m mcp_server.run run <tool_name> [json_args]
 """
 import asyncio
 import json
 import sys
-from typing import Dict, Any, Optional
+import os
+import subprocess
+import yaml
+from typing import Dict, Any, Optional, Set
+from pathlib import Path
 from mcp_server.tools.tool_registry import tool_definitions, run_tool, get_tool_info
 
 async def test_tool(tool_name: str, arguments: Optional[Dict[str, Any]] = None) -> Any:
@@ -83,6 +81,98 @@ def run_test(tool_name: str, arguments: Optional[Dict[str, Any]] = None) -> Any:
     """
     return asyncio.run(test_tool(tool_name, arguments))
 
+def install_dependencies():
+    """Install dependencies for all enabled tools based on their settings.yaml files."""
+    print("🔍 Scanning for tool dependencies...")
+    
+    # Get the tools directory path
+    tools_dir = Path(__file__).parent / "tools"
+    
+    # Collect all dependencies from enabled tools
+    all_dependencies: Set[str] = set()
+    enabled_tools = []
+    disabled_tools = []
+    
+    def scan_directory(path: Path, prefix: str = ""):
+        """Recursively scan directories for settings.yaml files."""
+        for item in path.iterdir():
+            if item.is_dir() and not item.name.startswith('__'):
+                settings_file = item / "settings.yaml"
+                tool_name = f"{prefix}{item.name}" if prefix else item.name
+                
+                if settings_file.exists():
+                    try:
+                        with open(settings_file, 'r', encoding='utf-8') as f:
+                            settings = yaml.safe_load(f)
+                        
+                        enabled = settings.get('enabled', True)
+                        dependencies = settings.get('dependencies', [])
+                        reason = settings.get('reason', 'No reason provided')
+                        
+                        if enabled:
+                            enabled_tools.append((tool_name, dependencies, reason))
+                            all_dependencies.update(dependencies)
+                        else:
+                            disabled_tools.append((tool_name, reason))
+                    except Exception as e:
+                        print(f"⚠️  Warning: Could not read {settings_file}: {e}")
+                else:
+                    # If no settings.yaml, recurse into subdirectories
+                    scan_directory(item, f"{tool_name}_")
+    
+    # Scan the tools directory
+    scan_directory(tools_dir)
+    
+    print("\n📋 Tool Status Report:")
+    print("=" * 60)
+    
+    if enabled_tools:
+        print("✅ Enabled Tools:")
+        for tool_name, deps, reason in enabled_tools:
+            print(f"  🔧 {tool_name}")
+            if deps:
+                print(f"     Dependencies: {', '.join(deps)}")
+            print(f"     Reason: {reason}")
+            print()
+    
+    if disabled_tools:
+        print("❌ Disabled Tools:")
+        for tool_name, reason in disabled_tools:
+            print(f"  🔧 {tool_name}")
+            print(f"     Reason: {reason}")
+            print()
+    
+    if not all_dependencies:
+        print("✅ No additional dependencies needed - all enabled tools are standalone!")
+        return
+    
+    print(f"📦 Dependencies to install: {', '.join(sorted(all_dependencies))}")
+    print("\n🚀 Installing dependencies...")
+    
+    # Install each dependency
+    failed_packages = []
+    for package in sorted(all_dependencies):
+        try:
+            print(f"📥 Installing {package}...")
+            result = subprocess.run([
+                sys.executable, "-m", "pip", "install", package
+            ], capture_output=True, text=True, check=True)
+            print(f"✅ {package} installed successfully")
+        except subprocess.CalledProcessError as e:
+            print(f"❌ Failed to install {package}: {e}")
+            if e.stdout:
+                print(f"   stdout: {e.stdout}")
+            if e.stderr:
+                print(f"   stderr: {e.stderr}")
+            failed_packages.append(package)
+    
+    if failed_packages:
+        print(f"\n❌ Failed to install: {', '.join(failed_packages)}")
+        print("💡 You may need to install these manually or check your Python environment")
+    else:
+        print("\n✅ All dependencies installed successfully!")
+        print("🎉 You can now use all enabled tools")
+
 def list_tools():
     """List all available tools with their descriptions."""
     print("📋 Available MCP Tools:")
@@ -130,6 +220,7 @@ def main():
         print("  python -m mcp_server.run schema <tool_name>                      # Show tool schema")
         print("  python -m mcp_server.run run <tool_name> 'args'                  # Run tool")
         print("  python -m mcp_server.run batch tool1 'args1' tool2 'args2'       # Run multiple tools")
+        print("  python -m mcp_server.run install_dependencies                    # Install tool dependencies")
         print("")
         print("Examples:")
         print("  python -m mcp_server.run run lng_count_words '{\\\"input_text\\\":\\\"Hello world\\\"}'")
@@ -146,6 +237,9 @@ def main():
     
     if command == 'list':
         list_tools()
+    
+    elif command == 'install_dependencies':
+        install_dependencies()
     
     elif command == 'schema':
         if len(sys.argv) < 3:
@@ -256,7 +350,7 @@ def main():
     
     else:
         print(f"❌ Unknown command: {command}")
-        print("Available commands: list, schema, run, batch")
+        print("Available commands: list, schema, run, batch, install_dependencies")
 
 if __name__ == "__main__":
     main()

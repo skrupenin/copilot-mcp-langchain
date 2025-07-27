@@ -167,7 +167,7 @@ try:
     logger.info("Attempting to pre-import problematic libraries")
        
     logger.info("Importing FAISS")
-    from mcp_server.tools.lng_rag.add_data.tool import problem_imports
+    from mcp_server.tools.lng_llm.rag.add_data.tool import problem_imports
     problem_imports()
     logger.info("Successfully imported FAISS")
     

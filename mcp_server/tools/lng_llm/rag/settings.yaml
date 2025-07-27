@@ -1,0 +1,4 @@
+enabled: true
+reason: "LangChain-based RAG tool"
+dependencies:
+  - "faiss-cpu"

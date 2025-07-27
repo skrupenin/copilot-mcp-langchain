@@ -1,2 +1,5 @@
 enabled: false
 reason: "WinAPI tools are disabled because they require specific Windows dependencies"
+dependencies:
+  - "pywinauto"
+  - "psutil"

@@ -5,31 +5,16 @@ pip install virtualenv
 python -m virtualenv .virtualenv
 . ./.virtualenv/Scripts/activate
 
-# install langchain libraries
-pip install langchain openai
-pip install langchain-openai
-pip install langchain-community
-
-# install additional libraries for agent demo
-pip install langchain-experimental
-pip install langchain-text-splitters
-
-# install library to work with environment variables
-pip install python-dotenv
-
-# install RAG libraries
-pip install faiss-cpu
-
-# install MCP server and client
+# install core MCP dependencies
 pip install "mcp[cli]"
 pip show mcp
 
+# install python-dotenv
+pip install python-dotenv
+
 # install FastAPI and Uvicorn for HTTP server
 pip install fastapi uvicorn requests
-pip install psutil
 
-# Для инструмента lng_save_screenshot (скриншоты всех экранов)
-pip install mss
-
-# Для автоматизации окон и отправки хоткеев (lng_send_hotkey)
-pip install pywinauto
+# Tool-specific dependencies are now managed via `settings.yaml` files.
+# Run this to install dependencies for enabled tools:
+python -m mcp_server.run install_dependencies

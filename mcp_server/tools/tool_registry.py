@@ -126,14 +126,13 @@ def register_tools():
                     tool_count += 1
                 else:
                     # If no tool.py in current directory, continue scanning subdirectories
-                    # but only if we don't have a lng_ prefix yet or if this is a lng_ directory
-                    if not prefix_parts or item.name.startswith('lng_'):
-                        # Check if the directory itself is disabled before scanning subdirectories
-                        is_disabled, disable_reason = is_tool_disabled(item)
-                        if is_disabled:
-                            logger.info(f"Skipping disabled tool group: {item.name} - {disable_reason}")
-                            continue
-                        scan_directory(item, current_prefix_parts)
+                    # Check if the directory itself is disabled before scanning subdirectories
+                    is_disabled, disable_reason = is_tool_disabled(item)
+                    if is_disabled:
+                        logger.info(f"Skipping disabled tool group: {item.name} - {disable_reason}")
+                        continue
+                    # Always recurse into subdirectories to find tools at any depth
+                    scan_directory(item, current_prefix_parts)
     
     # Start scanning from the tools directory
     scan_directory(current_dir)

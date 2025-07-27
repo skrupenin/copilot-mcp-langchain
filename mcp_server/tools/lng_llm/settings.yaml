@@ -1,0 +1,8 @@
+enabled: true
+reason: "LangChain-based AI tools for agent workflows, RAG, prompt templates, and structured output"
+dependencies:
+  - "langchain"
+  - "langchain-openai" 
+  - "langchain-community"
+  - "langchain-experimental"
+  - "langchain-text-splitters"  

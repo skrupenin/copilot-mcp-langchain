@@ -37,60 +37,60 @@ python -m mcp_server.run run lng_get_tools_info
 python -m mcp_server.run run lng_count_words '{\"input_text\":\"Hello pirate!\"}'
 
 #####################
-### lng_run_chain ###
+### lng_llm_run_chain ###
 #####################
 # it runs a simple chain with the input text
 # sample of how to run several python functions with langchain
-python -m mcp_server.run run lng_run_chain '{\"input_text\":\"Hello pirate!\"}'
+python -m mcp_server.run run lng_llm_run_chain '{\"input_text\":\"Hello pirate!\"}'
 
 ######################
-### lng_agent_demo ###
+### lng_llm_agent_demo ###
 ######################
 # it runs a simple agent demo with the input text
 # sample of how to run several python functions with langchain in Agent mode
-python -m mcp_server.run run lng_agent_demo '{\"input_text\":\"Hello pirate!\",\"task\":\"Reverse this text and then capitalize it\"}'
+python -m mcp_server.run run lng_llm_agent_demo '{\"input_text\":\"Hello pirate!\",\"task\":\"Reverse this text and then capitalize it\"}'
 
 #############################
-### lng_structured_output ###
+### lng_llm_structured_output ###
 #############################
 # it formats the output in different formats
 # possible output formats: json, xml, csv, yaml, pydantic
 
 # json
-python -m mcp_server.run run lng_structured_output '{\"question\":\"Tell me more about Matrix\",\"output_format\":\"json\"}'
+python -m mcp_server.run run lng_llm_structured_output '{\"question\":\"Tell me more about Matrix\",\"output_format\":\"json\"}'
 
 # xml
-python -m mcp_server.run run lng_structured_output '{\"question\":\"Tell me more about Matrix\",\"output_format\":\"xml\"}'
+python -m mcp_server.run run lng_llm_structured_output '{\"question\":\"Tell me more about Matrix\",\"output_format\":\"xml\"}'
 
 # csv
-python -m mcp_server.run run lng_structured_output '{\"question\":\"Tell me more about Matrix\",\"output_format\":\"csv\"}'
+python -m mcp_server.run run lng_llm_structured_output '{\"question\":\"Tell me more about Matrix\",\"output_format\":\"csv\"}'
 
 # yaml
-python -m mcp_server.run run lng_structured_output '{\"question\":\"Tell me more about Matrix\",\"output_format\":\"yaml\"}'
+python -m mcp_server.run run lng_llm_structured_output '{\"question\":\"Tell me more about Matrix\",\"output_format\":\"yaml\"}'
 
 # pydantic
-python -m mcp_server.run run lng_structured_output '{\"question\":\"Tell me more about Matrix\",\"output_format\":\"pydantic\"}'
+python -m mcp_server.run run lng_llm_structured_output '{\"question\":\"Tell me more about Matrix\",\"output_format\":\"pydantic\"}'
 
 ############################
-### lng_chain_of_thought ###
+### lng_llm_chain_of_thought ###
 ############################
 # it runs a chain of thought with memory
 # it allows to ask several questions in a row and remember the context
 # demonstration of technique
 
 # Run both questions in sequence within the same Python process to maintain memory
-python -m mcp_server.run batch lng_chain_of_thought '{\"question\":\"If John has 5 apples and he gives 2 to Mary, how many apples does John have left?\",\"session_id\":\"apple_problem\",\"new_session\":true}' lng_chain_of_thought '{\"question\":\"If John then buys 3 more apples, how many does he have now?\",\"session_id\":\"apple_problem\",\"new_session\":false}'
+python -m mcp_server.run batch lng_llm_chain_of_thought '{\"question\":\"If John has 5 apples and he gives 2 to Mary, how many apples does John have left?\",\"session_id\":\"apple_problem\",\"new_session\":true}' lng_llm_chain_of_thought '{\"question\":\"If John then buys 3 more apples, how many does he have now?\",\"session_id\":\"apple_problem\",\"new_session\":false}'
 
 ############################################################
-### lng_save_prompt_template ### lng_use_prompt_template ###
+### lng_prompt_template_save ### lng_prompt_template_use ###
 ############################################################
 # demonstration of prompting with templates technique
 # it allows to save a prompt template and then use it with different parameters
-# lng_prompt_template_save - saves a template
-# lng_prompt_template_use - uses a saved template with parameters
+# lng_llm_prompt_template_save - saves a template
+# lng_llm_prompt_template_use - uses a saved template with parameters
 
 # Run both save and use in sequence within the same Python process to maintain template in memory
-python -m mcp_server.run batch lng_prompt_template_save '{\"template\":\"Tell me about {topic} in the style of {style}.\"}' lng_prompt_template_use '{\"topic\":\"artificial intelligence\",\"style\":\"a pirate\"}'
+python -m mcp_server.run batch lng_llm_prompt_template_save '{\"template\":\"Tell me about {topic} in the style of {style}.\"}' lng_llm_prompt_template_use '{\"topic\":\"artificial intelligence\",\"style\":\"a pirate\"}'
 
 ###########################################
 ### lng_rag_add_data ### lng_rag_search ###
@@ -99,7 +99,7 @@ python -m mcp_server.run batch lng_prompt_template_save '{\"template\":\"Tell me
 # demonstration of RAG tools
 
 # Run both add data and search in sequence within the same Python process
-python -m mcp_server.run batch lng_rag_add_data '{\"input_text\":\"Hello pirate!\"}' lng_rag_search '{\"query\":\"Pirate\"}'
+python -m mcp_server.run batch lng_llm_rag_add_data '{\"input_text\":\"Hello pirate!\"}' lng_llm_rag_search '{\"query\":\"Pirate\"}'
 
 #################################################
 ### WinAPI tools testing (Windows automation) ###
