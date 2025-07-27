@@ -55,7 +55,7 @@ async def run_tool(name: str, parameters: dict) -> list[types.Content]:
         vector_store = state_manager.get("vector_store")
         
         if vector_store is None:
-            return [types.TextContent(type="text", text="Error: No vector database found. Please add documents first using lng_RAG_add_data.")]
+            return [types.TextContent(type="text", text="Error: No vector database found. Please add documents first using lng_rag_add_data.")]
         
         # Initialize embeddings
         embeddings = OpenAIEmbeddings()

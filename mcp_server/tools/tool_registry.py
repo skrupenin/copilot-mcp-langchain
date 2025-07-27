@@ -29,6 +29,66 @@ def is_tool_disabled(tool_path: Path) -> tuple[bool, str]:
     
     return False, ""
 
+def handle_problem_imports():
+    """Handle problematic imports for all enabled tools that have a problem_imports method."""
+    logger.info("Starting to handle problem imports for enabled tools")
+    
+    # Get the directory where this file is located
+    current_dir = Path(os.path.dirname(os.path.abspath(__file__)))
+    logger.info(f"Scanning tools directory for problem imports: {current_dir}")
+    
+    def scan_directory_for_imports(directory: Path, prefix_parts: list = []):
+        """Recursively scan directory for tools with problem_imports method."""
+        for item in directory.iterdir():
+            if item.is_dir() and not item.name.startswith('__'):
+                current_prefix_parts = prefix_parts + [item.name]
+                
+                # Check if there's a tool.py file in the current directory
+                tool_file = item / 'tool.py'
+                if tool_file.exists():
+                    # Check if tool is disabled
+                    is_disabled, description = is_tool_disabled(item)
+                    if is_disabled:
+                        logger.info(f"Skipping problem imports for disabled tool: {item.name} - {description}")
+                        continue
+                    
+                    # Build module path and try to import
+                    module_path = f"mcp_server.tools.{'.'.join(current_prefix_parts)}.tool"
+                    tool_name = '_'.join(current_prefix_parts)
+                    
+                    try:
+                        logger.info(f"Checking tool {tool_name} for problem_imports method")
+                        module = import_module(module_path)
+                        
+                        # Check if the module has a problem_imports function
+                        if hasattr(module, 'problem_imports'):
+                            logger.info(f"Found problem_imports method in {tool_name}, calling it")
+                            try:
+                                module.problem_imports()
+                                logger.info(f"Successfully executed problem_imports for {tool_name}")
+                            except Exception as e:
+                                logger.error(f"Error executing problem_imports for {tool_name}: {e}")
+                                logger.error(traceback.format_exc())
+                        else:
+                            logger.debug(f"No problem_imports method found in {tool_name}")
+                            
+                    except Exception as e:
+                        logger.error(f"Error importing module {module_path} for problem imports: {e}")
+                        logger.error(traceback.format_exc())
+                else:
+                    # If no tool.py in current directory, continue scanning subdirectories
+                    # Check if the directory itself is disabled before scanning subdirectories
+                    is_disabled, description = is_tool_disabled(item)
+                    if is_disabled:
+                        logger.info(f"Skipping problem imports for disabled tool group: {item.name} - {description}")
+                        continue
+                    # Always recurse into subdirectories to find tools at any depth
+                    scan_directory_for_imports(item, current_prefix_parts)
+    
+    # Start scanning from the tools directory
+    scan_directory_for_imports(current_dir)
+    logger.info("Completed handling problem imports for all enabled tools")
+
 def register_tool(name: str, module_path: str):
     """Registers a tool with its name and module path."""
     tool_definitions.append({"name": name, "module_path": module_path})

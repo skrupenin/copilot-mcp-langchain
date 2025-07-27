@@ -164,16 +164,12 @@ except Exception as e:
 
 # Importing problematic libraries early to catch any issues before starting the server
 try:
-    logger.info("Attempting to pre-import problematic libraries")
-       
-    logger.info("Importing FAISS")
-    from mcp_server.tools.lng_llm.rag.add_data.tool import problem_imports
-    problem_imports()
-    logger.info("Successfully imported FAISS")
-    
-    logger.info("Pre-imports completed successfully")
+    logger.info("Attempting to handle problem imports for all enabled tools")
+    from mcp_server.tools.tool_registry import handle_problem_imports
+    handle_problem_imports()
+    logger.info("Problem imports handled successfully")
 except Exception as e:
-    logger.error(f"Error during pre-imports: {e}")
+    logger.error(f"Error during problem imports handling: {e}")
     logger.exception("Stack trace:")
 
 # Initialize the shared state with default values if needed
