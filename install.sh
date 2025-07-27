@@ -27,13 +27,19 @@ eval_echo "python --version"
 eval_echo "pip install virtualenv"
 eval_echo "python -m virtualenv .virtualenv"
 eval_echo ". ./.virtualenv/Scripts/activate"
+if [ -n "$VIRTUAL_ENV" ]; then
+    color "Virtual environment activated: $VIRTUAL_ENV" $green
+else
+    color "Virtual environment not activated!" $red
+fi
+eval_echo "python -c \"import sys; print('Python executable:', sys.executable)\""
 
 # install core MCP dependencies
 eval_echo "pip install 'mcp[cli]'"
 eval_echo "pip show mcp"
 
 # install oter stuff
-eval_echo "pip install python-dotenv yaml"
+eval_echo "pip install python-dotenv PyYAML"
 
 # install FastAPI and Uvicorn for HTTP server
 eval_echo "pip install fastapi uvicorn requests"
