@@ -11,6 +11,7 @@ async def tool_info() -> dict:
 - command (required): The command that was executed
 - command_output (required): The output of the executed command  
 - question (required): The question about the command output
+- system_info (optional): System information for context (OS, PowerShell version, etc.)
 
 **Example Usage:**
 - command: "docker ps -a"
@@ -32,6 +33,10 @@ This tool analyzes the command output using LLM and provides intelligent answers
                 "question": {
                     "type": "string",
                     "description": "The question about the command output"
+                },
+                "system_info": {
+                    "type": "string",
+                    "description": "Optional system information for context (OS, shell version, architecture, etc.)"
                 }
             },
             "required": ["command", "command_output", "question"]
@@ -44,25 +49,29 @@ async def run_tool(name: str, parameters: dict) -> list[types.Content]:
         command = parameters.get("command", "")
         command_output = parameters.get("command_output", "")
         question = parameters.get("question", "")
+        system_info = parameters.get("system_info", "")
         
         if not command or not command_output or not question:
             return [types.TextContent(type="text", text="Error: All parameters (command, command_output, question) are required")]
+        
+        # Add system info to the context if provided
+        system_context = f"\n\nSystem Context:\n{system_info}" if system_info else ""
         
         # Check if this is a simple question mode (no real command executed)
         if command == "echo 'Simple question mode'":
             # For simple questions, use a different template
             prompt_template = PromptTemplate(
-                input_variables=["question"],
-                template="""Please answer the following question: {question}
+                input_variables=["question", "system_context"],
+                template="""Please answer the following question: {question}{system_context}
 
 Important: When suggesting commands in your response, format them with > prefix (like "> ls -la") instead of using ```bash code blocks. Do not use markdown code blocks (```) in your response."""
             )
             
-            formatted_prompt = prompt_template.format(question=question)
+            formatted_prompt = prompt_template.format(question=question, system_context=system_context)
         else:
             # Create the prompt template based on scenario.txt for command analysis
             prompt_template = PromptTemplate(
-                input_variables=["command", "log", "question"],
+                input_variables=["command", "log", "question", "system_context"],
                 template="""Imagine you have the following bash command:
 \"\"\"{command}\"\"\"
 
@@ -70,7 +79,7 @@ With the following output log:
 \"\"\"{log}\"\"\"
 
 Based on this output log, please answer this question:
-\"\"\"{question}\"\"\"
+\"\"\"{question}\"\"\"{system_context}
 
 Important: When suggesting commands in your response, format them with > prefix (like "> ls -la") instead of using ```bash code blocks. Do not use markdown code blocks (```) in your response."""
             )
@@ -79,7 +88,8 @@ Important: When suggesting commands in your response, format them with > prefix 
             formatted_prompt = prompt_template.format(
                 command=command,
                 log=command_output,
-                question=question
+                question=question,
+                system_context=system_context
             )
         
         # Get response from LLM

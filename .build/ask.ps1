@@ -23,6 +23,26 @@ function Ensure-VirtualEnv {
     }
 }
 
+# Function to get system information
+function Get-SystemInfo {
+    # Disable progress bar for system info gathering
+    $ProgressPreference = 'SilentlyContinue'
+    
+    $osInfo = Get-CimInstance -ClassName Win32_OperatingSystem -ErrorAction SilentlyContinue
+    $computerInfo = Get-ComputerInfo -Property WindowsProductName, WindowsVersion, TotalPhysicalMemory -ErrorAction SilentlyContinue
+    
+    $systemInfo = @"
+System Context:
+- OS: $($osInfo.Caption) (Build $($osInfo.BuildNumber))
+- PowerShell Version: $($PSVersionTable.PSVersion)
+- Console: Windows PowerShell Terminal
+- Architecture: $($env:PROCESSOR_ARCHITECTURE)
+- Current Directory: $($PWD.Path)
+"@
+    
+    return $systemInfo
+}
+
 # Function to install PowerShell alias
 function Install-AskAlias {
     $ASK_SCRIPT_PATH = $PSCommandPath
@@ -69,14 +89,14 @@ function ask {
         Write-Host "  ask `"command`" `"question about result`"   # Command analysis mode" -ForegroundColor Yellow
         Write-Host "  ask install                               # Install global alias" -ForegroundColor Yellow
         Write-Host "  ask uninstall                             # Remove global alias" -ForegroundColor Yellow
-        Write-Host "Examples:" -ForegroundColor Red
+        Write-Host "Examples:" -ForegroundColor Cyan
         Write-Host "  ask `"What is Python?`"" -ForegroundColor Cyan
         Write-Host "  ask `"dir`" `"How many files are there?`"" -ForegroundColor Cyan
         Write-Host "  ask `"Get-Process`" `"Which process uses most memory?`"" -ForegroundColor Cyan
     }
 }
 
-Write-Host "Ask Terminal Chat function loaded. Use 'ask' command from anywhere!" -ForegroundColor Green
+Write-Host "Ask Terminal Chat function loaded. Use 'ask' command from anywhere!" -ForegroundColor Cyan
 "@
 
     # Write the alias content to the profile file
@@ -96,21 +116,20 @@ Write-Host "Ask Terminal Chat function loaded. Use 'ask' command from anywhere!"
     if ($profileContent -notcontains $sourceCommand) {
         Write-Host "Adding ask alias to PowerShell profile..." -ForegroundColor Cyan
         Add-Content -Path $PROFILE -Value $sourceCommand -Encoding UTF8
-        Write-Host "Ask alias added to profile successfully!" -ForegroundColor Green
+        Write-Host "Ask alias added to profile successfully!" -ForegroundColor Cyan
     } else {
-        Write-Host "Ask alias already exists in profile." -ForegroundColor Yellow
+        Write-Host "Ask alias already exists in profile." -ForegroundColor Cyan
     }
 
-    Write-Host ""
-    Write-Host "Installation complete!" -ForegroundColor Green
+    Write-Host "Installation complete!" -ForegroundColor Cyan
     
     # Automatically load the alias in the current session
     Write-Host "Loading ask function in current session..." -ForegroundColor Cyan
     try {
         . $ASK_PROFILE
-        Write-Host "Ask function is now available! Try: ask `"Hello!`"" -ForegroundColor Green
+        Write-Host "Ask function is now available! Try: ask `"Hello!`"" -ForegroundColor Cyan
     } catch {
-        Write-Host "Warning: Could not load alias automatically. Please restart PowerShell." -ForegroundColor Yellow
+        Write-Host "Warning: Could not load alias automatically. Please restart PowerShell." -ForegroundColor Cyan
         Write-Host "Or run manually: . `"$ASK_PROFILE`"" -ForegroundColor Cyan
     }
         
@@ -136,9 +155,9 @@ function Uninstall-AskAlias {
     # Remove the alias profile file
     if (Test-Path $ASK_PROFILE) {
         Remove-Item $ASK_PROFILE -Force
-        Write-Host "Removed ask alias profile: $ASK_PROFILE" -ForegroundColor Green
+        Write-Host "Removed ask alias profile: $ASK_PROFILE" -ForegroundColor Cyan
     } else {
-        Write-Host "Ask alias profile not found: $ASK_PROFILE" -ForegroundColor Yellow
+        Write-Host "Ask alias profile not found: $ASK_PROFILE" -ForegroundColor Cyan
     }
 
     # Remove the source command from PowerShell profile
@@ -148,16 +167,15 @@ function Uninstall-AskAlias {
         
         if ($profileContent.Count -ne $newContent.Count) {
             $newContent | Out-File -FilePath $PROFILE -Encoding UTF8 -Force
-            Write-Host "Removed ask alias from PowerShell profile." -ForegroundColor Green
+            Write-Host "Removed ask alias from PowerShell profile." -ForegroundColor Cyan
         } else {
-            Write-Host "Ask alias not found in PowerShell profile." -ForegroundColor Yellow
+            Write-Host "Ask alias not found in PowerShell profile." -ForegroundColor Cyan
         }
     } else {
-        Write-Host "PowerShell profile not found: $PROFILE" -ForegroundColor Yellow
+        Write-Host "PowerShell profile not found: $PROFILE" -ForegroundColor Cyan
     }
 
-    Write-Host ""
-    Write-Host "Uninstallation complete!" -ForegroundColor Green
+    Write-Host "Uninstallation complete!" -ForegroundColor Cyan
     Write-Host "Please restart your PowerShell session for changes to take effect." -ForegroundColor Yellow
     
     exit 0
@@ -175,7 +193,7 @@ if ($Command -eq "install") {
     Write-Host "  .\ask.ps1 `"command`" `"question about result`"   # Command analysis mode" -ForegroundColor Yellow
     Write-Host "  .\ask.ps1 install                               # Install global alias" -ForegroundColor Yellow
     Write-Host "  .\ask.ps1 uninstall                             # Remove global alias" -ForegroundColor Yellow
-    Write-Host "Examples:" -ForegroundColor Red
+    Write-Host "Examples:" -ForegroundColor Cyan
     Write-Host "  .\ask.ps1 `"What is Python?`"" -ForegroundColor Cyan
     Write-Host "  .\ask.ps1 `"dir`" `"How many files are there?`"" -ForegroundColor Cyan
     Write-Host "  .\ask.ps1 `"Get-Process`" `"Which process uses most memory?`"" -ForegroundColor Cyan
@@ -203,7 +221,7 @@ if (-not $Question) {
     # Simple question mode - first parameter is actually the question
     $actualQuestion = $Command
     
-    Write-ColoredText "Question: $actualQuestion" "Yellow"
+    Write-Host "Question: $actualQuestion" -ForegroundColor Yellow
     
     # Change to the project root directory to find mcp_server module
     $originalLocation = Get-Location
@@ -213,10 +231,12 @@ if (-not $Question) {
     $tempFile = [System.IO.Path]::GetTempFileName()
     
     # Create JSON object for simple LLM query with special prompt
+    $systemInfo = Get-SystemInfo
     $jsonObject = @{
         command = "echo 'Simple question mode'"
         command_output = "This is a direct question to the LLM without executing any command."
         question = $actualQuestion
+        system_info = $systemInfo
     }
     
     # Convert to JSON and save to temp file
@@ -273,7 +293,7 @@ if (-not $Command -or -not $Question) {
     Write-ColoredText "Usage:" "Red"
     Write-ColoredText "  .\gpt.ps1 '<question>'                    # Simple question mode" "Yellow"
     Write-ColoredText "  .\gpt.ps1 '<command>' '<question>'        # Command analysis mode" "Yellow"
-    Write-ColoredText "Examples:" "Red"
+    Write-ColoredText "Examples:" "Cyan"
     Write-ColoredText "  .\gpt.ps1 'What is the capital of France?'" "Cyan"
     Write-ColoredText "  .\gpt.ps1 'docker ps -a' 'How many containers are running?'" "Cyan"
     exit 1
@@ -281,7 +301,7 @@ if (-not $Command -or -not $Question) {
 
 try {
     # Display the question with "Question:" prefix in yellow
-    Write-ColoredText "Question: $Question" "Yellow"
+    Write-Host "Question: $Question" -ForegroundColor Yellow
     
     # Display the command with ">" prefix in blue
     Write-ColoredText "> $Command" "Blue"
@@ -301,10 +321,12 @@ try {
     $tempFile = [System.IO.Path]::GetTempFileName()
     
     # Create JSON object with three separate parameters
+    $systemInfo = Get-SystemInfo
     $jsonObject = @{
         command = $Command
         command_output = $output.Trim()
         question = $Question
+        system_info = $systemInfo
     }
     
     # Convert to JSON and save to temp file
