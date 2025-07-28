@@ -6,6 +6,9 @@ REM   gpt.bat "command" "question"       - Command analysis mode
 
 setlocal enabledelayedexpansion
 
+REM Function to ensure virtual environment is activated
+call :ensure_virtual_env
+
 REM Set UTF-8 code page
 chcp 65001 >nul
 
@@ -134,3 +137,22 @@ if "%~2"=="" (
     
     del "%TEMP%\gpt_result.txt" >nul 2>&1
 )
+
+:ensure_virtual_env
+REM Function to ensure virtual environment is activated
+set "venv_path=%~dp0..\.virtualenv"
+set "activate_script=%venv_path%\Scripts\activate.bat"
+
+REM Check if virtual environment is already active
+if defined VIRTUAL_ENV (
+    goto :eof
+)
+
+if exist "%activate_script%" (
+    echo Activating virtual environment...
+    call "%activate_script%"
+) else (
+    echo Error: Virtual environment not found at %venv_path%
+    exit /b 1
+)
+goto :eof

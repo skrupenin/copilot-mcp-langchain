@@ -1,5 +1,37 @@
 #!/usr/bin/env bash
 
+# Function to ensure virtual environment is activated
+ensure_virtual_env() {
+    local script_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+    local venv_path="$script_dir/../.virtualenv"
+    
+    # On Windows (Git Bash), activation script is in Scripts directory
+    # On Unix, it's in bin directory
+    local activate_script=""
+    if [ -f "$venv_path/Scripts/activate" ]; then
+        activate_script="$venv_path/Scripts/activate"
+    elif [ -f "$venv_path/bin/activate" ]; then
+        activate_script="$venv_path/bin/activate"
+    fi
+    
+    # Check if virtual environment is already active
+    if [ -z "$VIRTUAL_ENV" ]; then
+        if [ -f "$activate_script" ]; then
+            echo "Activating virtual environment..."
+            source "$activate_script"
+        else
+            echo "Error: Virtual environment not found at $venv_path"
+            echo "Looked for activation script at:"
+            echo "  $venv_path/Scripts/activate"
+            echo "  $venv_path/bin/activate"
+            exit 1
+        fi
+    fi
+}
+
+# Ensure virtual environment is activated
+ensure_virtual_env
+
 ## color stuff
 
 green="[92m"
