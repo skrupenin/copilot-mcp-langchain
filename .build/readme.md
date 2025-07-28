@@ -26,13 +26,24 @@ ask uninstall    # Removes 'ask' command from system
 ```
 
 ### 2. `ask` - Bash Script (Linux/macOS/Git Bash)
-Script for Unix-like systems and Git Bash on Windows with colored output support.
+Script for Unix-like systems and Git Bash on Windows with colored output support and automatic virtual environment activation.
+
+**Installation:** For convenient system-wide usage, install the global alias:
+```bash
+bash ask install    # Creates 'ask' command automatically
+# ⚠️ Important: Restart terminal or run: source ~/.bash_profile
+```
 
 **Usage:**
 ```bash
-bash ask "How does Git work?"
-bash ask "ls -la" "How many files are in the directory?"
-bash ask "ps aux" "Which processes use the most CPU?"
+ask "How does Git work?"
+ask "ls -la" "How many files are in the directory?"
+ask "ps aux" "Which processes use the most CPU?"
+```
+
+**Uninstall:** To remove the global alias:
+```bash
+ask uninstall    # Removes 'ask' command from system
 ```
 
 ### 3. `ask.bat` - Batch Script (Windows Command Prompt)
@@ -46,6 +57,15 @@ ask.bat "tasklist" "Which programs are running?"
 ```
 
 ## Features
+
+### Automatic System Context
+All scripts automatically include system information with every request to provide better context for LLM responses:
+- Operating system and version
+- Shell/terminal type and version  
+- System architecture
+- Current working directory
+
+This helps the LLM provide more relevant and platform-specific answers.
 
 ### Two Operation Modes:
 
