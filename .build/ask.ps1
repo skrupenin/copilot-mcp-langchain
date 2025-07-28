@@ -23,6 +23,17 @@ function Ensure-VirtualEnv {
     }
 }
 
+# Function to display usage examples
+function Show-UsageExamples {
+    Write-Host ""
+    Write-Host "Usage examples:" -ForegroundColor Yellow
+    Write-Host "  ask help" -NoNewline -ForegroundColor Cyan; Write-Host "                              " -NoNewline -ForegroundColor Cyan; Write-Host "# Show help information" -ForegroundColor Green
+    Write-Host "  ask " -NoNewline -ForegroundColor Cyan; Write-Host '"What is Git?"' -NoNewline -ForegroundColor Cyan; Write-Host "                    " -NoNewline -ForegroundColor Cyan; Write-Host "# Ask AI directly" -ForegroundColor Green
+    Write-Host "  ask " -NoNewline -ForegroundColor Cyan; Write-Host '"dir" "How many files?"' -NoNewline -ForegroundColor Cyan; Write-Host "           " -NoNewline -ForegroundColor Cyan; Write-Host "# Run command, ask AI about result" -ForegroundColor Green
+    Write-Host "  ask " -NoNewline -ForegroundColor Cyan; Write-Host '"Get-Process" "Top memory usage?"' -NoNewline -ForegroundColor Cyan; Write-Host " " -NoNewline -ForegroundColor Cyan; Write-Host " " -ForegroundColor Green
+    Write-Host "  ask uninstall" -NoNewline -ForegroundColor Cyan; Write-Host "                         " -NoNewline -ForegroundColor Cyan; Write-Host "# Remove global command" -ForegroundColor Green
+}
+
 # Function to get system information
 function Get-SystemInfo {
     # Disable progress bar for system info gathering
@@ -90,7 +101,7 @@ function ask {
     }
 }
 
-Write-Host "Ask Terminal Chat function loaded. Use 'ask help' for more information." -ForegroundColor Cyan
+Write-Host "Ask Terminal Chat function loaded. Use " -NoNewline -ForegroundColor Cyan; Write-Host "'ask help'" -NoNewline -ForegroundColor Yellow; Write-Host " for more information." -ForegroundColor Cyan
 "@
 
     # Write the alias content to the profile file
@@ -121,17 +132,12 @@ Write-Host "Ask Terminal Chat function loaded. Use 'ask help' for more informati
     Write-Host "Loading ask function in current session..." -ForegroundColor Cyan
     try {
         . $ASK_PROFILE
-        Write-Host "Ask function is now available! Try: ask `"Hello!`"" -ForegroundColor Cyan
     } catch {
         Write-Host "Warning: Could not load alias automatically. Please restart PowerShell." -ForegroundColor Cyan
         Write-Host "Or run manually: . `"$ASK_PROFILE`"" -ForegroundColor Cyan
     }
         
-    Write-Host ""
-    Write-Host "Usage examples:" -ForegroundColor Yellow
-    Write-Host "  ask `"What is Git?`"" -ForegroundColor Cyan
-    Write-Host "  ask `"dir`" `"How many files?`"" -ForegroundColor Cyan
-    Write-Host "  ask `"Get-Process`" `"Top memory usage?`"" -ForegroundColor Cyan
+    Show-UsageExamples
     
     Write-Host ""
     Write-Host "Please restart your PowerShell session for changes to take effect." -ForegroundColor Yellow
@@ -188,14 +194,9 @@ if ($Command -eq "install") {
     Write-Host "System context (OS, shell, directory) is automatically included for better answers." -ForegroundColor White
     Write-Host ""
     Write-Host "Installation:" -ForegroundColor Yellow
-    Write-Host "  ask install                                               # Install global 'ask' command (recommended)" -ForegroundColor Cyan
-    Write-Host ""
-    Write-Host "Usage & Examples:" -ForegroundColor Yellow
-    Write-Host '  ask "What is Python?"                                     # Ask AI directly' -ForegroundColor Cyan
-    Write-Host '  ask "dir" "How many files are in the directory?"          # Run command, ask AI about result' -ForegroundColor Cyan
-    Write-Host '  ask "Get-Process" "Which processes use the most memory?"' -ForegroundColor Cyan
-    Write-Host "  ask help                                                  # Show this help" -ForegroundColor Cyan
-    Write-Host "  ask uninstall                                             # Remove global command" -ForegroundColor Cyan
+    Write-Host "  ./ask.ps1 install" -NoNewline -ForegroundColor Cyan; Write-Host "                     " -NoNewline -ForegroundColor Cyan; Write-Host "# Install global 'ask' command (recommended)" -ForegroundColor Green
+    
+    Show-UsageExamples
     exit 0
 }
 
