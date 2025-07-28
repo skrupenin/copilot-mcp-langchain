@@ -14,8 +14,8 @@ chcp 65001 >nul
 
 if "%~1"=="" (
     echo Usage:
-    echo   gpt.bat "question"                    # Simple question mode
-    echo   gpt.bat "command" "question"          # Command analysis mode
+    echo   gpt.bat "question"                    REM Simple question mode
+    echo   gpt.bat "command" "question"          REM Command analysis mode
     echo Examples:
     echo   gpt.bat "What is the capital of France?"
     echo   gpt.bat "dir" "How many files are there?"
@@ -31,11 +31,14 @@ if "%~2"=="" (
     
     echo Question: !question!
     
+    REM Get system information
+    call :get_system_info
+    
     REM Create temporary file for JSON to avoid escaping issues
     set "tempfile=%TEMP%\gpt_temp_%RANDOM%.json"
     
-    REM Create JSON content for simple question
-    set "json_content={\"command\":\"echo 'Simple question mode'\",\"command_output\":\"This is a direct question to the LLM without executing any command.\",\"question\":\"!question!\"}"
+    REM Create JSON content for simple question with system info
+    set "json_content={\"command\":\"echo 'Simple question mode'\",\"command_output\":\"This is a direct question to the LLM without executing any command.\",\"question\":\"!question!\",\"system_info\":\"!system_info!\"}"
     
     REM Call MCP tool with UTF-8 encoding - pass JSON as argument
     set PYTHONIOENCODING=utf-8
@@ -85,6 +88,9 @@ if "%~2"=="" (
     type "%TEMP%\cmd_output.txt"
     echo.
     
+    REM Get system information
+    call :get_system_info
+    
     REM Read command output for JSON (read into variable)
     set "output="
     for /f "usebackq delims=" %%i in ("%TEMP%\cmd_output.txt") do (
@@ -103,8 +109,8 @@ if "%~2"=="" (
     set "command=!command:"=\"!"
     set "command=!command:\=\\!"
     
-    REM Create JSON content with proper escaping
-    set "json_content={\"command\":\"!command!\",\"command_output\":\"!output!\",\"question\":\"!question!\"}"
+    REM Create JSON content with proper escaping including system info
+    set "json_content={\"command\":\"!command!\",\"command_output\":\"!output!\",\"question\":\"!question!\",\"system_info\":\"!system_info!\"}"
     
     REM Call MCP tool with UTF-8 encoding - pass JSON as argument
     set PYTHONIOENCODING=utf-8
@@ -155,4 +161,13 @@ if exist "%activate_script%" (
     echo Error: Virtual environment not found at %venv_path%
     exit /b 1
 )
+goto :eof
+
+:get_system_info
+REM Function to get system information
+set "current_dir=%CD%"
+REM Escape backslashes for JSON
+set "current_dir=!current_dir:\=\\!"
+
+set "system_info=System Context: - OS: %OS% %PROCESSOR_ARCHITECTURE% - Command Prompt: Windows Batch - Current Directory: !current_dir!"
 goto :eof

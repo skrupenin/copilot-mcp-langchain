@@ -1,5 +1,36 @@
 #!/usr/bin/env bash
 
+# Function to get system information
+get_system_info() {
+    local os_info=""
+    local shell_info=""
+    local arch_info=""
+    local current_dir="$(pwd)"
+    
+    # Detect OS
+    if [[ "$OSTYPE" == "linux-gnu"* ]]; then
+        os_info="Linux"
+        if command -v lsb_release >/dev/null 2>&1; then
+            os_info="$(lsb_release -d -s 2>/dev/null || echo "Linux")"
+        fi
+    elif [[ "$OSTYPE" == "darwin"* ]]; then
+        os_info="macOS $(sw_vers -productVersion 2>/dev/null || echo "Unknown")"
+    elif [[ "$OSTYPE" == "msys" || "$OSTYPE" == "cygwin" ]]; then
+        os_info="Windows (Git Bash)"
+    else
+        os_info="$OSTYPE"
+    fi
+    
+    # Get shell info
+    shell_info="$SHELL $(bash --version | head -n1 | cut -d' ' -f4 2>/dev/null || echo "Unknown")"
+    
+    # Get architecture
+    arch_info="$(uname -m 2>/dev/null || echo "Unknown")"
+    
+    # Return as single line for JSON compatibility
+    echo "System Context: - OS: $os_info - Shell: $shell_info - Architecture: $arch_info - Current Directory: $current_dir"
+}
+
 # Function to ensure virtual environment is activated
 ensure_virtual_env() {
     local script_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
@@ -86,10 +117,13 @@ if [ $# -eq 1 ]; then
     # Change to parent directory to find mcp_server module
     cd "$(dirname "$0")/.."
     
+    # Get system information
+    system_info=$(get_system_info)
+    
     # Create temporary file for JSON to avoid escaping issues
     temp_file=$(mktemp)
     cat > "$temp_file" << EOF
-{"command":"echo 'Simple question mode'","command_output":"This is a direct question to the LLM without executing any command.","question":"$question"}
+{"command":"echo 'Simple question mode'","command_output":"This is a direct question to the LLM without executing any command.","question":"$question","system_info":"$system_info"}
 EOF
     
     # Call MCP tool using temp file with UTF-8 encoding
@@ -134,6 +168,9 @@ elif [ $# -eq 2 ]; then
     # Change to parent directory to find mcp_server module
     cd "$(dirname "$0")/.."
     
+    # Get system information
+    system_info=$(get_system_info)
+    
     # Create temporary file for JSON to avoid escaping issues
     temp_file=$(mktemp)
     
@@ -141,9 +178,10 @@ elif [ $# -eq 2 ]; then
     escaped_output=$(echo "$output" | sed 's/\\/\\\\/g' | sed 's/"/\\"/g' | sed ':a;N;$!ba;s/\n/\\n/g')
     escaped_command=$(echo "$command" | sed 's/\\/\\\\/g' | sed 's/"/\\"/g')
     escaped_question=$(echo "$question" | sed 's/\\/\\\\/g' | sed 's/"/\\"/g')
+    escaped_system_info=$(echo "$system_info" | sed 's/\\/\\\\/g' | sed 's/"/\\"/g' | sed ':a;N;$!ba;s/\n/\\n/g')
     
     cat > "$temp_file" << EOF
-{"command":"$escaped_command","command_output":"$escaped_output","question":"$escaped_question"}
+{"command":"$escaped_command","command_output":"$escaped_output","question":"$escaped_question","system_info":"$escaped_system_info"}
 EOF
     
     # Call MCP tool using temp file with UTF-8 encoding
