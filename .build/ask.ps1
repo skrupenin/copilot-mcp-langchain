@@ -79,24 +79,18 @@ function ask {
             & `$askScriptPath install
         } elseif (`$Command -eq "uninstall") {
             & `$askScriptPath uninstall
+        } elseif (`$Command -eq "help") {
+            & `$askScriptPath help
         } else {
             & `$askScriptPath `$Command
         }
     } else {
         # Show usage if no parameters
-        Write-Host "Usage:" -ForegroundColor Red
-        Write-Host "  ask `"question`"                           # Simple question mode" -ForegroundColor Yellow
-        Write-Host "  ask `"command`" `"question about result`"   # Command analysis mode" -ForegroundColor Yellow
-        Write-Host "  ask install                               # Install global alias" -ForegroundColor Yellow
-        Write-Host "  ask uninstall                             # Remove global alias" -ForegroundColor Yellow
-        Write-Host "Examples:" -ForegroundColor Cyan
-        Write-Host "  ask `"What is Python?`"" -ForegroundColor Cyan
-        Write-Host "  ask `"dir`" `"How many files are there?`"" -ForegroundColor Cyan
-        Write-Host "  ask `"Get-Process`" `"Which process uses most memory?`"" -ForegroundColor Cyan
+        & `$askScriptPath help
     }
 }
 
-Write-Host "Ask Terminal Chat function loaded. Use 'ask' command from anywhere!" -ForegroundColor Cyan
+Write-Host "Ask Terminal Chat function loaded. Use 'ask help' for more information." -ForegroundColor Cyan
 "@
 
     # Write the alias content to the profile file
@@ -186,17 +180,22 @@ if ($Command -eq "install") {
     Install-AskAlias
 } elseif ($Command -eq "uninstall") {
     Uninstall-AskAlias
-} elseif (-not $Command) {
-    # Show usage if no parameters
-    Write-Host "Usage:" -ForegroundColor Red
-    Write-Host "  .\ask.ps1 `"question`"                           # Simple question mode" -ForegroundColor Yellow
-    Write-Host "  .\ask.ps1 `"command`" `"question about result`"   # Command analysis mode" -ForegroundColor Yellow
-    Write-Host "  .\ask.ps1 install                               # Install global alias" -ForegroundColor Yellow
-    Write-Host "  .\ask.ps1 uninstall                             # Remove global alias" -ForegroundColor Yellow
-    Write-Host "Examples:" -ForegroundColor Cyan
-    Write-Host "  .\ask.ps1 `"What is Python?`"" -ForegroundColor Cyan
-    Write-Host "  .\ask.ps1 `"dir`" `"How many files are there?`"" -ForegroundColor Cyan
-    Write-Host "  .\ask.ps1 `"Get-Process`" `"Which process uses most memory?`"" -ForegroundColor Cyan
+} elseif ($Command -eq "help" -or -not $Command) {
+    # Show help message
+    Write-Host "Ask Terminal Chat - AI assistant for command line" -ForegroundColor Cyan
+    Write-Host ""
+    Write-Host "This tool helps you get answers about commands and general questions using AI." -ForegroundColor White
+    Write-Host "System context (OS, shell, directory) is automatically included for better answers." -ForegroundColor White
+    Write-Host ""
+    Write-Host "Installation:" -ForegroundColor Yellow
+    Write-Host "  ask install                                               # Install global 'ask' command (recommended)" -ForegroundColor Cyan
+    Write-Host ""
+    Write-Host "Usage & Examples:" -ForegroundColor Yellow
+    Write-Host '  ask "What is Python?"                                     # Ask AI directly' -ForegroundColor Cyan
+    Write-Host '  ask "dir" "How many files are in the directory?"          # Run command, ask AI about result' -ForegroundColor Cyan
+    Write-Host '  ask "Get-Process" "Which processes use the most memory?"' -ForegroundColor Cyan
+    Write-Host "  ask help                                                  # Show this help" -ForegroundColor Cyan
+    Write-Host "  ask uninstall                                             # Remove global command" -ForegroundColor Cyan
     exit 0
 }
 

@@ -252,6 +252,23 @@ if [ "$1" = "install" ]; then
     install_ask_alias
 elif [ "$1" = "uninstall" ]; then
     uninstall_ask_alias
+elif [ "$1" = "help" ] || [ $# -eq 0 ]; then
+    # Show help message
+    echo -e "\033[96mAsk Terminal Chat - AI assistant for command line\033[0m"
+    echo ""
+    echo -e "\033[97mThis tool helps you get answers about commands and general questions using AI.\033[0m"
+    echo -e "\033[97mSystem context (OS, shell, directory) is automatically included for better answers.\033[0m"
+    echo ""
+    echo -e "\033[93mInstallation:\033[0m"
+    echo -e "\033[96m  ask install                                          # Install global 'ask' command (recommended)\033[0m"
+    echo ""
+    echo -e '\033[93mUsage & Examples:\033[0m'
+    echo -e '\033[96m  ask "What is Python?"                                # Ask AI directly\033[0m'
+    echo -e '\033[96m  ask "ls -la" "How many files are in the directory?"  # Run command, ask AI about result\033[0m'
+    echo -e '\033[96m  ask "ps aux" "Which processes use the most CPU?"\033[0m'
+    echo -e '\033[96m  ask help                                             # Show this help\033[0m'
+    echo -e '\033[96m  ask uninstall                                        # Remove global command\033[0m'
+    exit 0
 fi
 
 # Check number of arguments

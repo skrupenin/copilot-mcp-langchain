@@ -9,20 +9,21 @@ Script for Windows PowerShell with colored output support and automatic virtual 
 
 **Installation:** For convenient system-wide usage, install the global alias:
 ```powershell
-.\ask.ps1 install    # Creates and loads 'ask' command automatically
+.\ask.ps1 install # Creates and loads 'ask' command automatically
 # ⚠️ Important: Restart PowerShell terminal for permanent effect!
 ```
 
 **Usage:**
 ```powershell
-ask "What is Python?"
-ask "dir" "How many files are in the directory?"
+ask "What is Python?" # Simple question mode
+ask "dir" "How many files are in the directory?" # Command analysis mode
 ask "Get-Process" "Which processes use the most memory?"
+ask help # Show detailed help and examples
 ```
 
 **Uninstall:** To remove the global alias:
 ```powershell
-ask uninstall    # Removes 'ask' command from system
+ask uninstall # Removes 'ask' command from system
 ```
 
 ### 2. `ask` - Bash Script (Linux/macOS/Git Bash)
@@ -30,20 +31,21 @@ Script for Unix-like systems and Git Bash on Windows with colored output support
 
 **Installation:** For convenient system-wide usage, install the global alias:
 ```bash
-bash ask install    # Creates 'ask' command automatically
+bash ask install # Creates 'ask' command automatically
 # ⚠️ Important: Restart terminal or run: source ~/.bash_profile
 ```
 
 **Usage:**
 ```bash
-ask "How does Git work?"
-ask "ls -la" "How many files are in the directory?"
-ask "ps aux" "Which processes use the most CPU?"
+ask "How does Git work?" # Simple question mode
+ask "ls -la" "How many files are in the directory?" # Command analysis mode
+ask "ps aux" "Which processes use the most CPU?" 
+ask help # Show detailed help and examples
 ```
 
 **Uninstall:** To remove the global alias:
 ```bash
-ask uninstall    # Removes 'ask' command from system
+ask uninstall # Removes 'ask' command from system
 ```
 
 ### 3. `ask.bat` - Batch Script (Windows Command Prompt)
