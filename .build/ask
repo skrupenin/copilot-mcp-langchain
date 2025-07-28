@@ -1,0 +1,149 @@
+#!/usr/bin/env bash
+
+## color stuff
+
+green="[92m"
+blue="[94m"
+yellow="[93m"
+red="[91m"
+end="[0m"
+
+color() {
+    message=$1
+    color=$2
+
+    echo
+    echo -e "$color$message$end"
+    echo
+}
+
+## other logic
+
+#!/usr/bin/env bash
+
+# GPT Terminal Chat Script
+# Usage: 
+#   bash gpt "question"                 # Simple question mode
+#   bash gpt "command" "question"       # Command analysis mode
+
+# Set UTF-8 encoding
+export PYTHONIOENCODING=utf-8
+export LC_ALL=C.UTF-8
+export LANG=C.UTF-8
+
+green="\033[92m"
+blue="\033[94m"
+yellow="\033[93m"
+red="\033[91m"
+white="\033[97m"
+end="\033[0m"
+
+color() {
+    message=$1
+    color=$2
+    echo -e "$color$message$end"
+}
+
+# Check number of arguments
+if [ $# -eq 1 ]; then
+    # Simple question mode
+    question=$1
+    
+    color "Question: $question" $yellow
+    
+    # Change to parent directory to find mcp_server module
+    cd "$(dirname "$0")/.."
+    
+    # Create temporary file for JSON to avoid escaping issues
+    temp_file=$(mktemp)
+    cat > "$temp_file" << EOF
+{"command":"echo 'Simple question mode'","command_output":"This is a direct question to the LLM without executing any command.","question":"$question"}
+EOF
+    
+    # Call MCP tool using temp file with UTF-8 encoding
+    response=$(PYTHONIOENCODING=utf-8 python -m mcp_server.run run lng_terminal_chat "$(cat "$temp_file")" 2>&1)
+    mcp_exit_code=$?
+    
+    # Clean up temp file
+    rm "$temp_file"
+    
+    if [ $mcp_exit_code -ne 0 ]; then
+        color "Error: $response" $red
+        exit 1
+    fi
+    
+    # Extract result and display - more robust parsing for emojis
+    result=$(echo "$response" | sed -n '/📤 Result:/,$p' | sed '1d' | head -n -1)
+    if [ -z "$result" ]; then
+        # Fallback: try without emoji
+        result=$(echo "$response" | sed -n '/Result:/,$p' | sed '1d')
+    fi
+    if [ -z "$result" ]; then
+        result="$response"
+    fi
+    
+    color "Answer: $result" $green
+    
+elif [ $# -eq 2 ]; then
+    # Command analysis mode
+    command=$1
+    question=$2
+    
+    color "Question: $question" $yellow
+    color "> $command" $blue
+    
+    # Execute command and capture output
+    output=$(eval "$command" 2>&1)
+    exit_code=$?
+    
+    # Display command output
+    color "$output" $white
+    
+    # Change to parent directory to find mcp_server module
+    cd "$(dirname "$0")/.."
+    
+    # Create temporary file for JSON to avoid escaping issues
+    temp_file=$(mktemp)
+    
+    # Escape the output for JSON (replace newlines with \n and escape quotes)
+    escaped_output=$(echo "$output" | sed 's/\\/\\\\/g' | sed 's/"/\\"/g' | sed ':a;N;$!ba;s/\n/\\n/g')
+    escaped_command=$(echo "$command" | sed 's/\\/\\\\/g' | sed 's/"/\\"/g')
+    escaped_question=$(echo "$question" | sed 's/\\/\\\\/g' | sed 's/"/\\"/g')
+    
+    cat > "$temp_file" << EOF
+{"command":"$escaped_command","command_output":"$escaped_output","question":"$escaped_question"}
+EOF
+    
+    # Call MCP tool using temp file with UTF-8 encoding
+    response=$(PYTHONIOENCODING=utf-8 python -m mcp_server.run run lng_terminal_chat "$(cat "$temp_file")" 2>&1)
+    mcp_exit_code=$?
+    
+    # Clean up temp file
+    rm "$temp_file"
+    
+    if [ $mcp_exit_code -ne 0 ]; then
+        color "Error: $response" $red
+        exit 1
+    fi
+    
+    # Extract result and display - more robust parsing for emojis
+    result=$(echo "$response" | sed -n '/📤 Result:/,$p' | sed '1d' | head -n -1)
+    if [ -z "$result" ]; then
+        # Fallback: try without emoji
+        result=$(echo "$response" | sed -n '/Result:/,$p' | sed '1d')
+    fi
+    if [ -z "$result" ]; then
+        result="$response"
+    fi
+    
+    color "Answer: $result" $green
+    
+else
+    color "Usage:" $red
+    color "  bash gpt \"<question>\"                    # Simple question mode" $yellow
+    color "  bash gpt \"<command>\" \"<question>\"        # Command analysis mode" $yellow
+    color "Examples:" $red
+    color "  bash gpt \"What is the capital of France?\"" $white
+    color "  bash gpt \"ls -la\" \"How many files are there?\"" $white
+    exit 1
+fi
