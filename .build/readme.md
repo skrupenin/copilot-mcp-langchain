@@ -7,11 +7,22 @@ This folder contains scripts for terminal chat with LLM that use MCP (Model Cont
 ### 1. `ask.ps1` - PowerShell Script (Windows)
 Script for Windows PowerShell with colored output support and automatic virtual environment activation.
 
+**Installation:** For convenient system-wide usage, install the global alias:
+```powershell
+.\ask.ps1 install    # Creates and loads 'ask' command automatically
+# ⚠️ Important: Restart PowerShell terminal for permanent effect!
+```
+
 **Usage:**
 ```powershell
-.\ask.ps1 "What is Python?"
-.\ask.ps1 "dir" "How many files are in the directory?"
-.\ask.ps1 "Get-Process" "Which processes use the most memory?"
+ask "What is Python?"
+ask "dir" "How many files are in the directory?"
+ask "Get-Process" "Which processes use the most memory?"
+```
+
+**Uninstall:** To remove the global alias:
+```powershell
+ask uninstall    # Removes 'ask' command from system
 ```
 
 ### 2. `ask` - Bash Script (Linux/macOS/Git Bash)

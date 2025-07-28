@@ -1,8 +1,8 @@
 param(
-    [Parameter(Mandatory=$true)]
+    [Parameter(Position=0, Mandatory=$false)]
     [string]$Command,
     
-    [Parameter(Mandatory=$false)]
+    [Parameter(Position=1, Mandatory=$false)]
     [string]$Question
 )
 
@@ -23,7 +23,166 @@ function Ensure-VirtualEnv {
     }
 }
 
-# Ensure virtual environment is activated
+# Function to install PowerShell alias
+function Install-AskAlias {
+    $ASK_SCRIPT_PATH = $PSCommandPath
+    $ASK_PROFILE = Join-Path -Path $(Split-Path -Path $PROFILE -Parent) -ChildPath "ask-alias.ps1"
+
+    # Create the alias profile script
+    $aliasContent = @"
+# Ask Terminal Chat Function
+# Generated automatically by ask.ps1 install
+
+function ask {
+    param(
+        [Parameter(Position=0, Mandatory=`$false)]
+        [string]`$Command,
+        
+        [Parameter(Position=1, Mandatory=`$false)]
+        [string]`$Question
+    )
+    
+    `$askScriptPath = "$ASK_SCRIPT_PATH"
+    
+    if (-not (Test-Path `$askScriptPath)) {
+        Write-Host "Error: ask.ps1 script not found at `$askScriptPath" -ForegroundColor Red
+        Write-Host "Please make sure the ask.ps1 script is available at the correct location." -ForegroundColor Yellow
+        return
+    }
+    
+    if (`$Command -and `$Question) {
+        # Command analysis mode
+        & `$askScriptPath `$Command `$Question
+    } elseif (`$Command) {
+        # Simple question mode or special commands
+        if (`$Command -eq "install") {
+            & `$askScriptPath install
+        } elseif (`$Command -eq "uninstall") {
+            & `$askScriptPath uninstall
+        } else {
+            & `$askScriptPath `$Command
+        }
+    } else {
+        # Show usage if no parameters
+        Write-Host "Usage:" -ForegroundColor Red
+        Write-Host "  ask `"question`"                           # Simple question mode" -ForegroundColor Yellow
+        Write-Host "  ask `"command`" `"question about result`"   # Command analysis mode" -ForegroundColor Yellow
+        Write-Host "  ask install                               # Install global alias" -ForegroundColor Yellow
+        Write-Host "  ask uninstall                             # Remove global alias" -ForegroundColor Yellow
+        Write-Host "Examples:" -ForegroundColor Red
+        Write-Host "  ask `"What is Python?`"" -ForegroundColor Cyan
+        Write-Host "  ask `"dir`" `"How many files are there?`"" -ForegroundColor Cyan
+        Write-Host "  ask `"Get-Process`" `"Which process uses most memory?`"" -ForegroundColor Cyan
+    }
+}
+
+Write-Host "Ask Terminal Chat function loaded. Use 'ask' command from anywhere!" -ForegroundColor Green
+"@
+
+    # Write the alias content to the profile file
+    Write-Host "Creating ask alias profile at: $ASK_PROFILE" -ForegroundColor Cyan
+    $aliasContent | Out-File -FilePath $ASK_PROFILE -Encoding UTF8 -Force
+
+    # Check if PROFILE exists, create if not
+    if (-not (Test-Path $PROFILE)) {
+        Write-Host "Creating PowerShell profile at: $PROFILE" -ForegroundColor Cyan
+        New-Item -Path $PROFILE -ItemType File -Force | Out-Null
+    }
+
+    # Check if our alias is already sourced in the profile
+    $profileContent = Get-Content $PROFILE -ErrorAction SilentlyContinue
+    $sourceCommand = ". `"$ASK_PROFILE`""
+
+    if ($profileContent -notcontains $sourceCommand) {
+        Write-Host "Adding ask alias to PowerShell profile..." -ForegroundColor Cyan
+        Add-Content -Path $PROFILE -Value $sourceCommand -Encoding UTF8
+        Write-Host "Ask alias added to profile successfully!" -ForegroundColor Green
+    } else {
+        Write-Host "Ask alias already exists in profile." -ForegroundColor Yellow
+    }
+
+    Write-Host ""
+    Write-Host "Installation complete!" -ForegroundColor Green
+    
+    # Automatically load the alias in the current session
+    Write-Host "Loading ask function in current session..." -ForegroundColor Cyan
+    try {
+        . $ASK_PROFILE
+        Write-Host "Ask function is now available! Try: ask `"Hello!`"" -ForegroundColor Green
+    } catch {
+        Write-Host "Warning: Could not load alias automatically. Please restart PowerShell." -ForegroundColor Yellow
+        Write-Host "Or run manually: . `"$ASK_PROFILE`"" -ForegroundColor Cyan
+    }
+        
+    Write-Host ""
+    Write-Host "Usage examples:" -ForegroundColor Yellow
+    Write-Host "  ask `"What is Git?`"" -ForegroundColor Cyan
+    Write-Host "  ask `"dir`" `"How many files?`"" -ForegroundColor Cyan
+    Write-Host "  ask `"Get-Process`" `"Top memory usage?`"" -ForegroundColor Cyan
+    
+    Write-Host ""
+    Write-Host "Please restart your PowerShell session for changes to take effect." -ForegroundColor Yellow
+
+    exit 0
+}
+
+# Function to uninstall PowerShell alias
+function Uninstall-AskAlias {
+    $ASK_PROFILE = Join-Path -Path $(Split-Path -Path $PROFILE -Parent) -ChildPath "ask-alias.ps1"
+    $sourceCommand = ". `"$ASK_PROFILE`""
+
+    Write-Host "Removing ask alias..." -ForegroundColor Cyan
+
+    # Remove the alias profile file
+    if (Test-Path $ASK_PROFILE) {
+        Remove-Item $ASK_PROFILE -Force
+        Write-Host "Removed ask alias profile: $ASK_PROFILE" -ForegroundColor Green
+    } else {
+        Write-Host "Ask alias profile not found: $ASK_PROFILE" -ForegroundColor Yellow
+    }
+
+    # Remove the source command from PowerShell profile
+    if (Test-Path $PROFILE) {
+        $profileContent = Get-Content $PROFILE
+        $newContent = $profileContent | Where-Object { $_ -ne $sourceCommand }
+        
+        if ($profileContent.Count -ne $newContent.Count) {
+            $newContent | Out-File -FilePath $PROFILE -Encoding UTF8 -Force
+            Write-Host "Removed ask alias from PowerShell profile." -ForegroundColor Green
+        } else {
+            Write-Host "Ask alias not found in PowerShell profile." -ForegroundColor Yellow
+        }
+    } else {
+        Write-Host "PowerShell profile not found: $PROFILE" -ForegroundColor Yellow
+    }
+
+    Write-Host ""
+    Write-Host "Uninstallation complete!" -ForegroundColor Green
+    Write-Host "Please restart your PowerShell session for changes to take effect." -ForegroundColor Yellow
+    
+    exit 0
+}
+
+# Check for special commands first
+if ($Command -eq "install") {
+    Install-AskAlias
+} elseif ($Command -eq "uninstall") {
+    Uninstall-AskAlias
+} elseif (-not $Command) {
+    # Show usage if no parameters
+    Write-Host "Usage:" -ForegroundColor Red
+    Write-Host "  .\ask.ps1 `"question`"                           # Simple question mode" -ForegroundColor Yellow
+    Write-Host "  .\ask.ps1 `"command`" `"question about result`"   # Command analysis mode" -ForegroundColor Yellow
+    Write-Host "  .\ask.ps1 install                               # Install global alias" -ForegroundColor Yellow
+    Write-Host "  .\ask.ps1 uninstall                             # Remove global alias" -ForegroundColor Yellow
+    Write-Host "Examples:" -ForegroundColor Red
+    Write-Host "  .\ask.ps1 `"What is Python?`"" -ForegroundColor Cyan
+    Write-Host "  .\ask.ps1 `"dir`" `"How many files are there?`"" -ForegroundColor Cyan
+    Write-Host "  .\ask.ps1 `"Get-Process`" `"Which process uses most memory?`"" -ForegroundColor Cyan
+    exit 0
+}
+
+# Ensure virtual environment is activated (only for normal operation)
 Ensure-VirtualEnv
 
 # Set console encoding to UTF-8 to handle Unicode properly
