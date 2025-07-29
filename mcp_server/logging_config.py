@@ -61,15 +61,3 @@ def setup_logging(component_name: str, log_level: int = logging.DEBUG) -> loggin
     logger.info(f"Log file: {log_file}")
     
     return logger
-
-def get_logger(name: str) -> logging.Logger:
-    """
-    Get a logger instance for a specific module.
-    
-    Args:
-        name: Logger name (usually __name__)
-    
-    Returns:
-        Logger instance
-    """
-    return logging.getLogger(name)

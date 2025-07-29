@@ -7,7 +7,7 @@ import json
 
 
 # Setup logging for server
-from mcp_server.logging_config import setup_logging, get_logger
+from mcp_server.logging_config import setup_logging
 logger = setup_logging("mcp_server", logging.DEBUG)
 
 # # Classes for intercepting and logging MCP communication
