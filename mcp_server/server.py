@@ -5,6 +5,10 @@ import logging
 import traceback
 import json
 
+# Add the project root to the Python path to ensure imports work correctly
+project_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+if project_root not in sys.path:
+    sys.path.insert(0, project_root)
 
 # Setup logging for server
 from mcp_server.logging_config import setup_logging
@@ -133,12 +137,7 @@ def wrap_streams(read_stream, write_stream):
 logger.info(f"Python executable: {sys.executable}")
 logger.info(f"Python version: {sys.version}")
 logger.info(f"Current directory: {os.getcwd()}")
-
-# Add the project root to the Python path to ensure imports work correctly
-project_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-if project_root not in sys.path:
-    sys.path.insert(0, project_root)
-logger.info(f"Added to sys.path: {project_root}")
+logger.info(f"Project root in sys.path: {project_root}")
 
 try:
     import anyio
