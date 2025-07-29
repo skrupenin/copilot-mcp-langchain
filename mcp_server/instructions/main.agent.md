@@ -2,3 +2,4 @@
 - Follow `./check-mcp-enabled.agent.md` if there is no MCP enabled.
 - Follow `./update-install.agent.md` if you suggest any `pip install xxxx`.
 - Follow `./read-debug-info.agent.md` when there are some problems.
+- Follow `./testing-tool.agent.md` if you need to test the tool after creation or modification.
