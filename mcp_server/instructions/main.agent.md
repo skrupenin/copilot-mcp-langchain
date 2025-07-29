@@ -3,3 +3,4 @@
 - Follow `./update-install.agent.md` if you suggest any `pip install xxxx`.
 - Follow `./read-debug-info.agent.md` when there are some problems.
 - Follow `./testing-tool.agent.md` if you need to test the tool after creation or modification.
+- Follow `./ctreate-tool.agent.md` when you create a new tool.
