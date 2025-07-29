@@ -6,3 +6,4 @@ python -m mcp_server.run run lng_winapi_window_tree '{\"pid\":18672}'
 ```bash
 python -m mcp_server.run batch lng_llm_rag_add_data '{\"input_text\":\"Hello pirate!\"}' lng_llm_rag_search '{\"query\":\"Pirate\"}'
 ```
+- Log file in this case will be `mcp_server/logs/mcp_runner.log`.

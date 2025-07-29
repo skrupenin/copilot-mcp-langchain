@@ -9,9 +9,15 @@ import sys
 import os
 import subprocess
 import yaml
+import logging
+import traceback
 from typing import Dict, Any, Optional, Set
 from pathlib import Path
 from mcp_server.tools.tool_registry import tool_definitions, run_tool, get_tool_info
+
+# Setup logging for server
+from mcp_server.logging_config import setup_logging, get_logger
+logger = setup_logging("mcp_runner", logging.DEBUG)
 
 async def test_tool(tool_name: str, arguments: Optional[Dict[str, Any]] = None) -> Any:
     """
@@ -32,16 +38,19 @@ async def test_tool(tool_name: str, arguments: Optional[Dict[str, Any]] = None) 
         tool_exists = any(tool["name"] == tool_name for tool in tool_definitions)
         if not tool_exists:
             available_tools = [tool["name"] for tool in tool_definitions]
+            logger.error(f"Tool '{tool_name}' not found. Available tools: {', '.join(available_tools)}")
             print(f"❌ Tool '{tool_name}' not found.")
             print(f"📋 Available tools: {', '.join(available_tools)}")
             return None
         
+        logger.info(f"Testing tool: {tool_name} with arguments: {arguments}")
         print(f"🔧 Testing tool: {tool_name}")
         if arguments:
             print(f"📥 Arguments: {json.dumps(arguments, indent=2)}")
         
         # Run the tool
         result = await run_tool(tool_name, arguments)
+        logger.info(f"Tool {tool_name} executed successfully")
         
         print("📤 Result:")
         if isinstance(result, list) and len(result) > 0:
@@ -63,6 +72,8 @@ async def test_tool(tool_name: str, arguments: Optional[Dict[str, Any]] = None) 
         return result
         
     except Exception as e:
+        logger.error(f"Error testing tool '{tool_name}': {e}")
+        logger.error(f"Traceback: {traceback.format_exc()}")
         print(f"❌ Error testing tool '{tool_name}': {e}")
         import traceback
         traceback.print_exc()

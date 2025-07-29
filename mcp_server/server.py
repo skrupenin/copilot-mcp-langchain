@@ -5,19 +5,10 @@ import logging
 import traceback
 import json
 
-# logging configuration
-# Create a file logger instead of outputting to stdout, so as not to interfere with the MCP protocol
-log_file = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'logs/mcp_server.log')
-# Ensure logs directory exists
-os.makedirs(os.path.dirname(log_file), exist_ok=True)
-logging.basicConfig(
-    level=logging.DEBUG,
-    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
-    handlers=[
-        logging.FileHandler(log_file, mode='w', encoding='utf-8')
-    ]
-)
-logger = logging.getLogger('mcp_server')
+
+# Setup logging for server
+from mcp_server.logging_config import setup_logging, get_logger
+logger = setup_logging("mcp_server", logging.DEBUG)
 
 # # Classes for intercepting and logging MCP communication
 class LoggingReadStream:
