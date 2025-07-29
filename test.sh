@@ -160,6 +160,19 @@ python -m mcp_server.run run lng_winapi_clipboard_get '{}'
 # Set text with custom retry attempts for busy systems
 python -m mcp_server.run run lng_winapi_clipboard_set '{\"text\":\"Test with retries\",\"timeout_attempts\":20}'
 
+#####################
+### lng_batch_run ###
+#####################
+
+# Simple clipboard copy pipeline
+python -m mcp_server.run run lng_batch_run '{\"pipeline\": [{\"tool\": \"lng_winapi_clipboard_get\", \"params\": {}, \"output\": \"clipboard_text\"}, {\"tool\": \"lng_winapi_clipboard_set\", \"params\": {\"text\": \"${clipboard_text.content}\"}}], \"final_result\": \"ok\"}'
+
+# Process clipboard text with property access
+python -m mcp_server.run run lng_batch_run '{\"pipeline\": [{\"tool\": \"lng_winapi_clipboard_get\", \"params\": {}, \"output\": \"clipboard_text\"}, {\"tool\": \"lng_winapi_clipboard_set\", \"params\": {\"text\": \"Processed: ${clipboard_text.content}\"}}], \"final_result\": \"${clipboard_text.success}\"}'
+
+# Count words in clipboard and set result back
+python -m mcp_server.run run lng_batch_run '{\"pipeline\": [{\"tool\": \"lng_winapi_clipboard_get\", \"params\": {}, \"output\": \"clipboard_text\"}, {\"tool\": \"lng_count_words\", \"params\": {\"input_text\": \"${clipboard_text.content}\"}, \"output\": \"word_count\"}, {\"tool\": \"lng_winapi_clipboard_set\", \"params\": {\"text\": \"Word count: ${word_count}\"}}], \"final_result\": \"completed\"}'
+
 ########################
 ### clean all caches ###
 ########################

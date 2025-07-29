@@ -1,0 +1,3 @@
+enabled: true
+description: "Executes a batch pipeline of tool calls with variable substitution using JavaScript expressions"
+dependencies: []
