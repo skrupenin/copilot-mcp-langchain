@@ -35,7 +35,7 @@ def setup_logging(component_name: str, log_level: int = logging.DEBUG) -> loggin
     logger.setLevel(log_level)
     
     # Create file handler
-    file_handler = logging.FileHandler(log_file, mode='w', encoding='utf-8')
+    file_handler = logging.FileHandler(log_file, mode='a', encoding='utf-8')
     file_handler.setLevel(log_level)
     
     # Create console handler for run.py (when not in MCP mode)
