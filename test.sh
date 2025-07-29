@@ -144,6 +144,22 @@ python -m mcp_server.run run lng_winapi_send_hotkey '{\"pid\":18672,\"key\":\"F1
 # text input - uses 'text' parameter  
 python -m mcp_server.run run lng_winapi_send_hotkey '{\"pid\":18672,\"text\":\"Hello Windows Automation!\"}'
 
+##################################
+### lng_winapi_clipboard_set   ###
+### lng_winapi_clipboard_get   ###
+##################################
+# Set text to clipboard and then read it back
+python -m mcp_server.run batch lng_winapi_clipboard_set '{\"text\":\"Hello clipboard! 🎉\"}' lng_winapi_clipboard_get '{}'
+
+# Set complex Unicode text with multiple languages
+python -m mcp_server.run run lng_winapi_clipboard_set '{\"text\":\"English + Русский + 中文 + Emojis: 🚀🌍✨\"}'
+
+# Read current clipboard content
+python -m mcp_server.run run lng_winapi_clipboard_get '{}'
+
+# Set text with custom retry attempts for busy systems
+python -m mcp_server.run run lng_winapi_clipboard_set '{\"text\":\"Test with retries\",\"timeout_attempts\":20}'
+
 ########################
 ### clean all caches ###
 ########################
