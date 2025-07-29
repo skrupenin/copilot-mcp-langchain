@@ -1,4 +1,4 @@
-- Follow `./activate-virtualenv.agent.md`
-- Follow `./check-mcp-enabled.agent.md`
-- Follow `./update-install.agent.md`
-- Follow `./read-debug-info.agent.md`
+- Follow `./activate-virtualenv.agent.md` in any case activate the virtual environment before starting any python stuff in terminal.
+- Follow `./check-mcp-enabled.agent.md` if there is no MCP enabled.
+- Follow `./update-install.agent.md` if you suggest any `pip install xxxx`.
+- Follow `./read-debug-info.agent.md` when there are some problems.
