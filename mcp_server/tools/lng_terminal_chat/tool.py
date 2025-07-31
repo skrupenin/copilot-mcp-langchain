@@ -75,11 +75,14 @@ Important: When suggesting commands in your response, format them with > prefix 
                 template="""Imagine you have the following bash command:
 \"\"\"{command}\"\"\"
 
+And here is information about OS:
+\"\"\"{system_context}\"\"\"
+
 With the following output log:
 \"\"\"{log}\"\"\"
 
 Based on this output log, please answer this question:
-\"\"\"{question}\"\"\"{system_context}
+\"\"\"{question}\"\"\"
 
 Important: When suggesting commands in your response, format them with > prefix (like "> ls -la") instead of using ```bash code blocks. Do not use markdown code blocks (```) in your response."""
             )
