@@ -4,10 +4,77 @@ import asyncio
 import os
 import subprocess
 import sys
+import time
 from pathlib import Path
 from mcp_server.logging_config import setup_logging
 
 logger = setup_logging("mcp_hotkey_listener", "INFO")
+
+async def run_tool_fast_mode(operation: str, hotkey: str, tool_name: str, tool_json: dict) -> list[types.Content]:
+    """Быстрый режим - прямая работа с Windows API без daemon"""
+    try:
+        if operation == "list":
+            # Прямое обращение к hotkey_core
+            from mcp_server.tools.lng_winapi.hotkey_listener.hotkey_core import list_hotkeys
+            result = await list_hotkeys()
+            return [types.TextContent(type="text", text=json.dumps(result, ensure_ascii=False, indent=2))]
+        
+        elif operation == "service_status":
+            # Проверяем наличие активных хоткеев через Windows API
+            from mcp_server.tools.lng_winapi.hotkey_listener.hotkey_core import list_hotkeys
+            result = await list_hotkeys()
+            
+            if result.get("success"):
+                hotkeys_count = len(result.get("active_hotkeys", []))
+                status_result = {
+                    "success": True,
+                    "running": True,
+                    "mode": "fast_api",
+                    "hotkeys_count": hotkeys_count,
+                    "hotkeys": {hk["hotkey"]: hk for hk in result.get("active_hotkeys", [])},
+                    "timestamp": time.time()
+                }
+            else:
+                status_result = {
+                    "success": True,
+                    "running": False,
+                    "mode": "fast_api",
+                    "hotkeys_count": 0,
+                    "error": result.get("error")
+                }
+            
+            return [types.TextContent(type="text", text=json.dumps(status_result, ensure_ascii=False, indent=2))]
+        
+        elif operation == "register":
+            # Прямая регистрация через Windows API
+            from mcp_server.tools.lng_winapi.hotkey_listener.hotkey_core import register_hotkey
+            result = await register_hotkey(hotkey, tool_name, tool_json)
+            return [types.TextContent(type="text", text=json.dumps(result, ensure_ascii=False, indent=2))]
+        
+        elif operation == "unregister":
+            # Прямое удаление через Windows API
+            from mcp_server.tools.lng_winapi.hotkey_listener.hotkey_core import unregister_hotkey
+            result = await unregister_hotkey(hotkey)
+            return [types.TextContent(type="text", text=json.dumps(result, ensure_ascii=False, indent=2))]
+        
+        elif operation == "unregister_all":
+            # Прямое удаление всех хоткеев через Windows API
+            from mcp_server.tools.lng_winapi.hotkey_listener.hotkey_core import unregister_all_hotkeys
+            result = await unregister_all_hotkeys()
+            return [types.TextContent(type="text", text=json.dumps(result, ensure_ascii=False, indent=2))]
+        
+        else:
+            return [types.TextContent(type="text", text=json.dumps({
+                "success": False,
+                "error": f"Fast mode not supported for operation: {operation}"
+            }, ensure_ascii=False, indent=2))]
+            
+    except Exception as e:
+        logger.error(f"Error in fast mode: {e}")
+        return [types.TextContent(type="text", text=json.dumps({
+            "success": False,
+            "error": f"Fast mode error: {str(e)}"
+        }, ensure_ascii=False, indent=2))]
 
 async def tool_info() -> dict:
     return {
@@ -77,6 +144,10 @@ async def run_tool(name: str, arguments: dict) -> list[types.Content]:
     hotkey = arguments.get("hotkey", "").strip()
     tool_name = arguments.get("tool_name", "").strip()
     tool_json = arguments.get("tool_json", {})
+    
+    # БЫСТРЫЙ РЕЖИМ: Обходим daemon для всех операций
+    if operation in ["list", "service_status", "register", "unregister", "unregister_all"]:
+        return await run_tool_fast_mode(operation, hotkey, tool_name, tool_json)
     
     # Путь к сервису
     service_script = Path(__file__).parent / "hotkey_service.py"
@@ -244,12 +315,12 @@ async def run_service_command(service_script: Path, args: list) -> dict:
         logger.info(f"Working directory: {os.getcwd()}")
         
         # Запускаем команду синхронно для простых команд (status, list, etc.)
-        logger.info(f"About to run subprocess with timeout=30")
+        logger.info(f"About to run subprocess with timeout=5")
         result = subprocess.run(
             cmd,
             capture_output=True,
             text=True,
-            timeout=30,  # Увеличиваем таймаут до 30 секунд
+            timeout=5,  # Уменьшаем таймаут до 5 секунд для быстрого ответа
             cwd=Path(__file__).parent.parent.parent.parent.parent  # Устанавливаем рабочую директорию в корень проекта
         )
         logger.info(f"Subprocess completed with returncode: {result.returncode}")

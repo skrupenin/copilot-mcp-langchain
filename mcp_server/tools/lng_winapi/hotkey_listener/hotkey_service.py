@@ -314,10 +314,10 @@ class HotkeyService:
                         except:
                             pass
                 
-                await asyncio.sleep(0.1)  # Небольшая пауза
+                await asyncio.sleep(0.05)  # Быстрее проверяем команды
             except Exception as e:
                 logger.error(f"Ошибка в IPC обработчике: {e}")
-                await asyncio.sleep(1)
+                await asyncio.sleep(0.5)  # Меньше пауза при ошибке
     
     async def process_command(self, command_data):
         """Обработка отдельной команды"""
@@ -566,7 +566,7 @@ def send_command_to_daemon(command, args_dict):
         
         # Ждем ответа
         response_file = RESPONSE_DIR / f"{command_id}.json"
-        timeout = 10  # 10 секунд таймаут
+        timeout = 3  # 3 секунды таймаут - быстрый ответ
         start_time = time.time()
         
         while time.time() - start_time < timeout:
