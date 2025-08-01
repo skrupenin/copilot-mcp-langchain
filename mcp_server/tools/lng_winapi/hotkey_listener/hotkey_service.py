@@ -58,8 +58,32 @@ class HotkeyService:
     def signal_handler(self, signum, frame):
         logger.info(f"Получен сигнал {signum}, завершаем работу...")
         self.running = False
+        # Очищаем все хоткеи перед завершением
+        try:
+            loop = asyncio.get_event_loop()
+            if loop.is_running():
+                # Если цикл запущен, создаем задачу
+                asyncio.create_task(self.cleanup_on_shutdown())
+            else:
+                # Если цикл остановлен, запускаем синхронно
+                asyncio.run(self.cleanup_on_shutdown())
+        except Exception as e:
+            logger.error(f"Ошибка при очистке хоткеев: {e}")
+        
         if self.loop:
             self.loop.stop()
+    
+    async def cleanup_on_shutdown(self):
+        """Очищает все хоткеи при завершении работы сервиса"""
+        try:
+            logger.info("Начинаем очистку хоткеев при завершении...")
+            result = await self.unregister_all()
+            if result.get("success"):
+                logger.info("Все хоткеи успешно очищены")
+            else:
+                logger.error(f"Ошибка при очистке хоткеев: {result.get('error')}")
+        except Exception as e:
+            logger.error(f"Исключение при очистке хоткеев: {e}")
         
     async def register_hotkey(self, hotkey: str, tool_name: str, tool_json: dict):
         """Регистрирует хоткей"""
@@ -174,15 +198,39 @@ class HotkeyService:
             logger.error(f"Ошибка сохранения статуса: {e}")
             
     async def load_status(self):
-        """Загружает статус из файла и восстанавливает хоткеи"""
+        """Загружает статус из файла и восстанавливает хоткеи, сначала проверив реальное состояние Windows API"""
         try:
+            # Шаг 1: Проверяем реальное состояние Windows API
+            logger.info("Проверяем реальное состояние Windows API...")
+            from mcp_server.tools.lng_winapi.hotkey_listener.hotkey_core import list_hotkeys as core_list
+            real_state = await core_list()
+            
+            existing_hotkeys = {}
+            if real_state.get("success") and real_state.get("active_hotkeys"):
+                logger.warning(f"Обнаружены {len(real_state['active_hotkeys'])} существующих хоткеев в Windows API")
+                for hotkey_info in real_state["active_hotkeys"]:
+                    hotkey = hotkey_info["hotkey"]
+                    existing_hotkeys[hotkey] = hotkey_info
+                    logger.warning(f"Найден существующий хоткей: {hotkey}")
+                
+                # Очищаем все существующие хоткеи для чистого старта
+                logger.info("Очищаем существующие хоткеи для чистого старта...")
+                clear_result = await self.unregister_all()
+                if clear_result.get("success"):
+                    logger.info("Существующие хоткеи очищены")
+                else:
+                    logger.error(f"Не удалось очистить существующие хоткеи: {clear_result.get('error')}")
+            else:
+                logger.info("Реальное состояние Windows API чистое")
+            
+            # Шаг 2: Загружаем из файла состояния
             if STATUS_FILE.exists():
                 with open(STATUS_FILE, 'r', encoding='utf-8') as f:
                     status = json.load(f)
                     saved_hotkeys = status.get("hotkeys", {})
-                    logger.info(f"Найдено {len(saved_hotkeys)} сохраненных хоткеев")
+                    logger.info(f"Найдено {len(saved_hotkeys)} сохраненных хоткеев в файле")
                     
-                    # Восстанавливаем хоткеи в core
+                    # Восстанавливаем хоткеи из файла
                     restored_count = 0
                     for hotkey, hotkey_info in saved_hotkeys.items():
                         try:
@@ -195,11 +243,17 @@ class HotkeyService:
                                     restored_count += 1
                                     logger.info(f"Восстановлен хоткей: {hotkey}")
                                 else:
-                                    logger.error(f"Не удалось восстановить хоткей {hotkey}: {result}")
+                                    logger.error(f"Не удалось восстановить хоткей {hotkey}: {result.get('error')}")
                         except Exception as e:
                             logger.error(f"Ошибка восстановления хоткея {hotkey}: {e}")
                     
-                    logger.info(f"Восстановлено {restored_count}/{len(saved_hotkeys)} хоткеев")
+                    logger.info(f"Восстановлено {restored_count} из {len(saved_hotkeys)} хоткеев")
+            else:
+                logger.info("Файл состояния не найден, начинаем с чистого состояния")
+            
+            # Шаг 3: Принудительная синхронизация статуса
+            await self.save_status()
+            
         except Exception as e:
             logger.error(f"Ошибка загрузки статуса: {e}")
             
