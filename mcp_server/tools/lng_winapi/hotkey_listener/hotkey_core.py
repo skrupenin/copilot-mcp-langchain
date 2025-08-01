@@ -9,7 +9,7 @@ from typing import Dict, Callable, Any
 from mcp_server.tools.tool_registry import run_tool as execute_mcp_tool
 from mcp_server.logging_config import setup_logging
 
-logger = setup_logging("hotkey_core", logging.DEBUG)
+logger = setup_logging("mcp_server", logging.DEBUG)
 
 # Global storage for active hotkey listeners
 _active_listeners: Dict[str, Dict[str, Any]] = {}
@@ -89,7 +89,7 @@ class HotkeyListener:
         # Just validate the hotkey format first
         try:
             hotkey_info = parse_hotkey(self.hotkey_str)
-            logger.info(f"Parsed hotkey {self.hotkey_str}: modifiers={hotkey_info['modifiers']}, vk_code={hotkey_info['vk_code']}")
+            logger.debug(f"Parsed hotkey {self.hotkey_str}: modifiers={hotkey_info['modifiers']}, vk_code={hotkey_info['vk_code']}")
         except Exception as e:
             logger.error(f"Error parsing hotkey {self.hotkey_str}: {e}")
             return False
@@ -188,7 +188,7 @@ class HotkeyListener:
                                 hotkey_id = msg[1][2]     # msg[1][2] is wParam (hotkey ID)
                                 
                                 if message_type == win32con.WM_HOTKEY and hotkey_id == self.hotkey_id:
-                                    logger.info(f"🎉 Hotkey {self.hotkey_str} (ID: {self.hotkey_id}) triggered! Calling tool {self.tool_name}")
+                                    logger.debug(f"Hotkey {self.hotkey_str} (ID: {self.hotkey_id}) triggered! Calling tool {self.tool_name}")
                                     self._execute_tool()
                         
                     except Exception as msg_e:
@@ -223,13 +223,13 @@ class HotkeyListener:
                 asyncio.set_event_loop(loop)
                 
                 # Debug logging
-                logger.info(f"Executing tool: {self.tool_name}")
-                logger.info(f"Tool arguments: {self.tool_args}")
-                logger.info(f"Tool arguments type: {type(self.tool_args)}")
+                logger.debug(f"Executing tool: {self.tool_name}")
+                logger.debug(f"Tool arguments: {self.tool_args}")
+                logger.debug(f"Tool arguments type: {type(self.tool_args)}")
                 
                 # Run the tool
                 result = loop.run_until_complete(execute_mcp_tool(self.tool_name, self.tool_args))
-                logger.info(f"Tool {self.tool_name} executed successfully. Result: {result}")
+                logger.debug(f"Tool {self.tool_name} executed successfully. Result: {result}")
                 
             except Exception as e:
                 logger.error(f"Error executing tool {self.tool_name}: {e}")

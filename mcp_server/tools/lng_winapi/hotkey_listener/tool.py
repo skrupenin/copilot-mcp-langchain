@@ -5,10 +5,11 @@ import os
 import subprocess
 import sys
 import time
+import logging
 from pathlib import Path
 from mcp_server.logging_config import setup_logging
 
-logger = setup_logging("mcp_hotkey_listener", "INFO")
+logger = setup_logging("mcp_server", logging.DEBUG)
 
 # Флаг для отслеживания инициализации
 _service_initialized = False
@@ -19,15 +20,15 @@ async def run_tool_fast_mode(operation: str, hotkey: str, tool_name: str, tool_j
     
     # Автоматическое восстановление хоткеев при первом обращении
     if not _service_initialized:
-        logger.info("First access to hotkey service - attempting to restore saved hotkeys")
+        logger.debug("First access to hotkey service - attempting to restore saved hotkeys")
         try:
             restore_result = await restore_hotkeys_state()
             if restore_result.get("success"):
                 restored_count = restore_result.get("restored_count", 0)
                 if restored_count > 0:
-                    logger.info(f"Successfully restored {restored_count} hotkeys from saved state")
+                    logger.warning(f"Successfully restored {restored_count} hotkeys from saved state")
                 else:
-                    logger.info("No hotkeys to restore")
+                    logger.debug("No hotkeys to restore")
             else:
                 logger.warning(f"Failed to restore hotkeys: {restore_result.get('error')}")
         except Exception as e:

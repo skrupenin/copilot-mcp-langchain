@@ -4,6 +4,7 @@ Provides unified logging setup for both server.py and run.py.
 """
 import os
 import logging
+import sys
 from pathlib import Path
 
 def setup_logging(component_name: str, log_level: int = logging.DEBUG) -> logging.Logger:
@@ -17,7 +18,7 @@ def setup_logging(component_name: str, log_level: int = logging.DEBUG) -> loggin
     Returns:
         Configured logger instance
     """
-    # Determine log file path
+    # Determine log file path based on component name
     current_dir = Path(__file__).parent
     log_dir = current_dir / "logs"
     log_file = log_dir / f"{component_name}.log"
@@ -38,20 +39,28 @@ def setup_logging(component_name: str, log_level: int = logging.DEBUG) -> loggin
     file_handler = logging.FileHandler(log_file, mode='a', encoding='utf-8')
     file_handler.setLevel(log_level)
     
-    # Create console handler for run.py (when not in MCP mode)
-    console_handler = logging.StreamHandler()
-    console_handler.setLevel(logging.INFO)
-    
-    # Create formatter
-    formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
+    # Create detailed formatter with maximum information
+    formatter = logging.Formatter(
+        '%(asctime)s - %(name)s - %(levelname)s - [%(filename)s:%(lineno)d] - %(funcName)s() - %(message)s'
+    )
     file_handler.setFormatter(formatter)
-    console_handler.setFormatter(formatter)
     
-    # Add handlers
+    # Add file handler (always)
     logger.addHandler(file_handler)
     
-    # Add console handler only for run.py (not for server.py to avoid MCP protocol interference)
-    if component_name != "mcp_server":
+    # Detect if we're running in MCP server mode
+    is_mcp_server = (
+        component_name == "mcp_server" or 
+        "mcp" in sys.argv[0].lower() or 
+        any("mcp" in arg for arg in sys.argv) or
+        os.getenv("MCP_MODE") == "true"
+    )
+    
+    # Add console handler only when NOT in MCP server mode
+    if not is_mcp_server and component_name == "mcp_runner":
+        console_handler = logging.StreamHandler()
+        console_handler.setLevel(logging.INFO)
+        console_handler.setFormatter(formatter)
         logger.addHandler(console_handler)
     
     # Prevent propagation to root logger
