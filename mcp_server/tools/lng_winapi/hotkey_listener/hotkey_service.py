@@ -74,7 +74,8 @@ class HotkeyService:
                     "hotkey_id": result.get("hotkey_id")
                 }
                 logger.info(f"Хоткей {hotkey} зарегистрирован успешно")
-                self.save_status()
+                # Принудительная синхронизация статуса
+                await self.save_status()
                 return result
             else:
                 logger.error(f"Ошибка регистрации хоткея {hotkey}: {result}")
@@ -92,7 +93,7 @@ class HotkeyService:
             if result.get("success"):
                 if hotkey in self.hotkeys:
                     del self.hotkeys[hotkey]
-                self.save_status()
+                await self.save_status()
                 return result
             else:
                 return result
@@ -118,7 +119,7 @@ class HotkeyService:
             
             if result.get("success"):
                 self.hotkeys.clear()
-                self.save_status()
+                await self.save_status()
                 return result
             else:
                 return result
@@ -223,7 +224,7 @@ class HotkeyService:
         # Основной цикл - просто ждем
         try:
             while self.running:
-                await self.save_status()
+                asyncio.create_task(self.save_status())
                 await asyncio.sleep(5)  # Обновляем статус каждые 5 секунд
         except Exception as e:
             logger.error(f"Ошибка в daemon цикле: {e}")
@@ -284,7 +285,7 @@ class HotkeyService:
                 return await self.list_hotkeys()
             
             elif command == 'unregister_all':
-                return await self.unregister_all_hotkeys()
+                return await self.unregister_all()
             
             else:
                 return {
