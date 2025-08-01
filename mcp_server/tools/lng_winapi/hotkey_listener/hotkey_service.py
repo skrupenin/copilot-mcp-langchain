@@ -30,8 +30,17 @@ from mcp_server.logging_config import setup_logging
 logger = setup_logging("hotkey_service", logging.INFO)
 
 # Файлы для хранения PID запущенного сервиса и IPC
+# Используем проектную директорию для постоянного хранения хоткеев
+PROJECT_HOTKEYS_DIR = project_root / "mcp_server" / "hotkeys"
+PROJECT_HOTKEYS_DIR.mkdir(exist_ok=True)
+
+# Временные файлы для управления процессом (остаются в temp)
 PID_FILE = Path(tempfile.gettempdir()) / "hotkey_service.pid"
-STATUS_FILE = Path(tempfile.gettempdir()) / "hotkey_service_status.json"
+
+# Постоянные файлы для хранения состояния (в проектной директории)
+STATUS_FILE = PROJECT_HOTKEYS_DIR / "hotkey_service_status.json"
+
+# IPC файлы для взаимодействия между процессами (временные)
 COMMAND_DIR = Path(tempfile.gettempdir()) / "hotkey_service_commands"
 RESPONSE_DIR = Path(tempfile.gettempdir()) / "hotkey_service_responses"
 
@@ -43,6 +52,8 @@ class HotkeyService:
         # Создаем директории для IPC
         COMMAND_DIR.mkdir(exist_ok=True)
         RESPONSE_DIR.mkdir(exist_ok=True)
+        # Убеждаемся, что директория для хоткеев существует
+        PROJECT_HOTKEYS_DIR.mkdir(exist_ok=True)
         
     def signal_handler(self, signum, frame):
         logger.info(f"Получен сигнал {signum}, завершаем работу...")
