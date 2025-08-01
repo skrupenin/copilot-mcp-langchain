@@ -126,8 +126,40 @@ class HotkeyService:
             logger.error(f"Исключение при очистке всех хоткеев: {e}")
             return {"success": False, "error": str(e)}
     
-    def save_status(self):
-        """Сохраняет текущий статус в файл"""
+    async def save_status(self):
+        """Сохраняет текущий статус в файл, синхронизируясь с реальным состоянием core"""
+        try:
+            # Получаем реальное состояние из core
+            from mcp_server.tools.lng_winapi.hotkey_listener.hotkey_core import list_hotkeys as core_list
+            core_result = await core_list()
+            
+            # Преобразуем в формат для сохранения
+            hotkeys_for_save = {}
+            if core_result.get("success"):
+                for hotkey_info in core_result.get("active_hotkeys", []):
+                    hotkey = hotkey_info["hotkey"]
+                    hotkeys_for_save[hotkey] = {
+                        "tool_name": hotkey_info["tool_name"],
+                        "tool_json": hotkey_info["tool_json"],
+                        "hotkey_id": hotkey_info["hotkey_id"]
+                    }
+            
+            # Синхронизируем self.hotkeys с реальным состоянием
+            self.hotkeys = hotkeys_for_save
+            
+            status = {
+                "pid": os.getpid(),
+                "hotkeys": self.hotkeys,
+                "running": self.running,
+                "timestamp": time.time()
+            }
+            with open(STATUS_FILE, 'w', encoding='utf-8') as f:
+                json.dump(status, f, indent=2, ensure_ascii=False)
+        except Exception as e:
+            logger.error(f"Ошибка сохранения статуса: {e}")
+            
+    def save_status_sync(self):
+        """Синхронная версия сохранения статуса (для совместимости)"""
         try:
             status = {
                 "pid": os.getpid(),
@@ -140,14 +172,33 @@ class HotkeyService:
         except Exception as e:
             logger.error(f"Ошибка сохранения статуса: {e}")
             
-    def load_status(self):
-        """Загружает статус из файла"""
+    async def load_status(self):
+        """Загружает статус из файла и восстанавливает хоткеи"""
         try:
             if STATUS_FILE.exists():
                 with open(STATUS_FILE, 'r', encoding='utf-8') as f:
                     status = json.load(f)
-                    self.hotkeys = status.get("hotkeys", {})
-                    logger.info(f"Загружен статус с {len(self.hotkeys)} хоткеями")
+                    saved_hotkeys = status.get("hotkeys", {})
+                    logger.info(f"Найдено {len(saved_hotkeys)} сохраненных хоткеев")
+                    
+                    # Восстанавливаем хоткеи в core
+                    restored_count = 0
+                    for hotkey, hotkey_info in saved_hotkeys.items():
+                        try:
+                            tool_name = hotkey_info.get("tool_name")
+                            tool_json = hotkey_info.get("tool_json")
+                            
+                            if tool_name and tool_json:
+                                result = await self.register_hotkey(hotkey, tool_name, tool_json)
+                                if result.get("success"):
+                                    restored_count += 1
+                                    logger.info(f"Восстановлен хоткей: {hotkey}")
+                                else:
+                                    logger.error(f"Не удалось восстановить хоткей {hotkey}: {result}")
+                        except Exception as e:
+                            logger.error(f"Ошибка восстановления хоткея {hotkey}: {e}")
+                    
+                    logger.info(f"Восстановлено {restored_count}/{len(saved_hotkeys)} хоткеев")
         except Exception as e:
             logger.error(f"Ошибка загрузки статуса: {e}")
             
@@ -164,7 +215,7 @@ class HotkeyService:
         signal.signal(signal.SIGTERM, self.signal_handler)
         
         # Загружаем предыдущий статус
-        self.load_status()
+        await self.load_status()
         
         # Запускаем обработку IPC команд в отдельной задаче
         ipc_task = asyncio.create_task(self.handle_ipc_commands())
@@ -172,7 +223,7 @@ class HotkeyService:
         # Основной цикл - просто ждем
         try:
             while self.running:
-                self.save_status()
+                await self.save_status()
                 await asyncio.sleep(5)  # Обновляем статус каждые 5 секунд
         except Exception as e:
             logger.error(f"Ошибка в daemon цикле: {e}")
@@ -264,7 +315,7 @@ class HotkeyService:
         signal.signal(signal.SIGTERM, self.signal_handler)
         
         # Загружаем предыдущий статус
-        self.load_status()
+        await self.load_status()
         
         while self.running:
             try:
