@@ -10,8 +10,31 @@ from mcp_server.logging_config import setup_logging
 
 logger = setup_logging("mcp_hotkey_listener", "INFO")
 
+# Флаг для отслеживания инициализации
+_service_initialized = False
+
 async def run_tool_fast_mode(operation: str, hotkey: str, tool_name: str, tool_json: dict) -> list[types.Content]:
     """Быстрый режим - прямая работа с Windows API без daemon"""
+    global _service_initialized
+    
+    # Автоматическое восстановление хоткеев при первом обращении
+    if not _service_initialized:
+        logger.info("First access to hotkey service - attempting to restore saved hotkeys")
+        try:
+            restore_result = await restore_hotkeys_state()
+            if restore_result.get("success"):
+                restored_count = restore_result.get("restored_count", 0)
+                if restored_count > 0:
+                    logger.info(f"Successfully restored {restored_count} hotkeys from saved state")
+                else:
+                    logger.info("No hotkeys to restore")
+            else:
+                logger.warning(f"Failed to restore hotkeys: {restore_result.get('error')}")
+        except Exception as e:
+            logger.error(f"Error during hotkeys restoration: {e}")
+        finally:
+            _service_initialized = True
+    
     try:
         if operation == "list":
             # Прямое обращение к hotkey_core
@@ -78,6 +101,11 @@ async def run_tool_fast_mode(operation: str, hotkey: str, tool_name: str, tool_j
             
             return [types.TextContent(type="text", text=json.dumps(result, ensure_ascii=False, indent=2))]
         
+        elif operation == "restore":
+            # Ручное восстановление хоткеев из сохраненного файла
+            result = await restore_hotkeys_state()
+            return [types.TextContent(type="text", text=json.dumps(result, ensure_ascii=False, indent=2))]
+        
         elif operation in ["start_service", "stop_service"]:
             return [types.TextContent(type="text", text=json.dumps({
                 "success": False,
@@ -88,7 +116,7 @@ async def run_tool_fast_mode(operation: str, hotkey: str, tool_name: str, tool_j
         else:
             return [types.TextContent(type="text", text=json.dumps({
                 "success": False,
-                "error": f"Unknown operation: {operation}. Supported operations: service_status, register, unregister, list, unregister_all"
+                "error": f"Unknown operation: {operation}. Supported operations: service_status, register, unregister, list, unregister_all, restore"
             }, ensure_ascii=False, indent=2))]
             
     except Exception as e:
@@ -126,6 +154,61 @@ async def save_hotkeys_state():
     except Exception as e:
         logger.error(f"Error saving hotkeys state: {e}")
 
+async def restore_hotkeys_state():
+    """Восстановление хоткеев из сохраненного состояния при запуске"""
+    try:
+        status_file = Path(__file__).parent.parent.parent.parent / "hotkeys" / "hotkey_service_status.json"
+        
+        if not status_file.exists():
+            logger.info("No saved hotkeys state found")
+            return {"success": True, "restored_count": 0, "message": "No saved state file"}
+        
+        with open(status_file, 'r', encoding='utf-8') as f:
+            saved_state = json.load(f)
+        
+        saved_hotkeys = saved_state.get("hotkeys", {})
+        if not saved_hotkeys:
+            logger.info("No hotkeys found in saved state")
+            return {"success": True, "restored_count": 0, "message": "No hotkeys in saved state"}
+        
+        # Восстанавливаем каждый хоткей
+        from mcp_server.tools.lng_winapi.hotkey_listener.hotkey_core import register_hotkey
+        restored_count = 0
+        failed_count = 0
+        
+        for hotkey_str, hotkey_data in saved_hotkeys.items():
+            try:
+                tool_name = hotkey_data.get("tool_name")
+                tool_json = hotkey_data.get("tool_json")
+                
+                if tool_name and tool_json:
+                    result = await register_hotkey(hotkey_str, tool_name, tool_json)
+                    if result.get("success"):
+                        restored_count += 1
+                        logger.info(f"Restored hotkey: {hotkey_str}")
+                    else:
+                        failed_count += 1
+                        logger.warning(f"Failed to restore hotkey {hotkey_str}: {result.get('error')}")
+                else:
+                    failed_count += 1
+                    logger.warning(f"Invalid hotkey data for {hotkey_str}")
+                    
+            except Exception as e:
+                failed_count += 1
+                logger.error(f"Error restoring hotkey {hotkey_str}: {e}")
+        
+        logger.info(f"Hotkeys restoration completed: {restored_count} restored, {failed_count} failed")
+        return {
+            "success": True, 
+            "restored_count": restored_count, 
+            "failed_count": failed_count,
+            "message": f"Restored {restored_count} hotkeys, {failed_count} failed"
+        }
+        
+    except Exception as e:
+        logger.error(f"Error restoring hotkeys state: {e}")
+        return {"success": False, "error": f"Restoration error: {str(e)}"}
+
 async def tool_info() -> dict:
     return {
         "description": """Manages system-wide hotkeys that call MCP tools when pressed.
@@ -148,6 +231,12 @@ This tool provides fast, direct access to Windows hotkey registration:
 • 'unregister': Remove a specific hotkey listener
 • 'list': List all active hotkey listeners
 • 'unregister_all': Remove all hotkey listeners
+• 'restore': Manually restore hotkeys from saved state file
+
+**Persistence:**
+• Hotkeys are automatically saved to file when registered/unregistered
+• Saved hotkeys are automatically restored on first service access
+• Manual restoration available with 'restore' operation
 
 **Error Handling:**
 • Detects hotkey conflicts with other applications
