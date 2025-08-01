@@ -338,3 +338,46 @@ async def run_service_command(service_script: Path, args: list) -> dict:
             "success": False,
             "error": f"Failed to execute service command: {str(e)}"
         }
+
+def init():
+    """Инициализация инструмента - вызывается автоматически при запуске сервера"""
+    global _service_initialized
+    
+    logger.info("Initializing hotkey listener tool...")
+    
+    try:
+        # Запускаем восстановление хоткеев в синхронном режиме для инициализации
+        import asyncio
+        
+        async def async_init():
+            # Попытка восстановить сохранённые хоткеи
+            restore_result = await restore_hotkeys_state()
+            if restore_result.get("success"):
+                restored_count = restore_result.get("restored_count", 0)
+                if restored_count > 0:
+                    logger.info(f"Successfully restored {restored_count} hotkeys during initialization")
+                else:
+                    logger.info("No hotkeys to restore during initialization")
+            else:
+                logger.warning(f"Failed to restore hotkeys during initialization: {restore_result.get('error')}")
+            
+            # Устанавливаем флаг инициализации
+            global _service_initialized
+            _service_initialized = True
+            logger.info("Hotkey listener tool initialization completed")
+        
+        # Если мы уже в asyncio loop, просто планируем выполнение
+        try:
+            loop = asyncio.get_running_loop()
+            # Создаем задачу для выполнения в текущем loop
+            loop.create_task(async_init())
+            logger.info("Scheduled hotkey restoration task in existing event loop")
+        except RuntimeError:
+            # Нет активного loop, создаём новый
+            asyncio.run(async_init())
+            logger.info("Completed hotkey restoration in new event loop")
+            
+    except Exception as e:
+        logger.error(f"Error during hotkey listener initialization: {e}")
+        # Не прерываем инициализацию при ошибке
+        _service_initialized = True
