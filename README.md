@@ -54,12 +54,12 @@ With this setup, `GitHub Copilot` gains access to new, well-documented tools tha
 - **Custom Langchain Tools**:
   - `lng_count_words` - word counting, demonstrates python function calling
   - `lng_get_tools_info` - tools information retrieval, collects all the information about tools in one place, that helps in `Github Copilot`.
-  - `lng_rag_add_data` and `lng_rag_search` - demonstrates RAG (Retrieval Augmented Generation) functionality 
-  - `lng_save_prompt_template` and `lng_use_prompt_template` - demonstrates Prompt template management
-  - `lng_run_chain` - demostrates Chain execution 
-  - `lng_agent_demo` - demonstrates Agent functionality
-  - `lng_structured_output` - demonstrates Structured output
-  - `lng_chain_of_thought` - demonstrates Chain of Thought reasoning approach with Memory usage
+  - `lng_llm_rag_add_data` and `lng_rag_search` - demonstrates RAG (Retrieval Augmented Generation) functionality 
+  - `lng_llm_prompt_template` - unified prompt template management with file storage (save, use, list)
+  - `lng_llm_run_chain` - demostrates Chain execution 
+  - `lng_llm_agent_demo` - demonstrates Agent functionality
+  - `lng_llm_structured_output` - demonstrates Structured output
+  - `lng_llm_chain_of_thought` - demonstrates Chain of Thought reasoning approach with Memory usage
   - And more in `mcp_server/tools/`
 
 ## Running tools in terminal

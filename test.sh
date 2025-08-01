@@ -82,24 +82,25 @@ python -m mcp_server.run run lng_llm_structured_output '{\"question\":\"Tell me 
 python -m mcp_server.run batch lng_llm_chain_of_thought '{\"question\":\"If John has 5 apples and he gives 2 to Mary, how many apples does John have left?\",\"session_id\":\"apple_problem\",\"new_session\":true}' lng_llm_chain_of_thought '{\"question\":\"If John then buys 3 more apples, how many does he have now?\",\"session_id\":\"apple_problem\",\"new_session\":false}'
 
 ############################################################
-### lng_prompt_template_save ### lng_prompt_template_use ###
-############################################################
-# demonstration of prompting with templates technique
-# it allows to save a prompt template and then use it with different parameters
-# lng_llm_prompt_template_save - saves a template
-# lng_llm_prompt_template_use - uses a saved template with parameters
+### lng_llm_prompt_template ###
+###############################
+# demonstration of unified prompt template management with file storage
+# it allows to save prompt templates to files and then use them with different parameters
+# lng_llm_prompt_template - unified tool with commands: save, use, list
 
-# Run both save and use in sequence within the same Python process to maintain template in memory
-python -m mcp_server.run batch lng_llm_prompt_template_save '{\"template\":\"Tell me about {topic} in the style of {style}.\"}' lng_llm_prompt_template_use '{\"topic\":\"artificial intelligence\",\"style\":\"a pirate\"}'
+# Save and use a template
+python -m mcp_server.run run lng_llm_prompt_template '{\"command\":\"save\",\"template_name\":\"pirate_style\",\"template\":\"Tell me about {topic} in the style of {style}.\"}'
+python -m mcp_server.run run lng_llm_prompt_template '{\"command\":\"use\",\"template_name\":\"pirate_style\",\"topic\":\"artificial intelligence\",\"style\":\"a pirate\"}'
 
 ###########################################
 ### lng_rag_add_data ### lng_rag_search ###
 ###########################################
 # it adds data to the RAG system and then searches for it
 # demonstration of RAG tools
+# NOTE: RAG search now requires a prompt template to be created first
 
-# Run both add data and search in sequence within the same Python process
-python -m mcp_server.run batch lng_llm_rag_add_data '{\"input_text\":\"Hello pirate!\"}' lng_llm_rag_search '{\"query\":\"Pirate\"}'
+# Run three tools in sequence: create template, add data, then search
+python -m mcp_server.run batch lng_llm_prompt_template '{\"command\":\"save\",\"template_name\":\"rag_default\",\"template\":\"Based on the following context:\\n\\n{context}\\n\\nAnswer this query: {query}\"}' lng_llm_rag_add_data '{\"input_text\":\"Hello pirate!\"}' lng_llm_rag_search '{\"query\":\"Pirate\",\"prompt_template\":\"rag_default\"}'
 
 #################################################
 ### WinAPI tools testing (Windows automation) ###
