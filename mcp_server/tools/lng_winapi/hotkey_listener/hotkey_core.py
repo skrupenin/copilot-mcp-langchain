@@ -140,28 +140,15 @@ class HotkeyListener:
                     
                     logger.info(f"RegisterHotKey returned: {success} (type: {type(success)})")
                     
-                    # In pywin32, success is None when registration succeeds
-                    if success is None:
-                        # Test if registration actually worked by trying to register the same combination again
-                        try:
-                            test_result = win32gui.RegisterHotKey(None, current_id + 50000, hotkey_info['modifiers'], hotkey_info['vk_code'])
-                            logger.info(f"Verification test RegisterHotKey returned: {test_result}")
-                            if test_result is None:
-                                logger.error("ERROR: Verification test also succeeded - original registration might have failed!")
-                                win32gui.UnregisterHotKey(None, current_id + 50000)  # Clean up test registration
-                                continue  # Try next ID
-                            else:
-                                logger.info("Good: Verification test failed as expected - original registration is valid")
-                        except Exception as test_e:
-                            logger.info(f"Verification test failed as expected: {test_e} - original registration is valid")
-                        
+                    # In pywin32, success is None when registration succeeds, or True
+                    if success is None or success is True:
                         registered_successfully = True
                         actual_hotkey_id = current_id
                         self.hotkey_id = current_id  # Update the instance ID
                         logger.info(f"Successfully registered hotkey {self.hotkey_str} with ID {current_id}")
                         break
                     else:
-                        logger.warning(f"RegisterHotKey returned unexpected value: {success}")
+                        logger.warning(f"RegisterHotKey returned failure value: {success}")
                         continue
                     
                 except Exception as reg_error:

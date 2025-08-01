@@ -16,6 +16,13 @@ This tool registers global Windows hotkeys and executes specified MCP tools with
 
 ## Operations
 
+### Service Management
+```json
+{"operation": "start_service"}
+{"operation": "stop_service"}
+{"operation": "service_status"}
+```
+
 ### Register Hotkey
 ```json
 {
@@ -61,22 +68,22 @@ This tool registers global Windows hotkeys and executes specified MCP tools with
 
 #### Start the hotkey service
 ```bash
-python -m mcp_server.run run lng_winapi_hotkey_listener '{"operation":"start_service"}'
+python -m mcp_server.run run lng_winapi_hotkey_listener '{\"operation\":\"start_service\"}'
 ```
 
 #### Register a hotkey
 ```bash
-python -m mcp_server.run run lng_winapi_hotkey_listener '{"operation":"register","hotkey":"F7","tool_name":"lng_count_words","tool_json":{"input_text":"test"}}'
+python -m mcp_server.run run lng_winapi_hotkey_listener '{\"operation\":\"register\",\"hotkey\":\"F7\",\"tool_name\":\"lng_count_words\",\"tool_json\":{\"input_text\":\"test\"}}'
 ```
 
 #### List active hotkeys
 ```bash
-python -m mcp_server.run run lng_winapi_hotkey_listener '{"operation":"list"}'
+python -m mcp_server.run run lng_winapi_hotkey_listener '{\"operation\":\"list\"}'
 ```
 
 #### Stop the service
 ```bash
-python -m mcp_server.run run lng_winapi_hotkey_listener '{"operation":"stop_service"}'
+python -m mcp_server.run run lng_winapi_hotkey_listener '{\"operation\":\"stop_service\"}'
 ```
 
 ### Using Hotkey Service Directly
@@ -120,3 +127,16 @@ python hotkey_service.py status
 - **Calculator**: Press Ctrl+C to perform calculations
 - **Screenshot**: Press F12 to take and save screenshots
 - **AI queries**: Press Ctrl+Q to ask questions to LLM tools
+- **Translation**: Press Ctrl+Shift+Alt+F11 to translate clipboard text via batch pipeline
+
+### Complex Pipeline Example
+```bash
+# Auto-translate clipboard Russian text to English
+python -m mcp_server.run run lng_winapi_hotkey_listener '{\"operation\":\"register\",\"hotkey\":\"ctrl+shift+alt+f11\",\"tool_name\":\"lng_batch_run\",\"tool_json\":{\"pipeline\":[{\"tool\":\"lng_winapi_clipboard_get\",\"params\":{},\"output\":\"clipboard_text\"},{\"tool\":\"lng_llm_prompt_template\",\"params\":{\"command\":\"use\",\"template_name\":\"translate_to_en_b2\",\"text\":\"${clipboard_text.content || clipboard_text.unicode_text}\"},\"output\":\"translated_text\"},{\"tool\":\"lng_winapi_clipboard_set\",\"params\":{\"text\":\"${translated_text}\"},\"output\":\"final_result\"}],\"final_result\":\"${translated_text}\"}}'
+```
+
+## Troubleshooting
+
+- **Hotkey conflicts**: Use uncommon combinations like `Ctrl+Shift+Alt+F11`
+- **Registration fails**: Check if hotkey is already used by another application
+- **Service not responding**: Restart with `stop_service` then `start_service`

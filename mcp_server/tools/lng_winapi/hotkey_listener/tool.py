@@ -29,15 +29,22 @@ This tool communicates with a background hotkey service to:
 • 'start_service': Start the background hotkey service
 • 'stop_service': Stop the background hotkey service
 • 'service_status': Check if the service is running
-• 'register': Register a new hotkey listener
-• 'unregister': Remove a hotkey listener
+• 'register': Register a new hotkey listener (with conflict detection)
+• 'unregister': Remove a specific hotkey listener
 • 'list': List all active hotkey listeners
 • 'unregister_all': Remove all hotkey listeners
+
+**Error Handling:**
+• Detects hotkey conflicts with other applications
+• Suggests alternative hotkey combinations
+• Shows list of currently registered hotkeys
+• Auto-starts service if not running during registration
 
 **Examples:**
 Start service: operation="start_service"
 Register: operation="register", hotkey="ctrl+shift+f1", tool_name="lng_count_words", tool_json={"input_text": "test"}
-List: operation="list"
+List registered hotkeys: operation="list"
+Unregister specific: operation="unregister", hotkey="ctrl+shift+f1"
 Stop service: operation="stop_service"
 """,
         "schema": {
@@ -88,15 +95,21 @@ async def run_tool(name: str, arguments: dict) -> list[types.Content]:
             
             # Запускаем сервис в фоне
             try:
+                # Используем правильный путь к Python из виртуальной среды
+                python_exe = Path(__file__).parent.parent.parent.parent.parent / ".virtualenv" / "Scripts" / "python.exe"
+                if not python_exe.exists():
+                    python_exe = sys.executable  # Fallback
+                
                 # Запуск в detached режиме (не блокирующий)
                 if sys.platform == "win32":
                     # Windows - используем CREATE_NEW_PROCESS_GROUP и DETACHED_PROCESS
                     process = subprocess.Popen(
-                        [sys.executable, str(service_script), "daemon"],
+                        [str(python_exe), str(service_script), "daemon"],
                         creationflags=subprocess.CREATE_NEW_PROCESS_GROUP | subprocess.DETACHED_PROCESS,
                         stdout=subprocess.DEVNULL,
                         stderr=subprocess.DEVNULL,
-                        stdin=subprocess.DEVNULL
+                        stdin=subprocess.DEVNULL,
+                        cwd=Path(__file__).parent.parent.parent.parent.parent  # Устанавливаем рабочую директорию
                     )
                 else:
                     # Unix-like системы
@@ -170,6 +183,21 @@ async def run_tool(name: str, arguments: dict) -> list[types.Content]:
             # Регистрируем хоткей
             tool_json_str = json.dumps(tool_json)
             result = await run_service_command(service_script, ["register", hotkey, tool_name, tool_json_str])
+            
+            # Если регистрация не удалась, добавляем дополнительную информацию
+            if not result.get("success"):
+                error_msg = result.get("error", "Unknown error")
+                
+                # Проверяем, если хоткей уже зарегистрирован
+                if "already registered" in error_msg.lower() or "listener thread registration failed" in error_msg.lower():
+                    result["error"] = f"Hotkey '{hotkey}' is already registered by another application or process. Please choose a different hotkey combination."
+                    result["suggestion"] = f"Try using: 'ctrl+shift+{hotkey.split('+')[-1]}' or 'win+{hotkey.split('+')[-1]}' instead"
+                    
+                    # Показываем список уже зарегистрированных хоткеев
+                    list_result = await run_service_command(service_script, ["list"])
+                    if list_result.get("success"):
+                        result["registered_hotkeys"] = list_result.get("hotkeys", [])
+            
             return [types.TextContent(type="text", text=json.dumps(result, ensure_ascii=False, indent=2))]
         
         elif operation == "unregister":
@@ -206,16 +234,25 @@ async def run_tool(name: str, arguments: dict) -> list[types.Content]:
 async def run_service_command(service_script: Path, args: list) -> dict:
     """Выполняет команду к hotkey service и возвращает результат"""
     try:
-        cmd = [sys.executable, str(service_script)] + args
+        # Используем правильный путь к Python из виртуальной среды
+        python_exe = Path(__file__).parent.parent.parent.parent.parent / ".virtualenv" / "Scripts" / "python.exe"
+        if not python_exe.exists():
+            python_exe = sys.executable  # Fallback
+        
+        cmd = [str(python_exe), str(service_script)] + args
         logger.info(f"Executing service command: {cmd}")
+        logger.info(f"Working directory: {os.getcwd()}")
         
         # Запускаем команду синхронно для простых команд (status, list, etc.)
+        logger.info(f"About to run subprocess with timeout=30")
         result = subprocess.run(
             cmd,
             capture_output=True,
             text=True,
-            timeout=10  # Таймаут 10 секунд
+            timeout=30,  # Увеличиваем таймаут до 30 секунд
+            cwd=Path(__file__).parent.parent.parent.parent.parent  # Устанавливаем рабочую директорию в корень проекта
         )
+        logger.info(f"Subprocess completed with returncode: {result.returncode}")
         
         if result.returncode == 0:
             try:
