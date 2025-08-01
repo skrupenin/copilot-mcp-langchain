@@ -323,13 +323,33 @@ def is_service_running():
             pid = int(f.read().strip())
         
         # Проверяем, существует ли процесс
-        try:
-            os.kill(pid, 0)  # Не убивает процесс, просто проверяет существование
-            return True, pid
-        except OSError:
-            # Процесс не существует, удаляем старый PID файл
-            PID_FILE.unlink()
-            return False, None
+        import platform
+        import subprocess
+        
+        if platform.system() == "Windows":
+            try:
+                # В Windows используем tasklist для проверки процесса
+                result = subprocess.run(['tasklist', '/FI', f'PID eq {pid}'], 
+                                      capture_output=True, text=True, check=True)
+                if str(pid) in result.stdout:
+                    return True, pid
+                else:
+                    # Процесс не существует, удаляем старый PID файл
+                    PID_FILE.unlink()
+                    return False, None
+            except subprocess.CalledProcessError:
+                # Процесс не существует, удаляем старый PID файл
+                PID_FILE.unlink()
+                return False, None
+        else:
+            # Unix-like системы
+            try:
+                os.kill(pid, 0)  # Не убивает процесс, просто проверяет существование
+                return True, pid
+            except OSError:
+                # Процесс не существует, удаляем старый PID файл
+                PID_FILE.unlink()
+                return False, None
             
     except Exception as e:
         logger.error(f"Ошибка проверки статуса сервиса: {e}")
@@ -342,23 +362,43 @@ def stop_service():
         return {"success": False, "error": "Service is not running"}
     
     try:
-        # Отправляем SIGTERM
-        os.kill(pid, signal.SIGTERM)
+        import subprocess
+        import platform
         
-        # Ждем завершения
-        for _ in range(10):  # Ждем до 5 секунд
-            if not is_service_running()[0]:
-                return {"success": True, "message": f"Service (PID: {pid}) stopped successfully"}
-            time.sleep(0.5)
-        
-        # Если не завершился, принудительно
-        try:
-            os.kill(pid, signal.SIGKILL)
-            return {"success": True, "message": f"Service (PID: {pid}) force killed"}
-        except:
-            pass
-        
-        return {"success": False, "error": f"Failed to stop service (PID: {pid})"}
+        if platform.system() == "Windows":
+            # В Windows используем taskkill
+            try:
+                subprocess.run(['taskkill', '/F', '/PID', str(pid)], 
+                             check=True, capture_output=True, text=True)
+                
+                # Ждем завершения
+                for _ in range(10):  # Ждем до 5 секунд
+                    if not is_service_running()[0]:
+                        return {"success": True, "message": f"Service (PID: {pid}) stopped successfully"}
+                    time.sleep(0.5)
+                    
+                return {"success": False, "error": f"Failed to stop service (PID: {pid})"}
+                
+            except subprocess.CalledProcessError as e:
+                return {"success": False, "error": f"Failed to stop service (PID: {pid}): {e.stderr}"}
+        else:
+            # Unix-like системы
+            os.kill(pid, signal.SIGTERM)
+            
+            # Ждем завершения
+            for _ in range(10):  # Ждем до 5 секунд
+                if not is_service_running()[0]:
+                    return {"success": True, "message": f"Service (PID: {pid}) stopped successfully"}
+                time.sleep(0.5)
+            
+            # Если не завершился, принудительно
+            try:
+                os.kill(pid, signal.SIGKILL)
+                return {"success": True, "message": f"Service (PID: {pid}) force killed"}
+            except:
+                pass
+            
+            return {"success": False, "error": f"Failed to stop service (PID: {pid})"}
         
     except Exception as e:
         return {"success": False, "error": f"Error stopping service: {e}"}
