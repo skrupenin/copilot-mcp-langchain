@@ -3,13 +3,15 @@ import json
 import logging
 from typing import Any, Dict, List
 from mcp_server.tools.tool_registry import run_tool as execute_tool
-from mcp_server.pipeline import execute_pipeline
+from mcp_server.pipeline import PipelineExecutor
 
 logger = logging.getLogger('mcp_server.tools.lng_batch_run')
 
 async def tool_info() -> dict:
     return {
-        "description": """Executes a batch pipeline of tool calls with variable substitution using JavaScript expressions.
+        "description": """Executes a batch pipeline of tool calls with variable substitution and conditional logic using JavaScript expressions.
+
+**⚡ Enhanced with conditional logic support!**
 
 **Pipeline Structure:**
 ```json
@@ -22,6 +24,16 @@ async def tool_info() -> dict:
         "param2": "${variable_name.property || 'default'}"
       },
       "output": "variable_name"
+    },
+    {
+      "type": "condition",
+      "condition": "${variable_name.property > 5}",
+      "then": [
+        {"tool": "tool_if_true", "params": {...}}
+      ],
+      "else": [
+        {"tool": "tool_if_false", "params": {...}}
+      ]
     }
   ],
   "final_result": "${last_variable || 'ok'}"
@@ -30,10 +42,13 @@ async def tool_info() -> dict:
 
 **Features:**
 • Sequential tool execution with variable passing
+• **NEW**: Conditional logic with if-then-else blocks
+• **NEW**: Nested conditions with unlimited depth  
+• **NEW**: Sub-pipelines in then/else blocks
 • JavaScript expressions inside ${} for data manipulation
 • JSON parsing for structured responses, fallback to string
 • Error handling with context preservation
-• Flexible final result calculation
+• Shared variable context across all pipeline levels
 
 **Variable Substitution:**
 • `${variable}` - Direct variable value
@@ -42,13 +57,20 @@ async def tool_info() -> dict:
 • `${variable ? value1 : value2}` - Conditional expressions
 • `${JSON.stringify(variable)}` - JSON serialization
 
+**Conditional Logic:**
+• `{"type": "condition", "condition": "${expr}", "then": [...], "else": [...]}`
+• JavaScript conditions: `${count > 5 && text.length > 0}`
+• Sub-pipelines: then/else blocks can contain multiple steps
+• Nesting: conditions inside conditions (unlimited depth)
+• Shared context: all variables accessible in all levels
+
 **Example Usage:**
-1. Get clipboard → Process with LLM → Set clipboard back
-2. Chain multiple data transformations
-3. Conditional logic based on previous results
+1. Get clipboard → Count words → Set different message based on length
+2. Process data → Conditional analysis → Different actions based on results
+3. Complex workflows with branching logic and nested conditions
 
 **Error Handling:**
-Returns error details with failed tool name and variable context when any step fails.""",
+Returns error details with failed tool name and variable context when any step fails. Errors in sub-pipelines stop the entire pipeline.""",
         "schema": {
             "type": "object",
             "properties": {
@@ -87,8 +109,11 @@ async def run_tool(name: str, arguments: dict) -> list[types.Content]:
     """Execute a batch pipeline of tool calls with variable substitution."""
     
     try:
-        # Execute pipeline using the new pipeline module
-        result = await execute_pipeline(arguments, execute_tool)
+        # Create enhanced pipeline executor with conditional logic support
+        executor = PipelineExecutor(execute_tool)
+        
+        # Execute pipeline using the enhanced pipeline system
+        result = await executor.execute(arguments)
         
         # Return result in the expected format
         return [types.TextContent(

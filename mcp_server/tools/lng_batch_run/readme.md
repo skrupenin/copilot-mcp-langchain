@@ -129,11 +129,51 @@ If any step fails, execution stops and returns:
 }
 ```
 
+## Conditional Logic Support ✨
+
+**NEW**: The pipeline now supports conditional logic with JavaScript-like expressions!
+
+### Basic Conditional Syntax
+```json
+{
+  "type": "condition",
+  "condition": "${variable > 5}",
+  "then": [
+    {"tool": "tool_when_true", "params": {}, "output": "result"}
+  ],
+  "else": [
+    {"tool": "tool_when_false", "params": {}, "output": "result"}
+  ]
+}
+```
+
+### Smart Clipboard Processing Example
+```json
+{
+  "pipeline": [
+    {"tool": "lng_winapi_clipboard_get", "params": {}, "output": "clipboard"},
+    {"tool": "lng_count_words", "params": {"input_text": "${clipboard.content}"}, "output": "stats"},
+    {
+      "type": "condition",
+      "condition": "${stats.wordCount > 10}",
+      "then": [
+        {"tool": "lng_winapi_clipboard_set", "params": {"text": "Too long: ${stats.wordCount} words"}}
+      ],
+      "else": [
+        {"tool": "lng_winapi_clipboard_set", "params": {"text": "Word count: ${stats.wordCount}"}}
+      ]
+    }
+  ]
+}
+```
+
+**📖 See `conditional_examples.md` for comprehensive conditional logic documentation!**
+
 ## Future Extensions
 
 The new architecture in `mcp_server.pipeline` supports future extensions:
 
-- **Conditional logic** - `if/then/else` statements
+- ✅ **Conditional logic** - `if/then/else` statements (IMPLEMENTED)
 - **Loops** - `foreach` iterations
 - **Parallel execution** - Running multiple tools simultaneously
 - **Templates** - Reusable pipeline components
