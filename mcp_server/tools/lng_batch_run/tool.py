@@ -3,15 +3,15 @@ import json
 import logging
 from typing import Any, Dict, List
 from mcp_server.tools.tool_registry import run_tool as execute_tool
-from mcp_server.pipeline import PipelineExecutor
+from mcp_server.pipeline import StrategyBasedExecutor
 
 logger = logging.getLogger('mcp_server.tools.lng_batch_run')
 
 async def tool_info() -> dict:
     return {
-        "description": """Executes a batch pipeline of tool calls with variable substitution and conditional logic using JavaScript expressions.
+        "description": """Executes a batch pipeline of tool calls with variable substitution using JavaScript expressions.
 
-**⚡ Enhanced with conditional logic support!**
+**⚡ Now powered by strategy-based architecture for maximum extensibility!**
 
 **Pipeline Structure:**
 ```json
@@ -34,21 +34,27 @@ async def tool_info() -> dict:
       "else": [
         {"tool": "tool_if_false", "params": {...}}
       ]
+    },
+    {
+      "type": "forEach",
+      "forEach": "${collection}",
+      "item": "current_item",
+      "do": [
+        {"tool": "process_item", "params": {"input": "${current_item}"}}
+      ]
     }
   ],
   "final_result": "${last_variable || 'ok'}"
 }
 ```
 
-**Features:**
-• Sequential tool execution with variable passing
-• **NEW**: Conditional logic with if-then-else blocks
-• **NEW**: Nested conditions with unlimited depth  
-• **NEW**: Sub-pipelines in then/else blocks
-• JavaScript expressions inside ${} for data manipulation
-• JSON parsing for structured responses, fallback to string
-• Error handling with context preservation
-• Shared variable context across all pipeline levels
+**Strategy-Based Features:**
+🔧 **Tool Execution** - Sequential tool calls with variable passing
+🔀 **Conditional Logic** - if-then-else with JavaScript expressions  
+🔄 **Loops** - forEach, while, repeat iterations
+⚡ **Parallel Execution** - Run multiple steps concurrently
+⏱️ **Timing Control** - Delays and sleep functionality
+📦 **Modular Design** - Easy to extend with new strategies
 
 **Variable Substitution:**
 • `${variable}` - Direct variable value
@@ -57,20 +63,48 @@ async def tool_info() -> dict:
 • `${variable ? value1 : value2}` - Conditional expressions
 • `${JSON.stringify(variable)}` - JSON serialization
 
-**Conditional Logic:**
-• `{"type": "condition", "condition": "${expr}", "then": [...], "else": [...]}`
-• JavaScript conditions: `${count > 5 && text.length > 0}`
-• Sub-pipelines: then/else blocks can contain multiple steps
-• Nesting: conditions inside conditions (unlimited depth)
-• Shared context: all variables accessible in all levels
+**Available Step Types:**
+• `{"tool": "name", "params": {}, "output": "var"}` - Tool execution
+• `{"type": "condition", "condition": "${expr}", "then": [...], "else": [...]}` - Conditional logic
+• `{"type": "forEach", "forEach": "${collection}", "item": "var", "do": [...]}` - Loop over collection
+• `{"type": "while", "while": "${condition}", "do": [...]}` - While loop
+• `{"type": "repeat", "repeat": 3, "do": [...]}` - Repeat N times
+• `{"type": "parallel", "parallel": [...]}` - Parallel execution
+• `{"type": "delay", "delay": 1.5}` - Sleep/wait
 
-**Example Usage:**
-1. Get clipboard → Count words → Set different message based on length
-2. Process data → Conditional analysis → Different actions based on results
-3. Complex workflows with branching logic and nested conditions
+**Example with Multiple Strategies:**
+```json
+{
+  "pipeline": [
+    {"tool": "lng_winapi_clipboard_get", "params": {}, "output": "clipboard"},
+    {
+      "type": "condition",
+      "condition": "${clipboard.success}",
+      "then": [
+        {
+          "type": "parallel",
+          "parallel": [
+            {"tool": "lng_count_words", "params": {"input_text": "${clipboard.content}"}, "output": "stats"},
+            {"tool": "lng_save_screenshot", "params": {}}
+          ]
+        }
+      ],
+      "else": [
+        {"tool": "lng_winapi_clipboard_set", "params": {"text": "Clipboard empty"}}
+      ]
+    }
+  ]
+}
+```
+
+**Architecture Benefits:**
+• Modular strategy system (composition over inheritance)
+• Easy to add new step types without modifying existing code
+• Each strategy handles specific functionality independently
+• Full backward compatibility with existing pipelines
 
 **Error Handling:**
-Returns error details with failed tool name and variable context when any step fails. Errors in sub-pipelines stop the entire pipeline.""",
+Returns error details with failed tool name and variable context when any step fails.""",
         "schema": {
             "type": "object",
             "properties": {
@@ -84,6 +118,11 @@ Returns error details with failed tool name and variable context when any step f
                                 "type": "string",
                                 "description": "Name of the tool to execute"
                             },
+                            "type": {
+                                "type": "string", 
+                                "description": "Step type: 'tool', 'condition', 'forEach', 'while', 'repeat', 'parallel', 'delay'",
+                                "enum": ["tool", "condition", "forEach", "while", "repeat", "parallel", "delay"]
+                            },
                             "params": {
                                 "type": "object",
                                 "description": "Parameters to pass to the tool"
@@ -91,9 +130,40 @@ Returns error details with failed tool name and variable context when any step f
                             "output": {
                                 "type": "string",
                                 "description": "Variable name to store the tool result"
+                            },
+                            "condition": {
+                                "type": "string",
+                                "description": "Condition expression for conditional steps"
+                            },
+                            "then": {
+                                "type": "array",
+                                "description": "Steps to execute if condition is true"
+                            },
+                            "else": {
+                                "type": "array", 
+                                "description": "Steps to execute if condition is false"
+                            },
+                            "forEach": {
+                                "type": "string",
+                                "description": "Collection expression for forEach loops"
+                            },
+                            "while": {
+                                "type": "string",
+                                "description": "Condition expression for while loops"
+                            },
+                            "repeat": {
+                                "type": ["integer", "string"],
+                                "description": "Count expression for repeat loops"
+                            },
+                            "parallel": {
+                                "type": "array",
+                                "description": "Steps to execute in parallel"
+                            },
+                            "delay": {
+                                "type": ["number", "string"],
+                                "description": "Delay duration in seconds"
                             }
-                        },
-                        "required": ["tool", "params"]
+                        }
                     }
                 },
                 "final_result": {
@@ -106,19 +176,28 @@ Returns error details with failed tool name and variable context when any step f
     }
 
 async def run_tool(name: str, arguments: dict) -> list[types.Content]:
-    """Execute a batch pipeline of tool calls with variable substitution."""
+    """Execute a batch pipeline using strategy-based architecture."""
     
     try:
-        # Create enhanced pipeline executor with conditional logic support
-        executor = PipelineExecutor(execute_tool)
+        # Create strategy-based pipeline executor
+        executor = StrategyBasedExecutor(execute_tool)
         
-        # Execute pipeline using the enhanced pipeline system
+        # Log available strategies
+        strategies = executor.get_strategies()
+        logger.info(f"Available strategies: {', '.join(strategies)}")
+        
+        # Execute pipeline using the strategy-based system
         result = await executor.execute(arguments)
+        
+        # Add architecture info to result
+        result_dict = result.to_dict()
+        result_dict["architecture"] = "strategy-based"
+        result_dict["available_strategies"] = strategies
         
         # Return result in the expected format
         return [types.TextContent(
             type="text", 
-            text=json.dumps(result.to_dict(), ensure_ascii=False, indent=2)
+            text=json.dumps(result_dict, ensure_ascii=False, indent=2)
         )]
         
     except Exception as e:
@@ -128,6 +207,7 @@ async def run_tool(name: str, arguments: dict) -> list[types.Content]:
             text=json.dumps({
                 "success": False,
                 "error": f"Unexpected error: {str(e)}",
-                "context": {}
+                "context": {},
+                "architecture": "strategy-based"
             }, ensure_ascii=False, indent=2)
         )]

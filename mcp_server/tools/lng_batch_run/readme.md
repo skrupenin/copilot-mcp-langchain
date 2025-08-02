@@ -2,17 +2,21 @@
 
 Executes a batch pipeline of tool calls with variable substitution using JavaScript expressions.
 
-**⚡ Now powered by the new `mcp_server.pipeline` module for better extensibility and maintainability!**
+**⚡ Now powered by modular strategy architecture for maximum extensibility!**
 
 ## Features
 
 - **Sequential execution** - Tools run one after another
 - **Variable passing** - Store results and use in subsequent steps
 - **JavaScript expressions** - Use `${expression}` syntax for data manipulation
+- **Conditional logic** - `if/then/else` statements with expression evaluation
+- **Loop support** - `forEach`, `while`, and `repeat` iterations
+- **Parallel execution** - Run multiple tools simultaneously
+- **Timing control** - Delays and precise timing operations
 - **JSON parsing** - Automatic parsing of tool responses
 - **Property access** - Access object properties with `obj.property` syntax
 - **Error handling** - Detailed error reporting with execution context
-- **Modular architecture** - Built on `mcp_server.pipeline` for easy extension
+- **Modular architecture** - Built on strategy pattern for easy extension
 
 ## Usage
 
@@ -129,55 +133,65 @@ If any step fails, execution stops and returns:
 }
 ```
 
-## Conditional Logic Support ✨
+### Advanced Pipeline Features ✨
 
-**NEW**: The pipeline now supports conditional logic with JavaScript-like expressions!
+**NEW**: Support for complex pipeline logic with modular strategy architecture!
 
-### Basic Conditional Syntax
+#### Conditional Logic
 ```json
 {
   "type": "condition",
-  "condition": "${variable > 5}",
+  "condition": "${stats.wordCount > 10}",
   "then": [
-    {"tool": "tool_when_true", "params": {}, "output": "result"}
+    {"tool": "lng_winapi_clipboard_set", "params": {"text": "Long text: ${stats.wordCount} words"}}
   ],
   "else": [
-    {"tool": "tool_when_false", "params": {}, "output": "result"}
+    {"tool": "lng_winapi_clipboard_set", "params": {"text": "Short text: ${stats.wordCount} words"}}
   ]
 }
 ```
 
-### Smart Clipboard Processing Example
+#### Loop Operations
 ```json
 {
-  "pipeline": [
-    {"tool": "lng_winapi_clipboard_get", "params": {}, "output": "clipboard"},
-    {"tool": "lng_count_words", "params": {"input_text": "${clipboard.content}"}, "output": "stats"},
-    {
-      "type": "condition",
-      "condition": "${stats.wordCount > 10}",
-      "then": [
-        {"tool": "lng_winapi_clipboard_set", "params": {"text": "Too long: ${stats.wordCount} words"}}
-      ],
-      "else": [
-        {"tool": "lng_winapi_clipboard_set", "params": {"text": "Word count: ${stats.wordCount}"}}
-      ]
-    }
+  "type": "forEach",
+  "forEach": "${collection}",
+  "item": "current_item",
+  "do": [
+    {"tool": "lng_count_words", "params": {"input_text": "${current_item}"}, "output": "stats_${current_item}"}
   ]
 }
 ```
 
-**📖 See `conditional_examples.md` for comprehensive conditional logic documentation!**
+#### Parallel Execution
+```json
+{
+  "type": "parallel",
+  "parallel": [
+    {"tool": "lng_count_words", "params": {"input_text": "Text 1"}, "output": "stats1"},
+    {"tool": "lng_math_calculator", "params": {"expression": "2 + 2"}, "output": "calc1"}
+  ]
+}
+```
 
-## Future Extensions
+#### Timing Control
+```json
+{
+  "type": "delay",
+  "delay": 1.5
+}
+```
 
-The new architecture in `mcp_server.pipeline` supports future extensions:
+## Architecture
 
-- ✅ **Conditional logic** - `if/then/else` statements (IMPLEMENTED)
-- **Loops** - `foreach` iterations
-- **Parallel execution** - Running multiple tools simultaneously
-- **Templates** - Reusable pipeline components
-- **Advanced error handling** - Retry, fallback, continue strategies
+Built on modular strategy pattern with 5 core strategies:
+- **Tool Strategy**: Basic tool execution with parameter substitution
+- **Conditional Strategy**: If-then-else logic with JavaScript expressions
+- **Loop Strategy**: forEach, while, and repeat iterations
+- **Parallel Strategy**: Concurrent execution of multiple steps
+- **Delay Strategy**: Timing operations and delays
+
+Each strategy is independently tested and easily extensible.
 
 ## Integration
 

@@ -52,6 +52,7 @@ With this setup, `GitHub Copilot` gains access to new, well-documented tools tha
   ```
 
 - **Custom Langchain Tools**:
+  - `lng_batch_run` - advanced pipeline execution with conditionals, loops, and parallel processing
   - `lng_count_words` - word counting, demonstrates python function calling
   - `lng_get_tools_info` - tools information retrieval, collects all the information about tools in one place, that helps in `Github Copilot`.
   - `lng_llm_rag_add_data` and `lng_rag_search` - demonstrates RAG (Retrieval Augmented Generation) functionality 

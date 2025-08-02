@@ -1,54 +1,66 @@
 """
-Pipeline package for MCP server.
+Modern pipeline architecture for MCP tool chaining.
 
-Provides core and enhanced pipeline execution capabilities:
-- Core: Basic tool chaining with variable substitution
-- Enhanced: Adds conditional logic, nested pipelines, JavaScript expressions
+This module provides a comprehensive pipeline system with:
+- Strategy-based architecture for extensibility
+- Support for conditionals, loops, parallel execution
+- Advanced expression evaluation with ternary operators
+- Clean separation of concerns
 
-Usage:
-    # For basic pipelines
+Usage (recommended):
     from mcp_server.pipeline import PipelineExecutor
     
-    # For enhanced pipelines with conditions
-    from mcp_server.pipeline import EnhancedPipelineExecutor
-    
-    # Backward compatibility
-    from mcp_server.pipeline import ConditionalPipelineExecutor
+    executor = PipelineExecutor(tool_runner=run_tool)
+    result = await executor.execute(pipeline_config)
+
+Legacy usage (deprecated):
+    from mcp_server.pipeline.core import LegacyPipelineExecutor
 """
 
-# Import core classes
-from .core import (
-    PipelineExecutor,
-    PipelineResult,
+# Import the main strategy-based executor (recommended)
+from .strategies import PipelineExecutor, StrategyBasedExecutor
+
+# Import data models
+from .models import PipelineResult, ExecutionContext, StepType
+
+# Import utility classes for advanced usage
+from .utils import (
+    ExpressionHandler,
     ExpressionEvaluator,
     VariableSubstitutor,
-    ResponseParser,
-    ExecutionContext,
-    StepType
+    ResponseParser
 )
 
-# Import enhanced classes
-from .enhanced import (
-    EnhancedPipelineExecutor,
-    ConditionalPipelineExecutor  # Alias for backward compatibility
+# Legacy imports for backward compatibility
+from .core import (
+    LegacyPipelineExecutor,
+    execute_pipeline,
+    evaluate_js_expression,
+    substitute_variables,
+    parse_tool_response
 )
 
-# Default export for backward compatibility
-# Existing code using: from mcp_server.pipeline import PipelineExecutor
-# Will get the enhanced version automatically
-PipelineExecutor = EnhancedPipelineExecutor
-
+# Export public API
 __all__ = [
-    # Core classes
+    # Main executor (strategy-based - recommended)
+    'PipelineExecutor',
+    'StrategyBasedExecutor',
+    
+    # Data models
     'PipelineResult',
-    'ExpressionEvaluator', 
-    'VariableSubstitutor',
-    'ResponseParser',
-    'ExecutionContext',
+    'ExecutionContext', 
     'StepType',
     
-    # Main executors
-    'PipelineExecutor',  # Enhanced by default
-    'EnhancedPipelineExecutor',
-    'ConditionalPipelineExecutor',  # Alias
+    # Utility classes
+    'ExpressionHandler',
+    'ExpressionEvaluator',
+    'VariableSubstitutor',
+    'ResponseParser',
+    
+    # Legacy support (deprecated)
+    'LegacyPipelineExecutor',
+    'execute_pipeline',
+    'evaluate_js_expression',
+    'substitute_variables',
+    'parse_tool_response'
 ]
