@@ -8,3 +8,4 @@ python -m mcp_server.run batch lng_llm_rag_add_data '{\"input_text\":\"Hello pir
 ```
 - Log file in this case will be `mcp_server/logs/mcp_runner.log`.
 - Always use single quotes for the json parameter string, and escape double quotes within that string with a slash.
+- But if you were asked to test a new tool via MCP explicitly, then always ask after the changes if the server was restarted, as this is done manually.

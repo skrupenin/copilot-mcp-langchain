@@ -6,5 +6,7 @@ mcp_server/logs/hotkey_service.log
 mcp_server/logs/hotkey_core.log
 mcp_server/prompts
 mcp_server/hotkeys
+mcp_server/webhooks
+mcp_server/logs/webhook
 work
 .env
