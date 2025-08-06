@@ -184,9 +184,23 @@ def install_dependencies():
     
     # Install each dependency
     failed_packages = []
+    builtin_modules = {'ssl', 'os', 'sys', 'json', 'sqlite3', 'datetime', 'collections', 're', 'math', 'random', 'urllib', 'http', 'socket', 'threading', 'multiprocessing', 'asyncio', 'logging', 'unittest', 'csv', 'xml', 'html'}
+    
     for i, package in enumerate(sorted(all_dependencies), 1):
         try:
             print(f"📥 Installing {package} ({i}/{len(all_dependencies)})...")
+            
+            # Check if it's a built-in module
+            if package in builtin_modules:
+                try:
+                    __import__(package)
+                    print(f"   📦 {package} is a built-in Python module (already available)")
+                    print(f"   ✅ {package} installation completed")
+                    print(f"   🎯 {package} ready for use!")
+                    print()
+                    continue
+                except ImportError:
+                    pass  # Fall through to pip installation
             
             # First check if package is already installed
             check_result = subprocess.run([
