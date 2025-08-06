@@ -1,1 +1,2 @@
 - Follow the instructions in the file `mcp_server/instructions/main.agent.md`.
+- You sould load it in every prompt to get the latest instructions.
