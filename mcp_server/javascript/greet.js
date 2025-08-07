@@ -1,1 +1,0 @@
-function greet(params) { return "Hello, " + params; }

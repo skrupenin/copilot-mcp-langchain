@@ -1,1 +1,0 @@
-function calculateSum(params) { return params.a + params.b; }

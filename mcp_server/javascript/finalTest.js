@@ -1,1 +1,0 @@
-function finalTest(params) { const result = { success: true, data: params, timestamp: new Date().toISOString() }; return JSON.stringify(result); }
