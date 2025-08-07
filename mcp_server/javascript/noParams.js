@@ -1,0 +1,1 @@
+function noParams() { return "No parameters needed"; }

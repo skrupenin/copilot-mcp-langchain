@@ -1,0 +1,1 @@
+function complexCalc(params) { const { numbers, operation } = params; if (operation === "sum") return numbers.reduce((a, b) => a + b, 0); if (operation === "product") return numbers.reduce((a, b) => a * b, 1); return "Invalid operation"; }

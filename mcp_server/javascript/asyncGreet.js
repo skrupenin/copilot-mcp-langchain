@@ -1,0 +1,1 @@
+async function asyncGreet(params) { return Promise.resolve("Async greeting: " + params); }
