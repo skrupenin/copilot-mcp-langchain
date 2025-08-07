@@ -1,1 +1,0 @@
-async function asyncTest(params) { return Promise.resolve("Async result: " + params); }

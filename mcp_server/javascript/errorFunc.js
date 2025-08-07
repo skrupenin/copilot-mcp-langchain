@@ -1,1 +1,0 @@
-function errorFunc(params) { return params.nonexistent.property; }
