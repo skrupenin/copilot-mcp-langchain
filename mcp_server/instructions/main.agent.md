@@ -5,6 +5,7 @@
 - Follow `./check-mcp-enabled.agent.md` if there is no MCP enabled or you need to check if MCP is enabled.
 - Follow `./choose-library.agent.md` when you need to choose a library for Python.
 - Follow `./update-install.agent.md` if you suggest any `pip install xxxx`.
+- Follow `./git-repo.agent.md` if you need to work with git repository.
 - Follow `./read-debug-info.agent.md` when there are some problems.
 - Follow `./testing-tool.agent.md` if you need to test the tool after creation or modification. What json escaping quotes strategy you should use is also described in the file.
 - Follow `./create-tool.agent.md` when you create a new tool.
