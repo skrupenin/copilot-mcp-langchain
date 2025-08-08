@@ -1,3 +1,3 @@
 - Follow the instructions in the file `mcp_server/instructions/main.agent.md`.
 - It contains links to other files with instructions.
-- You should load it in every prompt to get the latest instructions - because of the dynamic nature of the project.
+- You should load it in **every prompt** to get the latest instructions - because of the dynamic nature of the project.
