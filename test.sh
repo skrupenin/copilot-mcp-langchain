@@ -9,7 +9,13 @@
 ####################################
 ### activate virtual environment ###
 ####################################
-. ./.virtualenv/Scripts/activate
+if [[ "$OSTYPE" == "msys" || "$OSTYPE" == "win32" || "$OSTYPE" == "cygwin" ]]; then    
+    # Windows 
+    . ./.virtualenv/Scripts/activate
+else    
+    # Linux/Unix 
+    source ./.virtualenv/bin/activate
+fi
 
 ############################################################
 ### to check connection to the OpenAI/Azure LLM provider ###
