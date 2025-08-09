@@ -24,10 +24,14 @@ With this setup, `GitHub Copilot` gains access to new, well-documented tools tha
 
 ## Key Components
 
-- **Simple Examples**: Demonstrates integration with different LLM providers
-  - `simple_openai.py` - OpenAI integration
-  - `simple_azure.py` - Azure OpenAI integration
-  - `simple_both.py` - Flexible approach to switch between providers
+- **Simple Examples**: Demonstrates integration with different LLM providers and key LangChain concepts
+  - `simple_query_openai.py` - OpenAI integration
+  - `simple_query_azure.py` - Azure OpenAI integration  
+  - `simple_prompt_template.py` - Prompt template management and usage
+  - `simple_rag.py` - Retrieval-Augmented Generation (RAG) with vector search
+  - `simple_agent.py` - AI Agent with specialized tools (character counting, MD5 hashing, regex matching)
+  - `simple_structured_output.py` - Structured data extraction in multiple formats (JSON, YAML, Markdown)
+  - `simple_chain_of_thought.py` - Step-by-step problem solving with transparent reasoning
 
 - **MCP Implementation**:
   - `mcp_server/test/server.py` - Client implementation for testing
