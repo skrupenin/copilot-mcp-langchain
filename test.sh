@@ -9,14 +9,28 @@
 ####################################
 ### activate virtual environment ###
 ####################################
-. ./.virtualenv/Scripts/activate
+if [[ "$OSTYPE" == "msys" || "$OSTYPE" == "win32" || "$OSTYPE" == "cygwin" ]]; then    
+    # Windows 
+    . ./.virtualenv/Scripts/activate
+else    
+    # Linux/Unix 
+    source ./.virtualenv/bin/activate
+fi
 
 ############################################################
 ### to check connection to the OpenAI/Azure LLM provider ###
 ############################################################
-python simple_openai.py 
-python simple_azure.py 
-python simple_both.py 
+python mcp_server/simple/query_openai.py 
+python mcp_server/simple/query_azure.py 
+
+############################################
+### to test simple LangChain examples ###
+############################################
+python mcp_server/simple/rag.py
+python mcp_server/simple/agent.py
+python mcp_server/simple/structured_output.py
+python mcp_server/simple/chain_of_thought.py
+python mcp_server/simple/prompt_template.py 
 
 ##########################################
 ### to test MCP server with MCP client ###

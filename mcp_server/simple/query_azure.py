@@ -1,8 +1,12 @@
+from color import header
+header("Query on Azure example", "yellow")
+
 import sys
 import os
 print(f"Python executable: {sys.executable}")
 print(f"Python version: {sys.version}")
 print(f"Current directory: {os.getcwd()}")
+
 from langchain_openai import OpenAI
 from langchain_openai import AzureChatOpenAI 
 from dotenv import load_dotenv
@@ -20,11 +24,12 @@ llm = AzureChatOpenAI(
     seed             = 1234
 )
 
+header("Query")
 query = "Tell me about artificial intelligence in the style of a pirate."
-print("-----------------------------------------------------------")
 print(query)
 
 response = llm.invoke(query)
-print("-----------------------------------------------------------")
+header("Response")
 print(response)
-print("-----------------------------------------------------------")
+
+header("Demonstration completed!")

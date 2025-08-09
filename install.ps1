@@ -27,6 +27,9 @@ function Eval-Echo {
 
 Eval-Echo "python --version"
 
+# updating pip 
+Eval-Echo "python -m pip install --upgrade pip"
+
 # create virtual environment
 Eval-Echo "pip install virtualenv"
 Eval-Echo "python -m virtualenv .virtualenv"

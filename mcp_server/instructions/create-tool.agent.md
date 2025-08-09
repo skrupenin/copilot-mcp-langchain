@@ -1,6 +1,7 @@
 - When you create a new tool, pay attention to the `settings.yaml` file
 - Dependencies in these files are inherited from the parent files.
-- When creating a tule group, look for the most appropriate location - the group may already exist.
+- When creating a new tool, use only English. Respond to me in the language I used.
+- When creating a tool group, look for the most appropriate location - the group may already exist.
 - If you are creating a paired tool for an existing tool, it makes sense to regroup them both with a new category.
 - Pay attention to dependencies - they may indicate group membership.
 - If it is a new group, then specify a category folder, e.g. `lng_llm` then a subcategory `rag` and then the tools `add_data` and `search`.

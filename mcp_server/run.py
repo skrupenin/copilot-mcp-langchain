@@ -303,12 +303,14 @@ def main():
         print("  python -m mcp_server.run run <tool_name> 'args'                  # Run tool")
         print("  python -m mcp_server.run batch tool1 'args1' tool2 'args2'       # Run multiple tools")
         print("  python -m mcp_server.run install_dependencies                    # Install tool dependencies")
+        print("  python -m mcp_server.run analyze_libs <lib1> [lib2] ...          # Analyze Python libraries")
         print("")
         print("Examples:")
         print("  python -m mcp_server.run run lng_count_words '{\\\"input_text\\\":\\\"Hello world\\\"}'")
         print("  python -m mcp_server.run run lng_math_calculator '{\\\"expression\\\":\\\"2+3*4\\\"}'")
         print("  python -m mcp_server.run run lng_get_tools_info")
         print("  python -m mcp_server.run batch lng_count_words '{\\\"input_text\\\":\\\"Hello\\\"}' lng_math_calculator '{\\\"expression\\\":\\\"2+3\\\"}'")
+        print("  python -m mcp_server.run analyze_libs langchain requests numpy")
         print("")
         print("📋 Quick tool list:")
         for tool in tool_definitions:
@@ -353,6 +355,33 @@ def main():
         
         # Run the tool
         run_test(tool_name, tool_args)
+    
+    elif command == 'analyze_libs':
+        if len(sys.argv) < 3:
+            print("❌ At least one library name required for analyze_libs command")
+            print("💡 Usage: python -m mcp_server.run analyze_libs <lib1> [lib2] ...")
+            print("💡 Example: python -m mcp_server.run analyze_libs langchain requests numpy")
+            return
+        
+        # Import and run library analyzer
+        try:
+            from mcp_server.libs.analyzer import LibraryAnalyzer
+            libraries = sys.argv[2:]
+            
+            print(f"🔍 Starting analysis of {len(libraries)} library(ies)...")
+            print(f"Libraries to analyze: {', '.join(libraries)}")
+            
+            analyzer = LibraryAnalyzer()
+            results = analyzer.analyze_libraries(libraries)
+            analyzer.print_detailed_report(results)
+            
+        except ImportError as e:
+            print(f"❌ Could not import library analyzer: {e}")
+            print("💡 Make sure requests library is installed")
+        except Exception as e:
+            print(f"❌ Error running library analysis: {e}")
+            import traceback
+            traceback.print_exc()
     
     elif command == 'batch':
         if len(sys.argv) < 4:
