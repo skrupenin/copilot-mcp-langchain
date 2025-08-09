@@ -115,6 +115,9 @@ class Matrix:
             
     def get_or_create_header(self, key: str) -> int:
         """Get the column index for a key, creating it if needed - matches Java logic exactly."""
+        # DEBUG: Отладочный вывод
+        DEBUG = False  # Включить для отладки
+        
         # Ensure header row exists
         if len(self.data) <= self.current_header:
             self.insert_row(self.current_header)
@@ -126,85 +129,96 @@ class Matrix:
         # Check if key already exists
         for i, header_key in enumerate(header):
             if key == header_key:
+                if DEBUG:
+                    print(f"DEBUG: Found existing header '{key}' at position {i}")
                 return i
                 
         # For top-level headers (currentHeader == 0), use intelligent placement
         if self.current_header == 0:
             # Calculate where the next header should be placed considering all reservations
-            reserved_until = 0
-            for i, existing_key in enumerate(header):
-                if existing_key and existing_key in self.structure_info:
-                    existing_width = self.structure_info[existing_key]
-                    if existing_width > 1:  # Only count actual reservations
-                        reserved_until = max(reserved_until, i + existing_width)
-                else:
-                    # No reservation for empty slots
-                    reserved_until = max(reserved_until, i + 1)
-            
             reserved_width = self.structure_info.get(key, 1)
             
-            # Place the new header at the next available position
-            next_pos = max(len(header), reserved_until)
+            # Find the next available position considering ALL reserved spaces
+            next_pos = len(header)
+            
+            if DEBUG:
+                print(f"DEBUG: Top-level header '{key}' - current header length={len(header)}, reserved_width={reserved_width}")
+                print(f"DEBUG: Current header: {header}")
             
             # Extend header to accommodate new column and any reserved space
-            while len(header) <= next_pos:
+            while len(header) <= next_pos + reserved_width - 1:
                 header.append(None)
                 
             header[next_pos] = key
             
-            # If this field needs multiple columns, reserve them by adding None placeholders
-            if reserved_width > 1:
-                for i in range(1, reserved_width):
-                    if next_pos + i < len(header):
-                        # Don't overwrite existing headers
-                        if header[next_pos + i] is None:
-                            continue
-                    else:
-                        header.append(None)
-                        
+            if DEBUG:
+                print(f"DEBUG: Placed '{key}' at position {next_pos}")
+                print(f"DEBUG: Header after placement: {header}")
+            
             return next_pos
             
-        # For nested headers, use simplified Java logic that preserves field order
+        # For nested headers, use TRUE Java logic: children go to parent's position first
         if "." not in key:
             raise ValueError(f"Nested header without parent: {key}")
             
         parent_key = key.rsplit(".", 1)[0]
         
-        # Find parent position in previous header level
+        # Find parent position by searching through ALL header levels from level 0
         parent_pos = -1
-        if self.current_header > 0:
-            parent_header = self.data[self.current_header - 1]
-            for i, parent_header_key in enumerate(parent_header):
-                if parent_header_key == parent_key:
-                    parent_pos = i
+        
+        # Search through all header levels to find the parent
+        for level in range(self.current_header + 1):
+            if level < len(self.data):
+                level_header = self.data[level]
+                for i, header_key in enumerate(level_header):
+                    if header_key == parent_key:
+                        parent_pos = i
+                        break
+                if parent_pos != -1:
                     break
                     
         if parent_pos == -1:
-            raise ValueError(f"Parent key not found: {parent_key}")
+            # Parent not found - fallback to simple append
+            header.append(key)
+            return len(header) - 1
             
-        # Check if we need to reserve columns for this object based on structure analysis
-        reserved_width = self.structure_info.get(parent_key, 1)
+        # TRUE Java logic: Find next available position within parent's space
+        # considering sibling order and their reserved widths
+        parent_reserved_width = self.structure_info.get(parent_key, 1)
+        parent_end = parent_pos + parent_reserved_width
         
-        # Ensure we have enough columns for the parent object
-        min_required_columns = parent_pos + reserved_width
-        while len(header) < min_required_columns:
+        # Extend header to parent's reserved space
+        while len(header) < parent_end:
             header.append(None)
             
-        # Try to place at parent position if empty
-        if header[parent_pos] is None or header[parent_pos] == "":
-            header[parent_pos] = key
-            return parent_pos
+        # Find all siblings that are already placed
+        occupied_ranges = []
+        for level in range(self.current_header + 1):
+            if level < len(self.data):
+                level_header = self.data[level]
+                for i, header_key in enumerate(level_header):
+                    if header_key and header_key.startswith(parent_key + ".") and header_key != key:
+                        # This is a sibling - mark its range as occupied
+                        sibling_width = self.structure_info.get(header_key, 1)
+                        occupied_ranges.append((i, i + sibling_width - 1))
+        
+        # Find first available position within parent's range
+        for pos in range(parent_pos, parent_end):
+            # Check if this position is occupied by any sibling
+            position_occupied = False
+            for start, end in occupied_ranges:
+                if start <= pos <= end:
+                    position_occupied = True
+                    break
             
-        # Find next available position within the reserved range for this parent
-        for i in range(parent_pos + 1, min(parent_pos + reserved_width, len(header))):
-            if header[i] is None or header[i] == "":
-                header[i] = key
-                return i
+            if not position_occupied and (pos >= len(header) or header[pos] is None or header[pos] == parent_key):
+                header[pos] = key
+                return pos
                 
-        # If no space in reserved range, append at the end to preserve field order
-        self.insert_column(len(header))
-        header[-1] = key
-        return len(header) - 1
+        # If no space in parent range, place at end
+        next_pos = len(header)
+        header.append(key)
+        return next_pos
     
     def _check_all_children_in_header(self, from_y: int, x: int) -> bool:
         """Check if all children in header column are empty - matches Java logic."""
@@ -530,7 +544,7 @@ def analyze_structure(data: Any, prefix: str = "") -> dict:
             for item in obj:
                 collect_leaf_paths(item, path)
     
-    def map_leaf_paths_to_objects(obj: Any, path: str, current_leaves: set):
+    def map_leaf_paths_to_objects(obj: Any, path: str):
         """Map which leaf paths belong to which object paths."""
         if isinstance(obj, dict):
             if path:
@@ -546,25 +560,25 @@ def analyze_structure(data: Any, prefix: str = "") -> dict:
             # Recursively process children
             for key, value in obj.items():
                 child_path = f"{path}.{key}" if path else key
-                map_leaf_paths_to_objects(value, child_path, current_leaves)
+                map_leaf_paths_to_objects(value, child_path)
                 
         elif isinstance(obj, list):
             for item in obj:
-                map_leaf_paths_to_objects(item, path, current_leaves)
+                map_leaf_paths_to_objects(item, path)
     
-    # First pass: collect all leaf paths
+    # First pass: collect all leaf paths from all data elements
     if isinstance(data, list):
         for item in data:
             collect_leaf_paths(item, prefix)
     else:
         collect_leaf_paths(data, prefix)
     
-    # Second pass: map leaf paths to object paths
+    # Second pass: map leaf paths to object paths (process all elements to ensure union)
     if isinstance(data, list):
         for item in data:
-            map_leaf_paths_to_objects(item, prefix, set())
+            map_leaf_paths_to_objects(item, prefix)
     else:
-        map_leaf_paths_to_objects(data, prefix, set())
+        map_leaf_paths_to_objects(data, prefix)
     
     # Calculate required width for each path
     for path, leaves in path_leaf_paths.items():
