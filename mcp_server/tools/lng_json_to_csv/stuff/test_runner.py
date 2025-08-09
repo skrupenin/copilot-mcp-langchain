@@ -233,6 +233,72 @@ value4|value5
 """
         
         self.assert_conversion(input_json, expected_csv, expected_markdown)
+        
+    def test_json_to_csv_sub_array_of_objects_case_same_arrays_length(self):
+        """Test conversion with arrays of objects."""
+        input_json = """[
+    {
+        "name": "test1",
+        "items": [
+            {"id": 1, "value": "a"},
+            {"id": 2, "value": "b"}
+        ]
+    },
+    {
+        "name": "test2", 
+        "items": [
+            {"id": 3, "value": "c"},
+            {"id": 4, "value": "d"}
+        ]
+    }
+]"""
+        
+        expected_csv = """name,items,
+,id,value
+test1,1,a
+,2,b
+test2,3,c
+,4,d
+"""
+        
+        expected_markdown = """name |items|     
+     |id   |value
+-----------------
+test1|1    |a    
+     |2    |b    
+test2|3    |c    
+     |4    |d    
+"""
+        
+        self.assert_conversion(input_json, expected_csv, expected_markdown)
+        
+    def test_json_to_csv_object_with_object(self):
+        """Test conversion with nested objects."""
+        input_json = """[
+    {
+        "user": {
+            "name": "John",
+            "age": 30
+        },
+        "settings": {
+            "theme": "dark",
+            "lang": "en"
+        }
+    }
+]"""
+        
+        expected_csv = """user,,settings,
+name,age,theme,lang
+John,30,dark,en
+"""
+        
+        expected_markdown = """user|   |settings|    
+name|age|theme   |lang
+----------------------
+John|30 |dark    |en  
+"""
+        
+        self.assert_conversion(input_json, expected_csv, expected_markdown)
 
 if __name__ == '__main__':
     unittest.main()
