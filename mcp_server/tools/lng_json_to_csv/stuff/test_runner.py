@@ -12,7 +12,7 @@ parent_dir = os.path.dirname(current_dir)
 sys.path.insert(0, parent_dir)
 
 # Import the standalone test functions
-from simple_test import json_to_csv, json_to_markdown
+from tool import json_to_csv, json_to_markdown
 
 class JsonToCsvTest(unittest.TestCase):
     """Test cases matching the Java JsonToCsvTest.java implementation."""

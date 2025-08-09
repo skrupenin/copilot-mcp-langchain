@@ -354,8 +354,8 @@ test,,,,10,example
 
 
 zField|aField|arrayField|      |numberArray|name   
----------------------------------------------------
       |      |name      |color |           |       
+---------------------------------------------------
 value3|value1|banana    |yellow|3          |       
       |      |apple     |red   |1          |       
       |      |cherry    |red   |2          |       
@@ -395,8 +395,8 @@ test,,,,10,example
 
 
 zField|aField|arrayField|      |numberArray|name   
----------------------------------------------------
       |      |name      |color |           |       
+---------------------------------------------------
 value3|value1|banana    |yellow|3          |       
       |      |apple     |red   |1          |       
       |      |          |      |2          |       
@@ -437,8 +437,8 @@ test,,,,10,example
 
 
 zField|aField|arrayField|      |numberArray|name   
----------------------------------------------------
       |      |name      |color |           |       
+---------------------------------------------------
 value3|value1|banana    |yellow|3          |       
       |      |apple     |red   |1          |       
       |      |cherry    |red   |           |       
@@ -486,9 +486,9 @@ test,,,,,10,example
 
 
 zField|aField|arrayField|     |      |numberArray|name   
----------------------------------------------------------
       |      |name      |color|      |           |       
       |      |          |id   |value |           |       
+---------------------------------------------------------
 value3|value1|banana    |y    |yellow|3          |       
       |      |apple     |r    |red   |1          |       
       |      |cherry    |r    |red   |2          |       
@@ -542,9 +542,9 @@ test,,,,,10,example
 
 
 zField|aField|arrayField|      |       |numberArray|name   
------------------------------------------------------------
       |      |name      |colors|       |           |       
       |      |          |id    |value  |           |       
+-----------------------------------------------------------
 value3|value1|banana    |y     |yellow |3          |       
       |      |          |g     |green  |1          |       
       |      |apple     |m     |magenta|2          |       
@@ -586,8 +586,8 @@ test,,,,10,example
 
 
 zField|aField|objectField|      |numberArray|name   
-----------------------------------------------------
       |      |name       |color |           |       
+----------------------------------------------------
 value3|value1|banana     |yellow|3          |       
       |      |           |      |1          |       
       |      |           |      |2          |       
@@ -646,9 +646,9 @@ date,one,,data2,two,data4,three
 
 
 date      |one  |         |data2|two  |data4|three
---------------------------------------------------
           |data1|data6    |     |data3|     |data5
           |     |name     |     |     |     |     
+--------------------------------------------------
 2025-03-17|0    |         |1    |0    |1    |0    
 2025-03-18|     |JetBrains|5    |0    |3    |0    
           |     |vscode   |     |     |     |     
