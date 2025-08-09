@@ -1,4 +1,5 @@
 - If I chose to develop the tool using Coding Agent, all the information you gathered about the new tool should be posted in an issue on GitHub.
+- When creating a new issue or commenting on it, use only English. Respond to me in the language I used.
 - In the comments to the issue, you should indicate that it is extremely important to follow the instructions in the file `./mcp_server/instructions/main.agent.md` while performing the task.
 - After you create the issue, compare it with what we discussed—you will probably find some differences. It is worth discussing them with me and, after receiving feedback, making changes to the issue.
 - Then ask me if I want to assign the Coding Agent to this task. If so, go ahead and do it.
