@@ -312,16 +312,13 @@ class Matrix:
             max_line_length = max(max_line_length, line_length)
             result.append("".join(line_parts))
             
-            # Mark position for header delimiter (after first header row)
-            if y == 0:
-                header_delimiter_pos = len(result)
-                
-        # Add header delimiter if specified
+        # Add header delimiter if specified (after all header rows)
         if header_delimiter is not None:
             header_line = header_delimiter * max_line_length
             if max_line_length > 0:
                 header_line = header_line[:max_line_length]
-            result.insert(header_delimiter_pos, header_line)
+            # Insert after header rows (at position header_size)
+            result.insert(self.header_size, header_line)
             
         return "\n".join(result) + "\n"
         

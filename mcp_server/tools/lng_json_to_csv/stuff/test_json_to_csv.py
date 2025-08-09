@@ -654,12 +654,425 @@ date      |one  |         |data2|two  |data4|three
           |     |vscode   |     |     |     |     
 """)
 
-    # TODO: The corner case test below requires more complex column ordering logic
-    # that matches the Java implementation exactly. This needs further investigation.
-    #
-    # def test_json_to_csv_corner_case(self):
-    #     """Test complex nested corner case."""
-    #     self.assert_r("""[...complex test case...]""")
+    def test_json_to_csv_complex(self):
+        """Test conversion with complex nested structure."""
+        self.assert_r("""[
+  {
+    "date": "2025-03-17",
+    "copilot_ide_chat": {
+      "total_engaged_users": 0
+    },
+    "total_active_users": 1,
+    "copilot_dotcom_chat": {
+      "total_engaged_users": 0
+    },
+    "total_engaged_users": 1,
+    "copilot_dotcom_pull_requests": {
+      "total_engaged_users": 0
+    },
+    "copilot_ide_code_completions": {
+      "editors": [
+        {
+          "name": "JetBrains",
+          "models": [
+            {
+              "name": "default",
+              "languages": [
+                {
+                  "name": "json",
+                  "total_engaged_users": 1,
+                  "total_code_acceptances": 1,
+                  "total_code_suggestions": 1,
+                  "total_code_lines_accepted": 1,
+                  "total_code_lines_suggested": 1
+                }
+              ],
+              "is_custom_model": false,
+              "total_engaged_users": 1
+            }
+          ],
+          "total_engaged_users": 1
+        }
+      ],
+      "languages": [
+        {
+          "name": "json",
+          "total_engaged_users": 1
+        }
+      ],
+      "total_engaged_users": 1
+    }
+  },
+  {
+    "date": "2025-03-18",
+    "copilot_ide_chat": {
+      "editors": [
+        {
+          "name": "JetBrains",
+          "models": [
+            {
+              "name": "default",
+              "total_chats": 4,
+              "is_custom_model": false,
+              "total_engaged_users": 1,
+              "total_chat_copy_events": 1,
+              "total_chat_insertion_events": 0
+            }
+          ],
+          "total_engaged_users": 1
+        },
+        {
+          "name": "vscode",
+          "models": [
+            {
+              "name": "default",
+              "total_chats": 4,
+              "is_custom_model": false,
+              "total_engaged_users": 1,
+              "total_chat_copy_events": 0,
+              "total_chat_insertion_events": 0
+            }
+          ],
+          "total_engaged_users": 1
+        }
+      ],
+      "total_engaged_users": 2
+    },
+    "total_active_users": 5,
+    "copilot_dotcom_chat": {
+      "total_engaged_users": 0
+    },
+    "total_engaged_users": 3,
+    "copilot_dotcom_pull_requests": {
+      "total_engaged_users": 0
+    },
+    "copilot_ide_code_completions": {
+      "editors": [
+        {
+          "name": "JetBrains",
+          "models": [
+            {
+              "name": "default",
+              "languages": [
+                {
+                  "name": "java",
+                  "total_engaged_users": 2,
+                  "total_code_acceptances": 12,
+                  "total_code_suggestions": 67,
+                  "total_code_lines_accepted": 18,
+                  "total_code_lines_suggested": 214
+                },
+                {
+                  "name": "unknown",
+                  "total_engaged_users": 0,
+                  "total_code_acceptances": 0,
+                  "total_code_suggestions": 11,
+                  "total_code_lines_accepted": 0,
+                  "total_code_lines_suggested": 21
+                },
+                {
+                  "name": "json",
+                  "total_engaged_users": 0,
+                  "total_code_acceptances": 0,
+                  "total_code_suggestions": 1,
+                  "total_code_lines_accepted": 0,
+                  "total_code_lines_suggested": 13
+                }
+              ],
+              "is_custom_model": false,
+              "total_engaged_users": 2
+            }
+          ],
+          "total_engaged_users": 2
+        }
+      ],
+      "languages": [
+        {
+          "name": "java",
+          "total_engaged_users": 2
+        },
+        {
+          "name": "unknown",
+          "total_engaged_users": 0
+        },
+        {
+          "name": "json",
+          "total_engaged_users": 0
+        }
+      ],
+      "total_engaged_users": 2
+    }
+  }
+]
+
+
+date,copilot_ide_chat,,,,,,,,,total_active_users,copilot_dotcom_chat,total_engaged_users,copilot_dotcom_pull_requests,copilot_ide_code_completions,,,,,,,,,,,,,
+,total_engaged_users,editors,,,,,,,,,total_engaged_users,,total_engaged_users,editors,,,,,,,,,,,languages,,total_engaged_users
+,,name,models,,,,,,total_engaged_users,,,,,name,models,,,,,,,,,total_engaged_users,name,total_engaged_users,
+,,,name,total_chats,is_custom_model,total_engaged_users,total_chat_copy_events,total_chat_insertion_events,,,,,,,name,languages,,,,,,is_custom_model,total_engaged_users,,,,
+,,,,,,,,,,,,,,,,name,total_engaged_users,total_code_acceptances,total_code_suggestions,total_code_lines_accepted,total_code_lines_suggested,,,,,,
+2025-03-17,0,,,,,,,,,1,0,1,0,JetBrains,default,json,1,1,1,1,1,false,1,1,json,1,1
+2025-03-18,2,JetBrains,default,4,false,1,1,0,1,5,0,3,0,JetBrains,default,java,2,12,67,18,214,false,2,2,java,2,2
+,,vscode,default,4,false,1,0,0,1,,,,,,,unknown,0,0,11,0,21,,,,unknown,0,
+,,,,,,,,,,,,,,,,json,0,0,1,0,13,,,,json,0,
+
+
+date      |copilot_ide_chat   |         |       |           |               |                   |                      |                           |                   |total_active_users|copilot_dotcom_chat|total_engaged_users|copilot_dotcom_pull_requests|copilot_ide_code_completions|       |         |                   |                      |                      |                         |                          |               |                   |                   |         |                   |                   
+          |total_engaged_users|editors  |       |           |               |                   |                      |                           |                   |                  |total_engaged_users|                   |total_engaged_users         |editors                     |       |         |                   |                      |                      |                         |                          |               |                   |                   |languages|                   |total_engaged_users
+          |                   |name     |models |           |               |                   |                      |                           |total_engaged_users|                  |                   |                   |                            |name                        |models |         |                   |                      |                      |                         |                          |               |                   |total_engaged_users|name     |total_engaged_users|                   
+          |                   |         |name   |total_chats|is_custom_model|total_engaged_users|total_chat_copy_events|total_chat_insertion_events|                   |                  |                   |                   |                            |                            |name   |languages|                   |                      |                      |                         |                          |is_custom_model|total_engaged_users|                   |         |                   |                   
+          |                   |         |       |           |               |                   |                      |                           |                   |                  |                   |                   |                            |                            |       |name     |total_engaged_users|total_code_acceptances|total_code_suggestions|total_code_lines_accepted|total_code_lines_suggested|               |                   |                   |         |                   |                   
+-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+2025-03-17|0                  |         |       |           |               |                   |                      |                           |                   |1                 |0                  |1                  |0                           |JetBrains                   |default|json     |1                  |1                     |1                     |1                        |1                         |false          |1                  |1                  |json     |1                  |1                  
+2025-03-18|2                  |JetBrains|default|4          |false          |1                  |1                     |0                          |1                  |5                 |0                  |3                  |0                           |JetBrains                   |default|java     |2                  |12                    |67                    |18                       |214                       |false          |2                  |2                  |java     |2                  |2                  
+          |                   |vscode   |default|4          |false          |1                  |0                     |0                          |1                  |                  |                   |                   |                            |                            |       |unknown  |0                  |0                     |11                    |0                        |21                        |               |                   |                   |unknown  |0                  |                   
+          |                   |         |       |           |               |                   |                      |                           |                   |                  |                   |                   |                            |                            |       |json     |0                  |0                     |1                     |0                        |13                        |               |                   |                   |json     |0                  |                   
+""")
+
+    def test_json_to_csv_corner_case(self):
+        """Test complex nested corner case."""
+        self.assert_r("""[
+  {
+    "date": "2025-03-17",
+    "object": {
+      "field1": [
+        {
+          "name": "field1_name",
+          "array1": [
+            {
+              "name": "array1_name",
+              "array2": [
+                {
+                  "name": "array2_name",
+                  "data3": 3
+                }
+              ],
+              "data4": 4
+            }
+          ],
+          "data5": 5
+        }
+      ],
+      "field2": [
+        {
+          "name": "field2_name",
+          "data6": 6
+        }
+      ],
+      "data7": 7
+    }
+  }
+]
+
+
+date,object,,,,,,,,
+,field1,,,,,,field2,,data7
+,name,array1,,,,data5,name,data6,
+,,name,array2,,data4,,,,
+,,,name,data3,,,,,
+2025-03-17,field1_name,array1_name,array2_name,3,4,5,field2_name,6,7
+
+
+date      |object     |           |           |     |     |     |           |     |     
+          |field1     |           |           |     |     |     |field2     |     |data7
+          |name       |array1     |           |     |     |data5|name       |data6|     
+          |           |name       |array2     |     |data4|     |           |     |     
+          |           |           |name       |data3|     |     |           |     |     
+----------------------------------------------------------------------------------------
+2025-03-17|field1_name|array1_name|array2_name|3    |4    |5    |field2_name|6    |7    
+""")
+
+    def test_json_to_csv_super_complex(self):
+        """Test super complex conversion with large dataset (minified JSON)."""
+        json_data = '[{"date":"2025-03-17","copilot_ide_chat":{"total_engaged_users":0},"total_active_users":1,"copilot_dotcom_chat":{"total_engaged_users":0},"total_engaged_users":1,"copilot_dotcom_pull_requests":{"total_engaged_users":0},"copilot_ide_code_completions":{"editors":[{"name":"JetBrains","models":[{"name":"default","languages":[{"name":"json","total_engaged_users":1,"total_code_acceptances":1,"total_code_suggestions":1,"total_code_lines_accepted":1,"total_code_lines_suggested":1}],"is_custom_model":false,"total_engaged_users":1}],"total_engaged_users":1}],"languages":[{"name":"json","total_engaged_users":1}],"total_engaged_users":1}},{"date":"2025-03-18","copilot_ide_chat":{"editors":[{"name":"JetBrains","models":[{"name":"default","total_chats":4,"is_custom_model":false,"total_engaged_users":1,"total_chat_copy_events":1,"total_chat_insertion_events":0}],"total_engaged_users":1},{"name":"vscode","models":[{"name":"default","total_chats":4,"is_custom_model":false,"total_engaged_users":1,"total_chat_copy_events":0,"total_chat_insertion_events":0}],"total_engaged_users":1}],"total_engaged_users":2},"total_active_users":5,"copilot_dotcom_chat":{"total_engaged_users":0},"total_engaged_users":3,"copilot_dotcom_pull_requests":{"total_engaged_users":0},"copilot_ide_code_completions":{"editors":[{"name":"JetBrains","models":[{"name":"default","languages":[{"name":"java","total_engaged_users":2,"total_code_acceptances":12,"total_code_suggestions":67,"total_code_lines_accepted":18,"total_code_lines_suggested":214},{"name":"unknown","total_engaged_users":0,"total_code_acceptances":0,"total_code_suggestions":11,"total_code_lines_accepted":0,"total_code_lines_suggested":21},{"name":"json","total_engaged_users":0,"total_code_acceptances":0,"total_code_suggestions":1,"total_code_lines_accepted":0,"total_code_lines_suggested":13}],"is_custom_model":false,"total_engaged_users":2}],"total_engaged_users":2}],"languages":[{"name":"java","total_engaged_users":2},{"name":"unknown","total_engaged_users":0},{"name":"json","total_engaged_users":0}],"total_engaged_users":2}}]'
+        expected_csv = "date,copilot_ide_chat,,,,,,,,,total_active_users,copilot_dotcom_chat,total_engaged_users,copilot_dotcom_pull_requests,copilot_ide_code_completions,,,,,,,,,,,,,\n,total_engaged_users,editors,,,,,,,,,total_engaged_users,,total_engaged_users,editors,,,,,,,,,,,languages,,total_engaged_users\n,,name,models,,,,,,total_engaged_users,,,,,name,models,,,,,,,,,total_engaged_users,name,total_engaged_users,\n,,,name,total_chats,is_custom_model,total_engaged_users,total_chat_copy_events,total_chat_insertion_events,,,,,,,name,languages,,,,,,is_custom_model,total_engaged_users,,,,\n,,,,,,,,,,,,,,,,name,total_engaged_users,total_code_acceptances,total_code_suggestions,total_code_lines_accepted,total_code_lines_suggested,,,,,,\n2025-03-17,0,,,,,,,,,1,0,1,0,JetBrains,default,json,1,1,1,1,1,false,1,1,json,1,1\n2025-03-18,2,JetBrains,default,4,false,1,1,0,1,5,0,3,0,JetBrains,default,java,2,12,67,18,214,false,2,2,java,2,2\n,,vscode,default,4,false,1,0,0,1,,,,,,,unknown,0,0,11,0,21,,,,unknown,0,\n,,,,,,,,,,,,,,,,json,0,0,1,0,13,,,,json,0,"
+        expected_markdown = "date      |copilot_ide_chat   |         |       |           |               |                   |                      |                           |                   |total_active_users|copilot_dotcom_chat|total_engaged_users|copilot_dotcom_pull_requests|copilot_ide_code_completions|       |               |                   |                      |                      |                         |                          |               |                   |                   |               |                   |                   \n          |total_engaged_users|editors  |       |           |               |                   |                      |                           |                   |                  |total_engaged_users|                   |total_engaged_users         |editors                     |       |               |                   |                      |                      |                         |                          |               |                   |                   |languages      |                   |total_engaged_users\n          |                   |name     |models |           |               |                   |                      |                           |total_engaged_users|                  |                   |                   |                            |name                        |models |               |                   |                      |                      |                         |                          |               |                   |total_engaged_users|name           |total_engaged_users|                   \n          |                   |         |name   |total_chats|is_custom_model|total_engaged_users|total_chat_copy_events|total_chat_insertion_events|                   |                  |                   |                   |                            |                            |name   |languages      |                   |                      |                      |                         |                          |is_custom_model|total_engaged_users|                   |               |                   |                   \n          |                   |         |       |           |               |                   |                      |                           |                   |                  |                   |                   |                            |                            |       |name           |total_engaged_users|total_code_acceptances|total_code_suggestions|total_code_lines_accepted|total_code_lines_suggested|               |                   |                   |               |                   |                   \n-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------\n2025-03-17|0                  |         |       |           |               |                   |                      |                           |                   |1                 |0                  |1                  |0                           |JetBrains                   |default|json           |1                  |1                     |1                     |1                        |1                         |false          |1                  |1                  |json           |1                  |1                  \n2025-03-18|2                  |JetBrains|default|4          |false          |1                  |1                     |0                          |1                  |5                 |0                  |3                  |0                           |JetBrains                   |default|java           |2                  |12                    |67                    |18                       |214                       |false          |2                  |2                  |java           |2                  |2                  \n          |                   |vscode   |default|4          |false          |1                  |0                     |0                          |1                  |                  |                   |                   |                            |                            |       |unknown        |0                  |0                     |11                    |0                        |21                        |               |                   |                   |unknown        |0                  |                   \n          |                   |         |       |           |               |                   |                      |                           |                   |                  |                   |                   |                            |                            |       |json           |0                  |0                     |1                     |0                        |13                        |               |                   |                   |json           |0                  |                   "
+        expected = json_data + "\n\n\n" + expected_csv + "\n\n" + expected_markdown
+        self.assert_r(expected)
+
+    def test_json_to_csv_super_complex2(self):
+        """Test another super complex conversion with reformatted JSON."""
+        self.assert_r("""[
+  {
+    "date" : "2025-03-17",
+    "total_active_users" : 1,
+    "total_engaged_users" : 1,
+    "copilot_ide_chat" : {
+      "total_engaged_users" : 0
+    },
+    "copilot_dotcom_chat" : {
+      "total_engaged_users" : 0
+    },
+    "copilot_dotcom_pull_requests" : {
+      "total_engaged_users" : 0
+    },
+    "copilot_ide_code_completions" : {
+      "editors" : [
+        {
+          "models" : [
+            {
+              "is_custom_model" : false,
+              "languages" : [
+                {
+                  "name" : "json",
+                  "total_code_acceptances" : 1,
+                  "total_code_lines_accepted" : 1,
+                  "total_code_lines_suggested" : 1,
+                  "total_code_suggestions" : 1,
+                  "total_engaged_users" : 1
+                }
+              ],
+              "name" : "default",
+              "total_engaged_users" : 1
+            }
+          ],
+          "name" : "JetBrains",
+          "total_engaged_users" : 1
+        }
+      ],
+      "languages" : [
+        {
+          "name" : "json",
+          "total_engaged_users" : 1
+        }
+      ],
+      "total_engaged_users" : 1
+    }
+  },
+  {
+    "date" : "2025-03-18",
+    "total_active_users" : 5,
+    "total_engaged_users" : 3,
+    "copilot_ide_chat" : {
+      "editors" : [
+        {
+          "models" : [
+            {
+              "is_custom_model" : false,
+              "name" : "default",
+              "total_chat_copy_events" : 1,
+              "total_chat_insertion_events" : 0,
+              "total_chats" : 4,
+              "total_engaged_users" : 1
+            }
+          ],
+          "name" : "JetBrains",
+          "total_engaged_users" : 1
+        },
+        {
+          "models" : [
+            {
+              "is_custom_model" : false,
+              "name" : "default",
+              "total_chat_copy_events" : 0,
+              "total_chat_insertion_events" : 0,
+              "total_chats" : 4,
+              "total_engaged_users" : 1
+            }
+          ],
+          "name" : "vscode",
+          "total_engaged_users" : 1
+        }
+      ],
+      "total_engaged_users" : 2
+    },
+    "copilot_dotcom_chat" : {
+      "total_engaged_users" : 0
+    },
+    "copilot_dotcom_pull_requests" : {
+      "total_engaged_users" : 0
+    },
+    "copilot_ide_code_completions" : {
+      "editors" : [
+        {
+          "models" : [
+            {
+              "is_custom_model" : false,
+              "languages" : [
+                {
+                  "name" : "java",
+                  "total_code_acceptances" : 12,
+                  "total_code_lines_accepted" : 18,
+                  "total_code_lines_suggested" : 214,
+                  "total_code_suggestions" : 67,
+                  "total_engaged_users" : 2
+                },
+                {
+                  "name" : "json",
+                  "total_code_acceptances" : 0,
+                  "total_code_lines_accepted" : 0,
+                  "total_code_lines_suggested" : 13,
+                  "total_code_suggestions" : 1,
+                  "total_engaged_users" : 0
+                },
+                {
+                  "name" : "unknown",
+                  "total_code_acceptances" : 0,
+                  "total_code_lines_accepted" : 0,
+                  "total_code_lines_suggested" : 21,
+                  "total_code_suggestions" : 11,
+                  "total_engaged_users" : 0
+                }
+              ],
+              "name" : "default",
+              "total_engaged_users" : 2
+            }
+          ],
+          "name" : "JetBrains",
+          "total_engaged_users" : 2
+        }
+      ],
+      "languages" : [
+        {
+          "name" : "java",
+          "total_engaged_users" : 2
+        },
+        {
+          "name" : "json",
+          "total_engaged_users" : 0
+        },
+        {
+          "name" : "unknown",
+          "total_engaged_users" : 0
+        }
+      ],
+      "total_engaged_users" : 2
+    }
+  }
+]
+
+
+date,total_active_users,total_engaged_users,copilot_ide_chat,,,,,,,,,copilot_dotcom_chat,copilot_dotcom_pull_requests,copilot_ide_code_completions,,,,,,,,,,,,,
+,,,total_engaged_users,editors,,,,,,,,total_engaged_users,total_engaged_users,editors,,,,,,,,,,,languages,,total_engaged_users
+,,,,models,,,,,,name,total_engaged_users,,,models,,,,,,,,,name,total_engaged_users,name,total_engaged_users,
+,,,,is_custom_model,name,total_chat_copy_events,total_chat_insertion_events,total_chats,total_engaged_users,,,,,is_custom_model,languages,,,,,,name,total_engaged_users,,,,,
+,,,,,,,,,,,,,,,name,total_code_acceptances,total_code_lines_accepted,total_code_lines_suggested,total_code_suggestions,total_engaged_users,,,,,,,
+2025-03-17,1,1,0,,,,,,,,,0,0,false,json,1,1,1,1,1,default,1,JetBrains,1,json,1,1
+2025-03-18,5,3,2,false,default,0,0,4,1,vscode,1,0,0,false,java,12,18,214,67,2,default,2,JetBrains,2,java,2,2
+,,,,,,,,,,,,,,,json,0,0,13,1,0,,,,,json,0,
+,,,,,,,,,,,,,,,unknown,0,0,21,11,0,,,,,unknown,0,
+
+
+date      |total_active_users|total_engaged_users|copilot_ide_chat   |               |       |                      |                           |           |                   |      |                   |copilot_dotcom_chat|copilot_dotcom_pull_requests|copilot_ide_code_completions|         |                      |                         |                          |                      |                   |       |                   |         |                   |         |                   |                   
+          |                  |                   |total_engaged_users|editors        |       |                      |                           |           |                   |      |                   |total_engaged_users|total_engaged_users         |editors                     |         |                      |                         |                          |                      |                   |       |                   |         |                   |languages|                   |total_engaged_users
+          |                  |                   |                   |models         |       |                      |                           |           |                   |name  |total_engaged_users|                   |                            |models                      |         |                      |                         |                          |                      |                   |       |                   |name     |total_engaged_users|name     |total_engaged_users|                   
+          |                  |                   |                   |is_custom_model|name   |total_chat_copy_events|total_chat_insertion_events|total_chats|total_engaged_users|      |                   |                   |                            |is_custom_model             |languages|                      |                         |                          |                      |                   |name   |total_engaged_users|         |                   |         |                   |                   
+          |                  |                   |                   |               |       |                      |                           |           |                   |      |                   |                   |                            |                            |name     |total_code_acceptances|total_code_lines_accepted|total_code_lines_suggested|total_code_suggestions|total_engaged_users|       |                   |         |                   |         |                   |                   
+--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+2025-03-17|1                 |1                  |0                  |               |       |                      |                           |           |                   |      |                   |0                  |0                           |false                       |json     |1                     |1                        |1                         |1                     |1                  |default|1                  |JetBrains|1                  |json     |1                  |1                  
+2025-03-18|5                 |3                  |2                  |false          |default|0                     |0                          |4          |1                  |vscode|1                  |0                  |0                           |false                       |java     |12                    |18                       |214                       |67                    |2                  |default|2                  |JetBrains|2                  |java     |2                  |2                  
+          |                  |                   |                   |               |       |                      |                           |           |                   |      |                   |                   |                            |                            |json     |0                     |0                        |13                        |1                     |0                  |       |                   |         |                   |json     |0                  |                   
+          |                  |                   |                   |               |       |                      |                           |           |                   |      |                   |                   |                            |                            |unknown  |0                     |0                        |21                        |11                    |0                  |       |                   |         |                   |unknown  |0                  |                   
+""")
+
+    def performance(self):
+        """Performance test calling test_json_to_csv_super_complex2 multiple times."""
+        import time
+        start = time.time()
+        for i in range(100):  # Reduced iterations for faster testing
+            self.test_json_to_csv_super_complex2()
+        end = time.time()
+        print(f"Performance test took: {(end - start) * 1000:.0f} ms")
 
 if __name__ == '__main__':
     unittest.main()
