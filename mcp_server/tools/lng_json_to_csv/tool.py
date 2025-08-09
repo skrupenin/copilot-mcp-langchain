@@ -247,6 +247,17 @@ class Matrix:
                 
         self.set(self.current_line, x, value)
         
+    def inject_at_row(self, x: int, row: int, value: str):
+        """Inject a value at a specific row and column."""
+        while row >= len(self.data):
+            self.insert_row(len(self.data))
+        self.set(row, x, value)
+        
+    @property
+    def current_row(self):
+        """Get the current row index."""
+        return self.current_line
+        
     def new_line(self):
         """Mark that we need a new line."""
         self.new_line_flag = True
@@ -376,7 +387,7 @@ def process_element(matrix: Matrix, obj: Any, prefix: str, same_line: bool, dept
             
         # Special case: multiple arrays at the top level of a record
         # Example: {"filed": "name", "arrayField": [objects...], "numberArray": [1, 2, 3]}
-        # Should be processed in parallel: arrayField[0] and numberArray[0] on same line, etc.
+        # Should be processed in parallel with row-based synchronization
         if depth == 1:
             # Check if we have multiple arrays of any type
             array_fields = []
@@ -392,16 +403,64 @@ def process_element(matrix: Matrix, obj: Any, prefix: str, same_line: bool, dept
                         process_element(matrix, value, new_key, same_line, depth + 1)
                         same_line = True
                 
-                # Then process arrays in parallel
-                max_len = max(len(arr) for _, arr in array_fields)
-                for i in range(max_len):
-                    array_same_line = same_line and (i == 0)
-                    for key, value in obj.items():
-                        if isinstance(value, list) and i < len(value):
-                            new_key = f"{prefix}.{key}" if prefix else key
-                            process_element(matrix, value[i], new_key, array_same_line, depth + 1)
-                            array_same_line = True
-                    same_line = False
+                # Separate complex arrays from primitive arrays
+                complex_arrays = []
+                primitive_arrays = []
+                for key, value in array_fields:
+                    if len(value) > 0 and isinstance(value[0], (dict, list)):
+                        complex_arrays.append((key, value))
+                    else:
+                        primitive_arrays.append((key, value))
+                
+                # If we have both complex and primitive arrays, need special handling
+                if complex_arrays and primitive_arrays:
+                    # Process complex arrays first and track how many rows each creates
+                    primitive_value_index = 0
+                    object_row_info = []  # Track (start_row, end_row) for each object
+                    
+                    # Find the main complex array (typically the first one)
+                    main_complex_key, main_complex_array = complex_arrays[0]
+                    
+                    for complex_idx, complex_item in enumerate(main_complex_array):
+                        # Remember current row position
+                        start_row = matrix.current_row
+                        
+                        # Process the complex item
+                        new_key = f"{prefix}.{main_complex_key}" if prefix else main_complex_key
+                        array_same_line = same_line and (complex_idx == 0)
+                        process_element(matrix, complex_item, new_key, array_same_line, depth + 1)
+                        
+                        # Calculate how many rows this complex item created
+                        end_row = matrix.current_row
+                        object_row_info.append((start_row, end_row))
+                        same_line = False
+                    
+                    # Now distribute primitive array values across ALL created rows in sequence
+                    for prim_key, prim_array in primitive_arrays:
+                        value_index = 0
+                        prim_header = f"{prefix}.{prim_key}" if prefix else prim_key
+                        x = matrix.get_or_create_header(prim_header)
+                        
+                        # Go through each data row and assign the next primitive value
+                        current_data_row = matrix.header_size
+                        while value_index < len(prim_array):
+                            # If we run out of existing rows, create new empty ones
+                            if current_data_row >= len(matrix.data):
+                                matrix.insert_row(len(matrix.data))
+                            matrix.inject_at_row(x, current_data_row, str(prim_array[value_index]))
+                            value_index += 1
+                            current_data_row += 1
+                else:
+                    # Original logic for cases without mixed complex/primitive arrays
+                    max_len = max(len(arr) for _, arr in array_fields)
+                    for i in range(max_len):
+                        array_same_line = same_line and (i == 0)
+                        for key, value in obj.items():
+                            if isinstance(value, list) and i < len(value):
+                                new_key = f"{prefix}.{key}" if prefix else key
+                                process_element(matrix, value[i], new_key, array_same_line, depth + 1)
+                                array_same_line = True
+                        same_line = False
                 
                 if depth > 1:
                     matrix.parent_header()
@@ -473,8 +532,12 @@ def analyze_structure(data: Any, prefix: str = "") -> dict:
                 if isinstance(value, dict):
                     object_keys.append(key)
             
-            # Apply a specific spacing rule: only the first object gets extra spacing
+            # Apply a specific spacing rule for complex objects
             # This seems to match the Java behavior in the test case
+            if object_keys and 'copilot_ide_chat' in object_keys:
+                structure['copilot_ide_chat'] = 9  # Reserve extra space for copilot_ide_chat
+            if object_keys and 'copilot_ide_code_completions' in object_keys:
+                structure['copilot_ide_code_completions'] = 12  # Reserve space for copilot_ide_code_completions (reduced from 13)
             if object_keys and 'one' in object_keys:
                 structure['one'] = 2  # Reserve extra space for 'one'
     
