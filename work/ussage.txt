@@ -1,0 +1,17 @@
+[TRANSFORMER]
+name: JSON_TO_CSV
+type: JSON_CONVERT_TRANSFORMER
+input_keys: pretty_print_json
+output_key: csv_data
+template: |-
+  {
+    "format": "csv",
+    "columnDelimiter": ",",
+    "cellLeftDelimiter": "\"",
+    "cellRightDelimiter": "\"",
+    "lineCharsNeedToBeEscapedWithCellDelimiter": "\n\",",
+    "headerDelimiter": null,
+    "lineReplacements": ["\"==>\"\""],
+    "paddingToMaxCellLength": false,
+    "removeHeadersDuplicates": true
+  }
