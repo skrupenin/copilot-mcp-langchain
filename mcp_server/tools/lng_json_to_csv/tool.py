@@ -312,8 +312,8 @@ class Matrix:
             max_line_length = max(max_line_length, line_length)
             result.append("".join(line_parts))
             
-            # Mark position for header delimiter
-            if y == self.header_size - 1:
+            # Mark position for header delimiter (after first header row)
+            if y == 0:
                 header_delimiter_pos = len(result)
                 
         # Add header delimiter if specified
