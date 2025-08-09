@@ -26,7 +26,14 @@ eval_echo "python --version"
 # create virtual environment
 eval_echo "pip install virtualenv"
 eval_echo "python -m virtualenv .virtualenv"
-eval_echo ". ./.virtualenv/Scripts/activate"
+if [[ "$OSTYPE" == "msys" || "$OSTYPE" == "win32" || "$OSTYPE" == "cygwin" ]]; then    
+    # Windows 
+    eval_echo ". ./.virtualenv/Scripts/activate"     
+else    
+    # Linux/Unix 
+    eval_echo "source ./.virtualenv/bin/activate" 
+fi
+
 if [ -n "$VIRTUAL_ENV" ]; then
     color "Virtual environment activated: $VIRTUAL_ENV" $green
 else
