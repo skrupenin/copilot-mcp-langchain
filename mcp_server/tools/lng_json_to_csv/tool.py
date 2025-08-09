@@ -396,11 +396,14 @@ class Matrix:
         return "\n".join(result) + "\n"
         
     def _get_max_cell_length(self, x: int) -> int:
-        """Get maximum cell length for a column."""
+        """Get maximum cell length for a column, considering both headers and data."""
         max_length = 0
+        
+        # Check all rows (including headers and data)
         for row in self.data:
             if x < len(row) and row[x] is not None:
-                max_length = max(max_length, len(row[x]))
+                max_length = max(max_length, len(str(row[x])))
+                
         return max_length
 
 def process_element(matrix: Matrix, obj: Any, prefix: str, same_line: bool, depth: int):
