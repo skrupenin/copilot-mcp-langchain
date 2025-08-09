@@ -364,6 +364,43 @@ test  |      |          |      |10         |example
       |      |          |      |30         |       
 """)
 
+    def test_json_to_csv_sub_array_of_objects_case_same_arrays_length_simple(self):
+        """Test conversion with arrays of objects (simple version from test_runner)."""
+        self.assert_r("""[
+    {
+        "name": "test1",
+        "items": [
+            {"id": 1, "value": "a"},
+            {"id": 2, "value": "b"}
+        ]
+    },
+    {
+        "name": "test2", 
+        "items": [
+            {"id": 3, "value": "c"},
+            {"id": 4, "value": "d"}
+        ]
+    }
+]
+
+
+name,items,
+,id,value
+test1,1,a
+,2,b
+test2,3,c
+,4,d
+
+
+name |items|     
+     |id   |value
+-----------------
+test1|1    |a    
+     |2    |b    
+test2|3    |c    
+     |4    |d    
+""")
+
     def test_json_to_csv_sub_array_of_objects_case_one_is_less(self):
         """Test conversion with arrays of objects where one is shorter."""
         self.assert_r("""[
