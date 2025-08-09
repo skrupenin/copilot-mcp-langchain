@@ -128,26 +128,40 @@ class Matrix:
             if key == header_key:
                 return i
                 
-        # For top-level headers (currentHeader == 0), check for reserved space
+        # For top-level headers (currentHeader == 0), use intelligent placement
         if self.current_header == 0:
-            # Find the next available position, considering reserved space
-            next_pos = len(header)
-            
-            # Check if any previous headers have reserved space that we might conflict with
+            # Calculate where the next header should be placed considering all reservations
             reserved_until = 0
             for i, existing_key in enumerate(header):
                 if existing_key and existing_key in self.structure_info:
-                    reserved_width = self.structure_info[existing_key]
-                    reserved_until = max(reserved_until, i + reserved_width)
-                    
+                    existing_width = self.structure_info[existing_key]
+                    if existing_width > 1:  # Only count actual reservations
+                        reserved_until = max(reserved_until, i + existing_width)
+                else:
+                    # No reservation for empty slots
+                    reserved_until = max(reserved_until, i + 1)
+            
+            reserved_width = self.structure_info.get(key, 1)
+            
             # Place the new header at the next available position
             next_pos = max(len(header), reserved_until)
             
-            # Extend header to accommodate new column
+            # Extend header to accommodate new column and any reserved space
             while len(header) <= next_pos:
                 header.append(None)
                 
             header[next_pos] = key
+            
+            # If this field needs multiple columns, reserve them by adding None placeholders
+            if reserved_width > 1:
+                for i in range(1, reserved_width):
+                    if next_pos + i < len(header):
+                        # Don't overwrite existing headers
+                        if header[next_pos + i] is None:
+                            continue
+                    else:
+                        header.append(None)
+                        
             return next_pos
             
         # For nested headers, use simplified Java logic that preserves field order
@@ -499,47 +513,62 @@ def process_element(matrix: Matrix, obj: Any, prefix: str, same_line: bool, dept
 def analyze_structure(data: Any, prefix: str = "") -> dict:
     """Analyze JSON structure to determine maximum width needed for each object path."""
     structure = {}
+    all_leaf_paths = set()  # All leaf paths in the dataset
+    path_leaf_paths = {}  # Leaf paths that belong to each object path
     
-    def analyze_element(obj: Any, path: str, depth: int):
+    def collect_leaf_paths(obj: Any, path: str):
+        """Collect all leaf paths in the data."""
         if isinstance(obj, dict):
-            if path:
-                # For objects, we'll determine spacing based on position in the overall structure
-                # For now, set to 1 and we'll handle spacing in the header logic
-                structure[path] = 1
-            
-            # Recursively analyze children
             for key, value in obj.items():
                 child_path = f"{path}.{key}" if path else key
-                analyze_element(value, child_path, depth + 1)
+                if isinstance(value, (dict, list)):
+                    collect_leaf_paths(value, child_path)
+                else:
+                    # This is a leaf field
+                    all_leaf_paths.add(child_path)
+        elif isinstance(obj, list):
+            for item in obj:
+                collect_leaf_paths(item, path)
+    
+    def map_leaf_paths_to_objects(obj: Any, path: str, current_leaves: set):
+        """Map which leaf paths belong to which object paths."""
+        if isinstance(obj, dict):
+            if path:
+                # Initialize if not exists
+                if path not in path_leaf_paths:
+                    path_leaf_paths[path] = set()
+                
+                # All leaves under this path belong to this object
+                for leaf_path in all_leaf_paths:
+                    if leaf_path.startswith(path + "."):
+                        path_leaf_paths[path].add(leaf_path)
+            
+            # Recursively process children
+            for key, value in obj.items():
+                child_path = f"{path}.{key}" if path else key
+                map_leaf_paths_to_objects(value, child_path, current_leaves)
                 
         elif isinstance(obj, list):
-            # For arrays, analyze each item
             for item in obj:
-                analyze_element(item, path, depth + 1)
+                map_leaf_paths_to_objects(item, path, current_leaves)
     
+    # First pass: collect all leaf paths
     if isinstance(data, list):
         for item in data:
-            analyze_element(item, prefix, 0)
+            collect_leaf_paths(item, prefix)
     else:
-        analyze_element(data, prefix, 0)
+        collect_leaf_paths(data, prefix)
     
-    # Special case: analyze the top-level structure to determine which objects need spacing
-    if isinstance(data, list) and len(data) > 0:
-        first_item = data[0]
-        if isinstance(first_item, dict):
-            object_keys = []
-            for key, value in first_item.items():
-                if isinstance(value, dict):
-                    object_keys.append(key)
-            
-            # Apply a specific spacing rule for complex objects
-            # This seems to match the Java behavior in the test case
-            if object_keys and 'copilot_ide_chat' in object_keys:
-                structure['copilot_ide_chat'] = 9  # Reserve extra space for copilot_ide_chat
-            if object_keys and 'copilot_ide_code_completions' in object_keys:
-                structure['copilot_ide_code_completions'] = 12  # Reserve space for copilot_ide_code_completions (reduced from 13)
-            if object_keys and 'one' in object_keys:
-                structure['one'] = 2  # Reserve extra space for 'one'
+    # Second pass: map leaf paths to object paths
+    if isinstance(data, list):
+        for item in data:
+            map_leaf_paths_to_objects(item, prefix, set())
+    else:
+        map_leaf_paths_to_objects(data, prefix, set())
+    
+    # Calculate required width for each path
+    for path, leaves in path_leaf_paths.items():
+        structure[path] = len(leaves) if leaves else 1
     
     return structure
 
@@ -564,7 +593,7 @@ def json_to_csv(json_data: str,
     # Analyze structure to determine object widths (for Java compatibility)
     structure_info = analyze_structure(data)
     
-    # Create matrix with structure info
+    # Create matrix with structure info for intelligent column placement
     matrix = Matrix(structure_info)
     
     # Process data
