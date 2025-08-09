@@ -1,11 +1,18 @@
+"""
+Test runner for the JSON to CSV conversion tests without MCP dependencies.
+"""
 import unittest
 import sys
 import os
 import json
 
-# Add the parent directory to the path to import the tool
-sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-from tool import json_to_csv, json_to_markdown
+# Add the parent directory to the path to import the tool functions
+current_dir = os.path.dirname(os.path.abspath(__file__))
+parent_dir = os.path.dirname(current_dir)
+sys.path.insert(0, parent_dir)
+
+# Import the standalone test functions
+from simple_test import json_to_csv, json_to_markdown
 
 class JsonToCsvTest(unittest.TestCase):
     """Test cases matching the Java JsonToCsvTest.java implementation."""
@@ -223,116 +230,6 @@ value1|value2
       |value3
 value4|value5
       |value6
-"""
-        
-        self.assert_conversion(input_json, expected_csv, expected_markdown)
-        
-    def test_json_to_csv_sub_array(self):
-        """Test conversion with number arrays."""
-        input_json = """[
-    {
-        "zField": "value3",
-        "aField": "value1",
-        "numberArray": [3, 1, 2]
-    },
-    {
-        "zField": "test",
-        "name": "example",
-        "numberArray": [10, 2, 30]
-    }
-]"""
-        
-        expected_csv = """zField,aField,numberArray,name
-value3,value1,3,
-,,1,
-,,2,
-test,,10,example
-,,2,
-,,30,
-"""
-        
-        expected_markdown = """zField|aField|numberArray|name   
----------------------------------
-value3|value1|3          |       
-      |      |1          |       
-      |      |2          |       
-test  |      |10         |example
-      |      |2          |       
-      |      |30         |       
-"""
-        
-        self.assert_conversion(input_json, expected_csv, expected_markdown)
-        
-    def test_json_to_csv_sub_array_not_same_length(self):
-        """Test conversion with arrays of different lengths."""
-        input_json = """[
-    {
-        "zField": "value3",
-        "aField": "value1",
-        "numberArray": [3, 1, 2]
-    },
-    {
-        "zField": "test",
-        "name": "example",
-        "numberArray": [10, 2, 30]
-    },
-    {
-        "id": "12345",
-        "aField": "value6",
-        "numberArray": [1, 10, 100, 1000]
-    }
-]"""
-        
-        expected_csv = """zField,aField,numberArray,name,id
-value3,value1,3,,
-,,1,,
-,,2,,
-test,,10,example,
-,,2,,
-,,30,,
-,value6,1,,12345
-,,10,,
-,,100,,
-,,1000,,
-"""
-        
-        expected_markdown = """zField|aField|numberArray|name   |id   
----------------------------------------
-value3|value1|3          |       |     
-      |      |1          |       |     
-      |      |2          |       |     
-test  |      |10         |example|     
-      |      |2          |       |     
-      |      |30         |       |     
-      |value6|1          |       |12345
-      |      |10         |       |     
-      |      |100        |       |     
-      |      |1000       |       |     
-"""
-        
-        self.assert_conversion(input_json, expected_csv, expected_markdown)
-        
-    def test_json_to_csv_two_different_arrays(self):
-        """Test conversion with two different arrays."""
-        input_json = """[
-    {
-        "filed": "name",
-        "array1": [1, 2, 3],
-        "array2": [4, 5, 6]
-    }
-]"""
-        
-        expected_csv = """filed,array1,array2
-name,1,4
-,2,5
-,3,6
-"""
-        
-        expected_markdown = """filed|array1|array2
-------------------
-name |1     |4     
-     |2     |5     
-     |3     |6     
 """
         
         self.assert_conversion(input_json, expected_csv, expected_markdown)

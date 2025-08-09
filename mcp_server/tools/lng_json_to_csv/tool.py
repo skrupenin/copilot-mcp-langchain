@@ -373,6 +373,7 @@ def json_to_csv(json_data: str,
                 remove_headers_duplicates: bool = True) -> str:
     """Convert JSON to CSV format."""
     
+    # Only set default line replacements if None
     if line_replacements is None:
         line_replacements = ["\"==>\"\""]
         
@@ -409,7 +410,7 @@ def json_to_markdown(json_data: str) -> str:
         cell_right_delimiter=None,
         line_chars_need_to_be_escaped_with_cell_delimiter=None,
         header_delimiter="-",
-        line_replacements=None,
+        line_replacements=[],  # Empty list to avoid replacements
         padding_to_max_cell_length=True,
         remove_headers_duplicates=True
     )
