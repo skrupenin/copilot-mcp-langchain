@@ -23,6 +23,9 @@ eval_echo() {
 
 eval_echo "python --version"
 
+# updating pip 
+eval_echo "python -m pip install --upgrade pip"
+
 # create virtual environment
 eval_echo "pip install virtualenv"
 eval_echo "python -m virtualenv .virtualenv"
