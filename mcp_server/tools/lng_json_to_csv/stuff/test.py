@@ -1579,16 +1579,16 @@ date      |copilot_ide_chat   |         |       |           |               |   
 
 
 field,,
-name,array,field.data
-test_name,1,
-,2,42
+name,array,data
+test_name,1,42
+,2,
 
 
-field    |     |          
-name     |array|field.data
---------------------------
-test_name|1    |          
-         |2    |42        
+field    |     |    
+name     |array|data
+--------------------
+test_name|1    |42  
+         |2    |    
 """)
 
     def test_json_to_csv_debug_copilot_simple_structure(self):
