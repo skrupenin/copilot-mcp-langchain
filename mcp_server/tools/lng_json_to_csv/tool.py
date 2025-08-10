@@ -476,36 +476,114 @@ def process_element(matrix: Matrix, obj: Any, prefix: str, same_line: bool, dept
                         break
                 
             if needs_parallel_processing:
-                # Find the maximum array length to determine how many rows we need
+                # Calculate the maximum total rows needed considering nested arrays
                 max_array_length = 1  # At least one row for non-array fields
                 
-                for key, value in obj.items():
-                    if isinstance(value, list) and len(value) > max_array_length:
-                        max_array_length = len(value)
+                def calculate_total_expanded_rows(arr):
+                    """Calculate total rows when an array is fully expanded including nested arrays."""
+                    total_rows = 0
+                    for item in arr:
+                        if isinstance(item, dict):
+                            # For each object, find the max rows it will occupy
+                            item_rows = 1  # At least one row for the object itself
+                            for sub_key, sub_value in item.items():
+                                if isinstance(sub_value, list):
+                                    # This object field is an array - it determines how many rows this object needs
+                                    item_rows = max(item_rows, len(sub_value))
+                            total_rows += item_rows
+                        else:
+                            total_rows += 1
+                    return total_rows
                 
-                # Process each row
+                for key, value in obj.items():
+                    if isinstance(value, list):
+                        expanded_rows = calculate_total_expanded_rows(value)
+                        max_array_length = max(max_array_length, expanded_rows)
+                    else:
+                        max_array_length = max(max_array_length, 1)
+                
+                # Create global row mapping for arrays with nested structures
+                global_row_assignments = {}
+                
+                # Build mapping for array elements to global rows
+                for key, value in obj.items():
+                    if isinstance(value, list):
+                        global_row_assignments[key] = []
+                        current_global_row = 0
+                        
+                        for item_idx, item in enumerate(value):
+                            if isinstance(item, dict):
+                                # Calculate how many rows this object needs
+                                max_sub_array_length = 1
+                                for sub_key, sub_value in item.items():
+                                    if isinstance(sub_value, list):
+                                        max_sub_array_length = max(max_sub_array_length, len(sub_value))
+                                
+                                # This object spans multiple global rows
+                                for sub_row in range(max_sub_array_length):
+                                    global_row_assignments[key].append({
+                                        'item_idx': item_idx,
+                                        'sub_row': sub_row,
+                                        'global_row': current_global_row + sub_row
+                                    })
+                                current_global_row += max_sub_array_length
+                            else:
+                                # Simple item - one row
+                                global_row_assignments[key].append({
+                                    'item_idx': item_idx,
+                                    'sub_row': 0,
+                                    'global_row': current_global_row
+                                })
+                                current_global_row += 1
+                
+                # Process each global row
+                is_very_first_field = True
+                
                 for row_idx in range(max_array_length):
-                    is_first_field_in_row = True
+                    # Collect all data for this row first, maintaining hierarchy
+                    row_complete_data = {}
                     
                     for key, value in obj.items():
-                        new_key = f"{prefix}.{key}" if prefix else key
-                        
                         if isinstance(value, list):
-                            # Array field - use item at current index if exists
-                            if row_idx < len(value):
-                                process_element(matrix, value[row_idx], new_key, not is_first_field_in_row, depth + 1)
-                                is_first_field_in_row = False
-                            # If no item for this row, we skip (empty cells)
+                            # Find the element that should be in this global row
+                            if key in global_row_assignments:
+                                for assignment in global_row_assignments[key]:
+                                    if assignment['global_row'] == row_idx:
+                                        item = value[assignment['item_idx']]
+                                        sub_row = assignment['sub_row']
+                                        
+                                        if isinstance(item, dict):
+                                            # Extract the specific sub-row from this object
+                                            extracted_object = {}
+                                            for sub_key, sub_value in item.items():
+                                                if isinstance(sub_value, list):
+                                                    if sub_row < len(sub_value):
+                                                        extracted_object[sub_key] = sub_value[sub_row]
+                                                    else:
+                                                        extracted_object[sub_key] = ""
+                                                else:
+                                                    # Non-array fields only appear in the first sub-row
+                                                    extracted_object[sub_key] = sub_value if sub_row == 0 else ""
+                                            row_complete_data[key] = extracted_object
+                                        else:
+                                            # Simple item
+                                            row_complete_data[key] = item
+                                        break
                         else:
                             # Non-array field - only in first row
                             if row_idx == 0:
-                                process_element(matrix, value, new_key, not is_first_field_in_row, depth + 1)
-                                is_first_field_in_row = False
-                            # For other rows, we skip (empty cells)
+                                row_complete_data[key] = value
                     
-                    # Move to next row (except for last iteration)
-                    if row_idx < max_array_length - 1:
-                        matrix.new_line()
+                    # Process this row as a single object to maintain hierarchy
+                    if row_complete_data:
+                        is_first_field_in_this_row = True
+                        for key, field_value in row_complete_data.items():
+                            new_key = f"{prefix}.{key}" if prefix else key
+                            # For row_idx=0, first field is same_line=False, rest are same_line=True
+                            # For row_idx>0, first field is same_line=False (new row), rest are same_line=True
+                            field_same_line = not is_first_field_in_this_row
+                            process_element(matrix, field_value, new_key, field_same_line, depth + 1)
+                            is_first_field_in_this_row = False
                 
                 if depth > 1:
                     matrix.parent_header()
@@ -540,7 +618,10 @@ def process_element(matrix: Matrix, obj: Any, prefix: str, same_line: bool, dept
             value = str(obj).lower()
         else:
             value = str(obj)
-        matrix.inject(x, same_line, value)
+            
+        # Get column index and inject value
+        col_index = matrix.get_or_create_header(prefix)
+        matrix.inject(col_index, same_line, value)
 
 def analyze_structure(data: Any, prefix: str = "") -> dict:
     """Analyze JSON structure to determine maximum width needed for each object path."""
@@ -636,7 +717,7 @@ def json_to_csv(json_data: str,
         matrix.remove_headers_duplicates()
         
     # Convert to string
-    return matrix.to_string(
+    result = matrix.to_string(
         column_delimiter=column_delimiter,
         cell_left_delimiter=cell_left_delimiter, 
         cell_right_delimiter=cell_right_delimiter,
@@ -645,6 +726,7 @@ def json_to_csv(json_data: str,
         line_replacements=line_replacements,
         padding_to_max_cell_length=padding_to_max_cell_length
     )
+    return result
 
 def json_to_markdown(json_data: str) -> str:
     """Convert JSON to Markdown table format."""
