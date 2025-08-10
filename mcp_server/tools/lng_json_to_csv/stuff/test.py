@@ -12,9 +12,17 @@ class Colors:
     RESET = '\033[0m'
     BOLD = '\033[1m'
 
-# Add the parent directory to the path to import the tool
-sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-from tool import json_to_csv, json_to_markdown
+# Import our porteed JSON to CSV module
+from json_to_csv import JsonToCsv
+
+# Create compatibility functions to match the original API
+def json_to_csv(json_data):
+    """Compatibility wrapper for JSON to CSV conversion"""
+    return JsonToCsv.json_to_csv(json_data)
+
+def json_to_markdown(json_data):
+    """Compatibility wrapper for JSON to Markdown conversion"""
+    return JsonToCsv.json_to_markdown(json_data)
 
 class EnhancedJsonToCsvTest(unittest.TestCase):
     """Enhanced test framework with detailed failure output.
