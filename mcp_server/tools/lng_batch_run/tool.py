@@ -137,10 +137,16 @@ Returns error details with failed tool name and variable context when any step f
                             },
                             "then": {
                                 "type": "array",
+                                "items": {
+                                    "type": "object"
+                                },
                                 "description": "Steps to execute if condition is true"
                             },
                             "else": {
                                 "type": "array", 
+                                "items": {
+                                    "type": "object"
+                                },
                                 "description": "Steps to execute if condition is false"
                             },
                             "forEach": {
@@ -157,6 +163,9 @@ Returns error details with failed tool name and variable context when any step f
                             },
                             "parallel": {
                                 "type": "array",
+                                "items": {
+                                    "type": "object"
+                                },
                                 "description": "Steps to execute in parallel"
                             },
                             "delay": {
