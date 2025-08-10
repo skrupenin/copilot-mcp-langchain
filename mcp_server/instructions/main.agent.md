@@ -9,3 +9,4 @@
 - Follow `./read-debug-info.agent.md` when there are some problems.
 - Follow `./testing-tool.agent.md` if you need to test the tool after creation or modification. What json escaping quotes strategy you should use is also described in the file.
 - Follow `./create-tool.agent.md` when you create a new tool.
+- Follow `./running-unit-tests.agent.md` when you need to run/write unit tests for the tool.

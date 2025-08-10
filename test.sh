@@ -257,6 +257,38 @@ python -m mcp_server.run run lng_javascript '{\"command\": \"execute\", \"functi
 # Test error handling - trying to add arrow function (should fail)
 python -m mcp_server.run run lng_javascript '{\"command\": \"add\", \"function_name\": \"arrowTest\", \"function_code\": \"const arrowTest = () => { return 1; }\"}'
 
+#########################
+### lng_json_to_csv ###
+#########################
+# JSON to CSV/Markdown converter with pandas support
+
+# Simple JSON object to CSV
+python -m mcp_server.run run lng_json_to_csv '{\"json_data\":\"[{\\\"field\\\":\\\"value1\\\"}]\"}'
+
+# Simple JSON object to Markdown
+python -m mcp_server.run run lng_json_to_csv '{\"json_data\":\"[{\\\"field\\\":\\\"value1\\\"}]\",\"format\":\"markdown\"}'
+
+# Multiple objects with different fields
+python -m mcp_server.run run lng_json_to_csv '{\"json_data\":\"[{\\\"name\\\":\\\"John\\\",\\\"age\\\":30},{\\\"name\\\":\\\"Jane\\\",\\\"city\\\":\\\"NYC\\\"}]\"}'
+
+# Array handling example
+python -m mcp_server.run run lng_json_to_csv '{\"json_data\":\"[{\\\"field\\\":\\\"value1\\\",\\\"array\\\":[\\\"item1\\\",\\\"item2\\\"]},{\\\"field\\\":\\\"value2\\\",\\\"array\\\":[\\\"item3\\\",\\\"item4\\\"]}]\"}'
+
+# Nested object example
+python -m mcp_server.run run lng_json_to_csv '{\"json_data\":\"[{\\\"user\\\":{\\\"name\\\":\\\"John\\\",\\\"age\\\":30},\\\"settings\\\":{\\\"theme\\\":\\\"dark\\\"}}]\"}'
+
+# Character escaping example
+python -m mcp_server.run run lng_json_to_csv '{\"json_data\":\"[{\\\"field\\\":\\\"value,with,commas\\\"}]\"}'
+
+# Custom delimiter example 
+python -m mcp_server.run run lng_json_to_csv '{\"json_data\":\"[{\\\"field1\\\":\\\"value1\\\",\\\"field2\\\":\\\"value2\\\"}]\",\"column_delimiter\":\"|\"}'
+
+# Complex real-world example (GitHub Copilot analytics style)
+python -m mcp_server.run run lng_json_to_csv '{\"json_data\":\"[{\\\"date\\\":\\\"2025-01-01\\\",\\\"users\\\":5,\\\"metrics\\\":{\\\"active\\\":3,\\\"engaged\\\":2},\\\"languages\\\":[{\\\"name\\\":\\\"java\\\",\\\"count\\\":10},{\\\"name\\\":\\\"python\\\",\\\"count\\\":5}]}]\"}'
+
+# Test tool functionality
+cd mcp_server/tools/lng_json_to_csv/stuff && python test_runner.py && cd ../../../../
+
 ########################
 ### clean all caches ###
 ########################
