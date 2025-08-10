@@ -264,29 +264,32 @@ python -m mcp_server.run run lng_javascript '{\"command\": \"add\", \"function_n
 
 ### TEXT MODE TESTS ###
 
-# Simple JSON object to CSV
-python -m mcp_server.run run lng_json_to_csv '{\"json_data\":\"[{\\\"field\\\":\\\"value1\\\"}]\"}'
+# Simple JSON object to CSV (new simplified format)
+python -m mcp_server.run run lng_json_to_csv '{\"json_data\":[{\"field\":\"value1\"}]}'
 
-# Simple JSON object to Markdown
-python -m mcp_server.run run lng_json_to_csv '{\"json_data\":\"[{\\\"field\\\":\\\"value1\\\"}]\",\"format\":\"markdown\"}'
+# Simple JSON object to Markdown (new simplified format)
+python -m mcp_server.run run lng_json_to_csv '{\"json_data\":[{\"field\":\"value1\"}],\"format\":\"markdown\"}'
 
-# Multiple objects with different fields
-python -m mcp_server.run run lng_json_to_csv '{\"json_data\":\"[{\\\"name\\\":\\\"John\\\",\\\"age\\\":30},{\\\"name\\\":\\\"Jane\\\",\\\"city\\\":\\\"NYC\\\"}]\"}'
+# Multiple objects with different fields (no escaping needed!)
+python -m mcp_server.run run lng_json_to_csv '{\"json_data\":[{\"name\":\"John\",\"age\":30},{\"name\":\"Jane\",\"city\":\"NYC\"}]}'
 
-# Array handling example
-python -m mcp_server.run run lng_json_to_csv '{\"json_data\":\"[{\\\"field\\\":\\\"value1\\\",\\\"array\\\":[\\\"item1\\\",\\\"item2\\\"]},{\\\"field\\\":\\\"value2\\\",\\\"array\\\":[\\\"item3\\\",\\\"item4\\\"]}]\"}'
+# Array handling example (clean syntax)
+python -m mcp_server.run run lng_json_to_csv '{\"json_data\":[{\"field\":\"value1\",\"array\":[\"item1\",\"item2\"]},{\"field\":\"value2\",\"array\":[\"item3\",\"item4\"]}]}'
 
-# Nested object example
-python -m mcp_server.run run lng_json_to_csv '{\"json_data\":\"[{\\\"user\\\":{\\\"name\\\":\\\"John\\\",\\\"age\\\":30},\\\"settings\\\":{\\\"theme\\\":\\\"dark\\\"}}]\"}'
+# Nested object example (much cleaner!)
+python -m mcp_server.run run lng_json_to_csv '{\"json_data\":[{\"user\":{\"name\":\"John\",\"age\":30},\"settings\":{\"theme\":\"dark\"}}]}'
 
 # Character escaping example
-python -m mcp_server.run run lng_json_to_csv '{\"json_data\":\"[{\\\"field\\\":\\\"value,with,commas\\\"}]\"}'
+python -m mcp_server.run run lng_json_to_csv '{\"json_data\":[{\"field\":\"value,with,commas\"}]}'
 
-# Custom delimiter example 
-python -m mcp_server.run run lng_json_to_csv '{\"json_data\":\"[{\\\"field1\\\":\\\"value1\\\",\\\"field2\\\":\\\"value2\\\"}]\",\"column_delimiter\":\"|\"}'
+# Custom delimiter example (clean syntax)
+python -m mcp_server.run run lng_json_to_csv '{\"json_data\":[{\"field1\":\"value1\",\"field2\":\"value2\"}],\"column_delimiter\":\"|\"}'
 
-# Complex real-world example (GitHub Copilot analytics style)
-python -m mcp_server.run run lng_json_to_csv '{\"json_data\":\"[{\\\"date\\\":\\\"2025-01-01\\\",\\\"users\\\":5,\\\"metrics\\\":{\\\"active\\\":3,\\\"engaged\\\":2},\\\"languages\\\":[{\\\"name\\\":\\\"java\\\",\\\"count\\\":10},{\\\"name\\\":\\\"python\\\",\\\"count\\\":5}]}]\"}'
+# Complex real-world example (GitHub Copilot analytics style - much more readable!)
+python -m mcp_server.run run lng_json_to_csv '{\"json_data\":[{\"date\":\"2025-01-01\",\"users\":5,\"metrics\":{\"active\":3,\"engaged\":2},\"languages\":[{\"name\":\"java\",\"count\":10},{\"name\":\"python\",\"count\":5}]}]}'
+
+# Single object (not array)
+python -m mcp_server.run run lng_json_to_csv '{\"json_data\":{\"name\":\"SingleUser\",\"role\":\"admin\"}}'
 
 ### FILE MODE TESTS ###
 

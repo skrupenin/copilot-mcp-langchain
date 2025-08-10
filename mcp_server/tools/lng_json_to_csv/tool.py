@@ -14,7 +14,7 @@ async def tool_info() -> dict:
 **Two modes of operation:**
 
 1. **Text Mode** (default):
-   - `json_data` (string, required): JSON data as text
+   - `json_data` (object/array, required): JSON data as object or array
    - Returns converted result as text
 
 2. **File Mode**:
@@ -23,7 +23,7 @@ async def tool_info() -> dict:
    - Returns status message with paths
 
 **Parameters:**
-- `json_data` (string, optional): The JSON data to convert (Text Mode).
+- `json_data` (object/array, optional): The JSON data to convert (Text Mode) - must be object or array.
 - `input_file_path` (string, optional): Path to input JSON file (File Mode).
 - `output_file_path` (string, optional): Path to output file (File Mode).
 - `format` (string, optional): Output format - 'csv' or 'markdown'. Default: 'csv'.
@@ -52,8 +52,11 @@ This tool flattens nested JSON structures into tabular format, preserving hierar
             "type": "object",
             "properties": {
                 "json_data": {
-                    "type": "string",
-                    "description": "JSON data to convert to CSV/Markdown (Text Mode)"
+                    "description": "JSON data to convert to CSV/Markdown (Text Mode) - object or array",
+                    "oneOf": [
+                        {"type": "object"},
+                        {"type": "array"}
+                    ]
                 },
                 "input_file_path": {
                     "type": "string",
@@ -838,18 +841,19 @@ async def run_tool(name: str, parameters: dict) -> list[types.Content]:
         
         # TEXT MODE
         else:
-            # Validate JSON
-            try:
-                json.loads(json_data)
-            except json.JSONDecodeError as e:
-                return [types.TextContent(type="text", text=json.dumps({"error": f"Invalid JSON: {str(e)}"}))]
+            # json_data should be already parsed JSON object/array
+            if json_data is None:
+                return [types.TextContent(type="text", text=json.dumps({"error": "json_data is required for text mode"}))]
+            
+            # Convert JSON object/array to string for internal processing
+            json_data_str = json.dumps(json_data)
                 
             # Convert based on format
             if format_type == "markdown":
-                result = json_to_markdown(json_data)
+                result = json_to_markdown(json_data_str)
             else:
                 result = json_to_csv(
-                    json_data,
+                    json_data_str,
                     column_delimiter=column_delimiter,
                     cell_left_delimiter=cell_left_delimiter,
                     cell_right_delimiter=cell_right_delimiter,
