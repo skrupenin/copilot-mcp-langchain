@@ -1269,6 +1269,299 @@ date      |total_active_users|total_engaged_users|copilot_ide_chat   |          
           |                  |                   |                   |               |       |                      |                           |           |                   |      |                   |                   |                            |                            |unknown  |0                     |0                        |21                        |11                    |0                  |       |                   |         |                   |unknown  |0                  |                   
 """)
 
+    def test_json_to_csv_debug_delimiter_positioning(self):
+        """Debug test for delimiter positioning (from test_delimiter_fix.py)."""
+        self.assert_r("""[
+    {
+        "zField": "value3",
+        "aField": "value1",
+        "arrayField": [
+            {"name": "banana", "color": "yellow"},
+            {"name": "apple", "color": "red"}
+        ],
+        "numberArray": [3, 1, 2]
+    },
+    {
+        "zField": "test",
+        "name": "example",
+        "numberArray": [10, 2, 30]
+    }
+]
+
+
+zField,aField,arrayField,,numberArray,name
+,,name,color,,
+value3,value1,banana,yellow,3,
+,,apple,red,1,
+,,,,2,
+test,,,,10,example
+,,,,2,
+,,,,30,
+
+
+zField|aField|arrayField|      |numberArray|name   
+      |      |name      |color |           |       
+---------------------------------------------------
+value3|value1|banana    |yellow|3          |       
+      |      |apple     |red   |1          |       
+      |      |          |      |2          |       
+test  |      |          |      |10         |example
+      |      |          |      |2          |       
+      |      |          |      |30         |       
+""")
+
+    def test_json_to_csv_debug_line_endings_simple(self):
+        """Debug test for line endings (from test_line_endings.py)."""
+        self.assert_r("""[
+    {
+        "field": "value1"
+    }
+]
+
+
+field
+value1
+
+
+field 
+------
+value1
+""")
+
+    def test_json_to_csv_debug_spacing_analysis(self):
+        """Debug test for spacing analysis (from debug_spacing.py)."""
+        self.assert_r("""[
+  {
+    "date": "2025-03-17",
+    "one": {
+      "data1": 0
+    },
+    "data2": 1,
+    "two": {
+      "data3": 0
+    },
+    "data4": 1,
+    "three": {
+      "data5": 0
+    }
+  }
+]
+
+
+date,one,data2,two,data4,three
+,data1,,data3,,data5
+2025-03-17,0,1,0,1,0
+
+
+date      |one  |data2|two  |data4|three
+          |data1|     |data3|     |data5
+----------------------------------------
+2025-03-17|0    |1    |0    |1    |0    
+""")
+
+    def test_json_to_csv_debug_corner_case_structure(self):
+        """Debug test for corner case structure analysis (from debug_corner_case.py)."""
+        self.assert_r("""[
+  {
+    "date": "2025-03-17",
+    "object": {
+      "field1": [
+        {
+          "name": "field1_name",
+          "array1": [
+            {
+              "name": "array1_name",
+              "array2": [
+                {
+                  "name": "array2_name",
+                  "data3": 3
+                }
+              ],
+              "data4": 4
+            }
+          ],
+          "data5": 5
+        }
+      ],
+      "field2": [
+        {
+          "name": "field2_name",
+          "data6": 6
+        }
+      ],
+      "data7": 7
+    }
+  }
+]
+
+
+date,object,,,,,,,,
+,field1,,,,,,field2,,data7
+,name,array1,,,,data5,name,data6,
+,,name,array2,,data4,,,,
+,,,name,data3,,,,,
+2025-03-17,field1_name,array1_name,array2_name,3,4,5,field2_name,6,7
+
+
+date      |object     |           |           |     |     |     |           |     |     
+          |field1     |           |           |     |     |     |field2     |     |data7
+          |name       |array1     |           |     |     |data5|name       |data6|     
+          |           |name       |array2     |     |data4|     |           |     |     
+          |           |           |name       |data3|     |     |           |     |     
+----------------------------------------------------------------------------------------
+2025-03-17|field1_name|array1_name|array2_name|3    |4    |5    |field2_name|6    |7    
+""")
+
+    def test_json_to_csv_debug_java_comparison_minified(self):
+        """Debug test with exact minified data from debug_java_comparison.py."""
+        self.assert_r("""[{"date":"2025-03-17","copilot_ide_chat":{"total_engaged_users":0}},{"date":"2025-03-18","copilot_ide_chat":{"editors":[{"name":"JetBrains","models":[{"name":"default","total_chats":4,"is_custom_model":false,"total_engaged_users":1}],"total_engaged_users":1}],"total_engaged_users":2}}]
+
+
+date,copilot_ide_chat,,,,,,
+,total_engaged_users,editors,,,,,
+,,name,models,,,,total_engaged_users
+,,,name,total_chats,is_custom_model,total_engaged_users,
+2025-03-17,0,,,,,,
+2025-03-18,2,JetBrains,default,4,false,1,1
+
+
+date      |copilot_ide_chat   |         |       |           |               |                   |                   
+          |total_engaged_users|editors  |       |           |               |                   |                   
+          |                   |name     |models |           |               |                   |total_engaged_users
+          |                   |         |name   |total_chats|is_custom_model|total_engaged_users|                   
+--------------------------------------------------------------------------------------------------------------------
+2025-03-17|0                  |         |       |           |               |                   |                   
+2025-03-18|2                  |JetBrains|default|4          |false          |1                  |1                  
+""")
+
+    def test_json_to_csv_debug_super_complex_minified(self):
+        """Debug test with minified super complex data from debug_super_complex.py."""
+        self.assert_r("""[{"date":"2025-03-17","copilot_ide_chat":{"total_engaged_users":0},"total_active_users":1,"copilot_dotcom_chat":{"total_engaged_users":0},"total_engaged_users":1,"copilot_dotcom_pull_requests":{"total_engaged_users":0},"copilot_ide_code_completions":{"editors":[{"name":"JetBrains","models":[{"name":"default","languages":[{"name":"json","total_engaged_users":1,"total_code_acceptances":1,"total_code_suggestions":1,"total_code_lines_accepted":1,"total_code_lines_suggested":1}],"is_custom_model":false,"total_engaged_users":1}],"total_engaged_users":1}],"languages":[{"name":"json","total_engaged_users":1}],"total_engaged_users":1}},{"date":"2025-03-18","copilot_ide_chat":{"editors":[{"name":"JetBrains","models":[{"name":"default","total_chats":4,"is_custom_model":false,"total_engaged_users":1,"total_chat_copy_events":1,"total_chat_insertion_events":0}],"total_engaged_users":1},{"name":"vscode","models":[{"name":"default","total_chats":4,"is_custom_model":false,"total_engaged_users":1,"total_chat_copy_events":0,"total_chat_insertion_events":0}],"total_engaged_users":1}],"total_engaged_users":2},"total_active_users":5,"copilot_dotcom_chat":{"total_engaged_users":0},"total_engaged_users":3,"copilot_dotcom_pull_requests":{"total_engaged_users":0},"copilot_ide_code_completions":{"editors":[{"name":"JetBrains","models":[{"name":"default","languages":[{"name":"java","total_engaged_users":2,"total_code_acceptances":12,"total_code_suggestions":67,"total_code_lines_accepted":18,"total_code_lines_suggested":214},{"name":"unknown","total_engaged_users":0,"total_code_acceptances":0,"total_code_suggestions":11,"total_code_lines_accepted":0,"total_code_lines_suggested":21},{"name":"json","total_engaged_users":0,"total_code_acceptances":0,"total_code_suggestions":1,"total_code_lines_accepted":0,"total_code_lines_suggested":13}],"is_custom_model":false,"total_engaged_users":2}],"total_engaged_users":2}],"languages":[{"name":"java","total_engaged_users":2},{"name":"unknown","total_engaged_users":0},{"name":"json","total_engaged_users":0}],"total_engaged_users":2}}]
+
+
+date,copilot_ide_chat,,,,,,,,,total_active_users,copilot_dotcom_chat,total_engaged_users,copilot_dotcom_pull_requests,copilot_ide_code_completions,,,,,,,,,,,,,
+,total_engaged_users,editors,,,,,,,,,total_engaged_users,,total_engaged_users,editors,,,,,,,,,,,languages,,total_engaged_users
+,,name,models,,,,,,total_engaged_users,,,,,name,models,,,,,,,,,total_engaged_users,name,total_engaged_users,
+,,,name,total_chats,is_custom_model,total_engaged_users,total_chat_copy_events,total_chat_insertion_events,,,,,,,name,languages,,,,,,is_custom_model,total_engaged_users,,,,
+,,,,,,,,,,,,,,,,name,total_engaged_users,total_code_acceptances,total_code_suggestions,total_code_lines_accepted,total_code_lines_suggested,,,,,,
+2025-03-17,0,,,,,,,,,1,0,1,0,JetBrains,default,json,1,1,1,1,1,false,1,1,json,1,1
+2025-03-18,2,JetBrains,default,4,false,1,1,0,1,5,0,3,0,JetBrains,default,java,2,12,67,18,214,false,2,2,java,2,2
+,,vscode,default,4,false,1,0,0,1,,,,,,,unknown,0,0,11,0,21,,,,unknown,0,
+,,,,,,,,,,,,,,,,json,0,0,1,0,13,,,,json,0,
+
+
+date      |copilot_ide_chat   |         |       |           |               |                   |                      |                           |                   |total_active_users|copilot_dotcom_chat|total_engaged_users|copilot_dotcom_pull_requests|copilot_ide_code_completions|       |         |                   |                      |                      |                         |                          |               |                   |                   |         |                   |                   
+          |total_engaged_users|editors  |       |           |               |                   |                      |                           |                   |                  |total_engaged_users|                   |total_engaged_users         |editors                     |       |         |                   |                      |                      |                         |                          |               |                   |                   |languages|                   |total_engaged_users
+          |                   |name     |models |           |               |                   |                      |                           |total_engaged_users|                  |                   |                   |                            |name                        |models |         |                   |                      |                      |                         |                          |               |                   |total_engaged_users|name     |total_engaged_users|                   
+          |                   |         |name   |total_chats|is_custom_model|total_engaged_users|total_chat_copy_events|total_chat_insertion_events|                   |                  |                   |                   |                            |                            |name   |languages|                   |                      |                      |                         |                          |is_custom_model|total_engaged_users|                   |         |                   |                   
+          |                   |         |       |           |               |                   |                      |                           |                   |                  |                   |                   |                            |                            |       |name     |total_engaged_users|total_code_acceptances|total_code_suggestions|total_code_lines_accepted|total_code_lines_suggested|               |                   |                   |         |                   |                   
+-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+2025-03-17|0                  |         |       |           |               |                   |                      |                           |                   |1                 |0                  |1                  |0                           |JetBrains                   |default|json     |1                  |1                     |1                     |1                        |1                         |false          |1                  |1                  |json     |1                  |1                  
+2025-03-18|2                  |JetBrains|default|4          |false          |1                  |1                     |0                          |1                  |5                 |0                  |3                  |0                           |JetBrains                   |default|java     |2                  |12                    |67                    |18                       |214                       |false          |2                  |2                  |java     |2                  |2                  
+          |                   |vscode   |default|4          |false          |1                  |0                     |0                          |1                  |                  |                   |                   |                            |                            |       |unknown  |0                  |0                     |11                    |0                        |21                        |               |                   |                   |unknown  |0                  |                   
+          |                   |         |       |           |               |                   |                      |                           |                   |                  |                   |                   |                            |                            |       |json     |0                  |0                     |1                     |0                        |13                        |               |                   |                   |json     |0                  |                   
+""")
+
+    def test_json_to_csv_debug_field_order(self):
+        """Debug test for field order from debug_order.py."""
+        self.assert_r("""[
+  {
+    "field": {
+      "name": "test_name",
+      "array": [1, 2],
+      "data": 42
+    }
+  }
+]
+
+
+field,,
+name,array,data
+test_name,1,42
+,2,
+
+
+field    |     |    
+name     |array|data
+--------------------
+test_name|1    |42  
+         |2    |    
+""")
+
+    def test_json_to_csv_debug_copilot_simple_structure(self):
+        """Debug test for simplified copilot structure from debug_copilot_simple.py."""
+        self.assert_r("""[
+  {
+    "date": "2025-03-17",
+    "copilot_ide_chat": {
+      "total_engaged_users": 0
+    }
+  },
+  {
+    "date": "2025-03-18",
+    "copilot_ide_chat": {
+      "editors": [
+        {
+          "name": "JetBrains",
+          "models": [
+            {
+              "name": "default",
+              "total_chats": 4,
+              "is_custom_model": false,
+              "total_engaged_users": 1,
+              "total_chat_copy_events": 1,
+              "total_chat_insertion_events": 0
+            }
+          ],
+          "total_engaged_users": 1
+        }
+      ],
+      "total_engaged_users": 2
+    }
+  }
+]
+
+
+date,copilot_ide_chat,,,,,,,
+,total_engaged_users,editors,,,,,
+,,name,models,,,,total_engaged_users
+,,,name,total_chats,is_custom_model,total_engaged_users,total_chat_copy_events,total_chat_insertion_events
+2025-03-17,0,,,,,,,
+2025-03-18,2,JetBrains,default,4,false,1,1,0
+
+
+date      |copilot_ide_chat   |         |       |           |               |                   |                      |                           
+          |total_engaged_users|editors  |       |           |               |                   |                      |                           
+          |                   |name     |models |           |               |                   |                      |total_engaged_users        
+          |                   |         |name   |total_chats|is_custom_model|total_engaged_users|total_chat_copy_events|total_chat_insertion_events
+---------------------------------------------------------------------------------------------------------------------------------------------------
+2025-03-17|0                  |         |       |           |               |                   |                      |                           
+2025-03-18|2                  |JetBrains|default|4          |false          |1                  |1                     |0                          
+""")
+
+    def test_json_to_csv_debug_java_compat_two_objects(self):
+        """Debug test for Java compatibility (from test_java_compat.py)."""
+        self.assert_r("""[
+    {
+        "field": "value1"
+    },
+    {
+        "field": "value2"
+    }
+]
+
+
+field
+value1
+value2
+
+
+field 
+------
+value1
+value2
+""")
+
     def performance(self):
         """Performance test calling test_json_to_csv_super_complex2 multiple times."""
         import time
@@ -1277,6 +1570,67 @@ date      |total_active_users|total_engaged_users|copilot_ide_chat   |          
             self.test_json_to_csv_super_complex2()
         end = time.time()
         print(f"Performance test took: {(end - start) * 1000:.0f} ms")
+
+    def test_json_to_csv_debug_simple_test_analysis(self):
+        """Debug test for simple nested object analysis (from debug_simple_test.py)."""
+        self.assert_r("""{"user": {"name": "John", "age": 30}, "settings": {"theme": "dark", "lang": "en"}}
+
+user,settings
+name,age,theme,lang
+John,30,dark,en""")
+
+    def test_json_to_csv_debug_test_array_analysis(self):
+        """Debug test for array of objects with nested structure (from debug_test.py)."""
+        self.assert_r("""[{"user": {"name": "John", "age": 30}, "settings": {"theme": "dark", "lang": "en"}}]
+
+
+user,,settings,
+name,age,theme,lang
+John,30,dark,en
+
+
+user|   |settings|    
+name|age|theme   |lang
+----------------------
+John|30 |dark    |en  
+""")
+
+    def test_json_to_csv_compare_object_vs_array_colors(self):
+        """Comparison test: working case (color as object) vs broken case (colors as array) from compare_tests.py."""
+        # Working case: color as object
+        self.assert_r("""[
+    {
+        "arrayField": [
+            {"name": "banana", "color": {"id": "y", "value": "yellow"}},
+            {"name": "apple", "color": {"id": "r", "value": "red"}}
+        ],
+        "numberArray": [3, 1]
+    }
+]
+
+arrayField,,,numberArray
+name,color,,
+,id,value,
+banana,y,yellow,3
+apple,r,red,1""")
+
+    def test_json_to_csv_deep_analysis_parallel_arrays(self):
+        """Deep analysis test for parallel arrays global positioning logic (from deep_analysis.py)."""
+        self.assert_r("""[
+    {
+        "fruits": [
+            {"name": "banana", "colors": ["yellow", "green"]},
+            {"name": "apple", "colors": ["red"]}
+        ],
+        "numbers": [100, 200, 300]
+    }
+]
+
+fruits,,numbers
+name,colors,
+banana,yellow,100
+,green,200
+apple,red,300""")
 
 if __name__ == '__main__':
     unittest.main()
