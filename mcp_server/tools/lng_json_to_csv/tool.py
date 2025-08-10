@@ -52,11 +52,11 @@ This tool flattens nested JSON structures into tabular format, preserving hierar
             "type": "object",
             "properties": {
                 "json_data": {
-                    "description": "JSON data to convert to CSV/Markdown (Text Mode) - object or array",
-                    "oneOf": [
-                        {"type": "object"},
-                        {"type": "array"}
-                    ]
+                    "type": "array", 
+                    "items": {
+                        "type": "object"
+                    },
+                    "description": "JSON data to convert to CSV/Markdown (Text Mode) - array of objects"
                 },
                 "input_file_path": {
                     "type": "string",
