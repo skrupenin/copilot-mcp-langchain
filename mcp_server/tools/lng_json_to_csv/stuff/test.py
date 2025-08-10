@@ -1802,43 +1802,5 @@ account_number  |bank|currency|type   |       |amount           |category|date  
                 |    |        |       |       |50000            |Зарплата|2024-12-19|Поступление зарплаты|          |             |                
 """)
 
-# Demo tests to show the framework capabilities
-class DemoTest(EnhancedJsonToCsvTest):
-    def test_demo_fail_example(self):
-        """Demonstration test that fails to show error output format."""
-        self.assert_r("""[
-    {
-        "field": "value1"
-    }
-]
-
-
-field
-expected_wrong_value
-
-
-field 
-------
-expected_wrong_value
-""")
-        
-    def test_demo_success_example(self):
-        """Demonstration test that passes."""
-        self.assert_r("""[
-    {
-        "field": "value1"
-    }
-]
-
-
-field
-value1
-
-
-field 
-------
-value1
-""")
-
 if __name__ == '__main__':
     unittest.main()
