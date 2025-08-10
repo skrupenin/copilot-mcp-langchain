@@ -845,6 +845,12 @@ async def run_tool(name: str, parameters: dict) -> list[types.Content]:
             if json_data is None:
                 return [types.TextContent(type="text", text=json.dumps({"error": "json_data is required for text mode"}))]
             
+            # Validate that json_data is object or array (not string, number, etc.)
+            if not isinstance(json_data, (dict, list)):
+                return [types.TextContent(type="text", text=json.dumps({
+                    "error": f"json_data must be an object or array, not {type(json_data).__name__}. Use File Mode for processing JSON strings."
+                }))]
+            
             # Convert JSON object/array to string for internal processing
             json_data_str = json.dumps(json_data)
                 
