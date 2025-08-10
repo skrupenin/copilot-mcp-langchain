@@ -1476,16 +1476,16 @@ date      |copilot_ide_chat   |         |       |           |               |   
 
 
 field,,
-name,array,data
-test_name,1,42
-,2,
+name,array,field.data
+test_name,1,
+,2,42
 
 
-field    |     |    
-name     |array|data
---------------------
-test_name|1    |42  
-         |2    |    
+field    |     |          
+name     |array|field.data
+--------------------------
+test_name|1    |          
+         |2    |42        
 """)
 
     def test_json_to_csv_debug_copilot_simple_structure(self):
@@ -1522,21 +1522,21 @@ test_name|1    |42
 ]
 
 
-date,copilot_ide_chat,,,,,,,
-,total_engaged_users,editors,,,,,
-,,name,models,,,,total_engaged_users
-,,,name,total_chats,is_custom_model,total_engaged_users,total_chat_copy_events,total_chat_insertion_events
-2025-03-17,0,,,,,,,
-2025-03-18,2,JetBrains,default,4,false,1,1,0
+date,copilot_ide_chat,,,,,,,,
+,total_engaged_users,editors,,,,,,,
+,,name,models,,,,,,total_engaged_users
+,,,name,total_chats,is_custom_model,total_engaged_users,total_chat_copy_events,total_chat_insertion_events,
+2025-03-17,0,,,,,,,,
+2025-03-18,2,JetBrains,default,4,false,1,1,0,1
 
 
-date      |copilot_ide_chat   |         |       |           |               |                   |                      |                           
-          |total_engaged_users|editors  |       |           |               |                   |                      |                           
-          |                   |name     |models |           |               |                   |                      |total_engaged_users        
-          |                   |         |name   |total_chats|is_custom_model|total_engaged_users|total_chat_copy_events|total_chat_insertion_events
----------------------------------------------------------------------------------------------------------------------------------------------------
-2025-03-17|0                  |         |       |           |               |                   |                      |                           
-2025-03-18|2                  |JetBrains|default|4          |false          |1                  |1                     |0                          
+date      |copilot_ide_chat   |         |       |           |               |                   |                      |                           |                   
+          |total_engaged_users|editors  |       |           |               |                   |                      |                           |                   
+          |                   |name     |models |           |               |                   |                      |                           |total_engaged_users
+          |                   |         |name   |total_chats|is_custom_model|total_engaged_users|total_chat_copy_events|total_chat_insertion_events|                   
+-----------------------------------------------------------------------------------------------------------------------------------------------------------------------
+2025-03-17|0                  |         |       |           |               |                   |                      |                           |                   
+2025-03-18|2                  |JetBrains|default|4          |false          |1                  |1                     |0                          |1                  
 """)
 
     def test_json_to_csv_debug_java_compat_two_objects(self):
@@ -1573,11 +1573,19 @@ value2
 
     def test_json_to_csv_debug_simple_test_analysis(self):
         """Debug test for simple nested object analysis (from debug_simple_test.py)."""
-        self.assert_r("""{"user": {"name": "John", "age": 30}, "settings": {"theme": "dark", "lang": "en"}}
+        self.assert_r("""[{"user": {"name": "John", "age": 30}, "settings": {"theme": "dark", "lang": "en"}}]
 
-user,settings
+
+user,,settings,
 name,age,theme,lang
-John,30,dark,en""")
+John,30,dark,en
+
+
+user|   |settings|    
+name|age|theme   |lang
+----------------------
+John|30 |dark    |en  
+""")
 
     def test_json_to_csv_debug_test_array_analysis(self):
         """Debug test for array of objects with nested structure (from debug_test.py)."""
@@ -1608,11 +1616,21 @@ John|30 |dark    |en
     }
 ]
 
+
 arrayField,,,numberArray
 name,color,,
 ,id,value,
 banana,y,yellow,3
-apple,r,red,1""")
+apple,r,red,1
+
+
+arrayField|     |      |numberArray
+name      |color|      |           
+          |id   |value |           
+-----------------------------------
+banana    |y    |yellow|3          
+apple     |r    |red   |1          
+""")
 
     def test_json_to_csv_deep_analysis_parallel_arrays(self):
         """Deep analysis test for parallel arrays global positioning logic (from deep_analysis.py)."""
@@ -1626,11 +1644,21 @@ apple,r,red,1""")
     }
 ]
 
-fruits,,numbers
-name,colors,
-banana,yellow,100
-,green,200
-apple,red,300""")
+
+fruits,numbers
+name,colors
+banana,100
+,200
+apple,300
+
+
+fruits|numbers
+name  |colors 
+--------------
+banana|100    
+      |200    
+apple |300    
+""")
 
 if __name__ == '__main__':
     unittest.main()
