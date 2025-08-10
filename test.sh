@@ -262,6 +262,8 @@ python -m mcp_server.run run lng_javascript '{\"command\": \"add\", \"function_n
 #########################
 # JSON to CSV/Markdown converter with pandas support
 
+### TEXT MODE TESTS ###
+
 # Simple JSON object to CSV
 python -m mcp_server.run run lng_json_to_csv '{\"json_data\":\"[{\\\"field\\\":\\\"value1\\\"}]\"}'
 
@@ -285,6 +287,40 @@ python -m mcp_server.run run lng_json_to_csv '{\"json_data\":\"[{\\\"field1\\\":
 
 # Complex real-world example (GitHub Copilot analytics style)
 python -m mcp_server.run run lng_json_to_csv '{\"json_data\":\"[{\\\"date\\\":\\\"2025-01-01\\\",\\\"users\\\":5,\\\"metrics\\\":{\\\"active\\\":3,\\\"engaged\\\":2},\\\"languages\\\":[{\\\"name\\\":\\\"java\\\",\\\"count\\\":10},{\\\"name\\\":\\\"python\\\",\\\"count\\\":5}]}]\"}'
+
+### FILE MODE TESTS ###
+
+# Create test JSON file for file mode tests
+echo '[{"name":"Alice","age":30,"city":"New York","hobbies":["reading","painting"]},{"name":"Bob","age":25,"city":"Los Angeles","hobbies":["gaming","cooking","hiking"]},{"name":"Charlie","age":35,"city":"Chicago","hobbies":["music"]}]' > test_input.json
+
+# File mode: JSON to CSV conversion
+python -m mcp_server.run run lng_json_to_csv '{\"input_file_path\":\"test_input.json\", \"output_file_path\":\"test_output.csv\"}'
+
+# File mode: JSON to Markdown conversion
+python -m mcp_server.run run lng_json_to_csv '{\"input_file_path\":\"test_input.json\", \"output_file_path\":\"test_output.md\", \"format\":\"markdown\"}'
+
+# File mode: Complex data with nested directory creation
+echo '[{"product":"Widget","price":15.99,"categories":{"main":"electronics","sub":"gadgets"}},{"product":"Gadget","price":25.50,"categories":{"main":"tools","sub":"automation"}}]' > test_products.json
+python -m mcp_server.run run lng_json_to_csv '{\"input_file_path\":\"test_products.json\", \"output_file_path\":\"output/reports/products.csv\"}'
+
+# File mode: Custom delimiter in file output
+python -m mcp_server.run run lng_json_to_csv '{\"input_file_path\":\"test_input.json\", \"output_file_path\":\"test_custom.csv\", \"column_delimiter\":\"|\"}'
+
+# File mode: Test error handling - nonexistent input file
+python -m mcp_server.run run lng_json_to_csv '{\"input_file_path\":\"nonexistent.json\", \"output_file_path\":\"test.csv\"}'
+
+# File mode: Test mode conflict detection
+python -m mcp_server.run run lng_json_to_csv '{\"json_data\":\"[{}]\", \"input_file_path\":\"test.json\", \"output_file_path\":\"test.csv\"}'
+
+# Display created files to verify results
+echo "=== Created CSV file content ==="
+cat test_output.csv
+echo "=== Created Markdown file content ==="
+cat test_output.md
+
+# Clean up test files
+rm -f test_input.json test_products.json test_output.csv test_output.md test_custom.csv
+rm -rf output/
 
 # Test tool functionality
 cd mcp_server/tools/lng_json_to_csv/stuff && python test_runner.py && cd ../../../../
