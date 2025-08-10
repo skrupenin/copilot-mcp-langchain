@@ -4,6 +4,14 @@ import os
 import json
 import traceback
 
+# ANSI color codes
+class Colors:
+    YELLOW = '\033[93m'
+    RED = '\033[91m'
+    GREEN = '\033[92m'
+    RESET = '\033[0m'
+    BOLD = '\033[1m'
+
 # Add the parent directory to the path to import the tool
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from tool import json_to_csv, json_to_markdown
@@ -61,44 +69,47 @@ class EnhancedJsonToCsvTest(unittest.TestCase):
             
             if expected == actual:
                 # Test passed
+                print()  # Add newline before our output
                 print("=" * 64)
-                print(f"[SUCCESS] Test name: {test_name}")
-                print("=" * 64)
+                print(f"{Colors.GREEN}[SUCCESS]{Colors.RESET} Test name: {test_name}")
             else:
                 # Test failed - show detailed output
+                print()  # Add newline before our output
                 print("=" * 64)
-                print(f"[FAIL] Test name: {test_name}")
+                print(f"{Colors.RED}[FAIL]{Colors.RESET} Test name: {test_name}")
                 print("-" * 55)
-                print("Input Json:")
+                print(f"{Colors.YELLOW}Input Json:{Colors.RESET}")
                 print(input_json)
                 print("-" * 55)
-                print("Expected CSV:")
+                print(f"{Colors.YELLOW}Expected CSV:{Colors.RESET}")
                 print(expected_csv)
                 print("-" * 55)
-                print("Actual CSV:")
+                print(f"{Colors.YELLOW}Actual CSV:{Colors.RESET}")
                 print(actual_csv.rstrip())  # Remove trailing newline for cleaner output
                 print("-" * 55)
-                print("Expected Markdown:")
+                print(f"{Colors.YELLOW}Expected Markdown:{Colors.RESET}")
                 print(expected_markdown)
                 print("-" * 55)
-                print("Actual Markdown:")
+                print(f"{Colors.YELLOW}Actual Markdown:{Colors.RESET}")
                 print(actual_markdown.rstrip())  # Remove trailing newline for cleaner output
-                print("=" * 64)
+                print("-" * 40)  # Shorter separator before unittest output
                 
                 # Still raise the assertion error for unittest
                 self.assertEqual(expected, actual, 
                                 f"Test {test_name} failed - see detailed output above")
                 
         except Exception as e:
-            # Handle unexpected errors
-            print("=" * 64)
-            print(f"[ERROR] Test name: {test_name}")
-            print("-" * 55)
-            print(f"Error: {str(e)}")
-            print("-" * 55)
-            print("Traceback:")
-            print(traceback.format_exc())
-            print("=" * 64)
+            # Handle unexpected errors - but don't duplicate if it's already our AssertionError
+            if not isinstance(e, AssertionError):
+                print()  # Add newline before our output
+                print("=" * 64)
+                print(f"{Colors.RED}[ERROR]{Colors.RESET} Test name: {test_name}")
+                print("-" * 55)
+                print(f"{Colors.YELLOW}Error:{Colors.RESET} {str(e)}")
+                print("-" * 55)
+                print(f"{Colors.YELLOW}Traceback:{Colors.RESET}")
+                print(traceback.format_exc())
+                print("-" * 40)
             raise
 
 class JsonToCsvTest(EnhancedJsonToCsvTest):
