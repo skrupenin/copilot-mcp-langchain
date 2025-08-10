@@ -1645,19 +1645,66 @@ apple     |r    |red   |1
 ]
 
 
-fruits,numbers
-name,colors
-banana,100
-,200
-apple,300
+fruits,,numbers
+name,colors,
+banana,yellow,100
+,green,200
+apple,red,300
 
 
-fruits|numbers
-name  |colors 
---------------
-banana|100    
-      |200    
-apple |300    
+fruits|      |numbers
+name  |colors|       
+---------------------
+banana|yellow|100    
+      |green |200    
+apple |red   |300       
+""")
+        
+    def test_json_to_csv_some_case(self):
+        """Deep analysis test for parallel arrays global positioning logic (from deep_analysis.py)."""
+        self.assert_r("""[
+    {
+      "account": {
+        "account_number": "3453458734563485",
+        "bank": "Bank",
+        "currency": "USD",
+        "type": "текущий"
+      },
+      "balance": 150000,
+      "last_transactions": [
+        {
+          "amount": -2500,
+          "category": "Покупки",
+          "date": "2024-12-20",
+          "description": "Покупка в магазине"
+        },
+        {
+          "amount": 50000,
+          "category": "Зарплата",
+          "date": "2024-12-19",
+          "description": "Поступление зарплаты"
+        }
+      ],
+      "owner": {
+        "birth_year": 1985,
+        "full_name": "Ствиен Пупкин",
+        "phone": "+1-234-567-89-10"
+      }
+    }
+  ]
+
+
+account,,,,balance,last_transactions,,,,owner,,
+account_number,bank,currency,type,,amount,category,date,description,birth_year,full_name,phone
+3453458734563485,Bank,USD,текущий,150000,-2500,Покупки,2024-12-20,Покупка в магазине,1985,Ствиен Пупкин,+1-234-567-89-10
+,,,,,50000,Зарплата,2024-12-19,Поступление зарплаты,,,
+
+
+account         |    |        |       |balance|last_transactions|        |          |                    |owner     |             |                
+account_number  |bank|currency|type   |       |amount           |category|date      |description         |birth_year|full_name    |phone           
+---------------------------------------------------------------------------------------------------------------------------------------------------
+3453458734563485|Bank|USD     |текущий|150000 |-2500            |Покупки |2024-12-20|Покупка в магазине  |1985      |Ствиен Пупкин|+1-234-567-89-10
+                |    |        |       |       |50000            |Зарплата|2024-12-19|Поступление зарплаты|          |             |                
 """)
 
 if __name__ == '__main__':

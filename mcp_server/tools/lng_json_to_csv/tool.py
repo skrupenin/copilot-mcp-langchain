@@ -438,7 +438,7 @@ class Matrix:
         return max_length
 
 def process_element(matrix: Matrix, obj: Any, prefix: str, same_line: bool, depth: int):
-    """Process a JSON element recursively - matching Java field ordering exactly."""
+    """Process a JSON element recursively - each top-level field starts from first row."""
     x = 0
     if prefix:
         x = matrix.get_or_create_header(prefix)
@@ -447,88 +447,71 @@ def process_element(matrix: Matrix, obj: Any, prefix: str, same_line: bool, dept
         if depth > 1:
             matrix.child_header()
             
-        # Special case: multiple arrays at the top level of a record
-        # Example: {"filed": "name", "arrayField": [objects...], "numberArray": [1, 2, 3]}
-        # Should be processed in parallel with row-based synchronization
+        # For top-level objects (depth == 1), check if we need parallel processing
         if depth == 1:
-            # Check if we have multiple arrays of any type
+            # Check if we have array fields
             array_fields = []
+            non_array_fields = []
+            
             for key, value in obj.items():
-                if isinstance(value, list) and len(value) > 0:
-                    array_fields.append((key, value))
+                if isinstance(value, list):
+                    array_fields.append(key)
+                else:
+                    non_array_fields.append(key)
+            
+            # Apply parallel processing if we have:
+            # 1. Multiple arrays, OR
+            # 2. Mixed arrays and non-arrays where at least one array contains objects
+            needs_parallel_processing = False
             
             if len(array_fields) > 1:
-                # Process non-array fields first
-                for key, value in obj.items():
-                    if not isinstance(value, list):
-                        new_key = f"{prefix}.{key}" if prefix else key
-                        process_element(matrix, value, new_key, same_line, depth + 1)
-                        same_line = True
-                
-                # Separate complex arrays from primitive arrays
-                complex_arrays = []
-                primitive_arrays = []
-                for key, value in array_fields:
+                # Multiple arrays - use parallel processing
+                needs_parallel_processing = True
+            elif array_fields and non_array_fields:
+                # Mixed arrays and non-arrays - check if any array contains objects
+                for key in array_fields:
+                    value = obj[key]
                     if len(value) > 0 and isinstance(value[0], (dict, list)):
-                        complex_arrays.append((key, value))
-                    else:
-                        primitive_arrays.append((key, value))
+                        needs_parallel_processing = True
+                        break
                 
-                # If we have both complex and primitive arrays, need special handling
-                if complex_arrays and primitive_arrays:
-                    # Process complex arrays first and track how many rows each creates
-                    primitive_value_index = 0
-                    object_row_info = []  # Track (start_row, end_row) for each object
+            if needs_parallel_processing:
+                # Find the maximum array length to determine how many rows we need
+                max_array_length = 1  # At least one row for non-array fields
+                
+                for key, value in obj.items():
+                    if isinstance(value, list) and len(value) > max_array_length:
+                        max_array_length = len(value)
+                
+                # Process each row
+                for row_idx in range(max_array_length):
+                    is_first_field_in_row = True
                     
-                    # Find the main complex array (typically the first one)
-                    main_complex_key, main_complex_array = complex_arrays[0]
+                    for key, value in obj.items():
+                        new_key = f"{prefix}.{key}" if prefix else key
+                        
+                        if isinstance(value, list):
+                            # Array field - use item at current index if exists
+                            if row_idx < len(value):
+                                process_element(matrix, value[row_idx], new_key, not is_first_field_in_row, depth + 1)
+                                is_first_field_in_row = False
+                            # If no item for this row, we skip (empty cells)
+                        else:
+                            # Non-array field - only in first row
+                            if row_idx == 0:
+                                process_element(matrix, value, new_key, not is_first_field_in_row, depth + 1)
+                                is_first_field_in_row = False
+                            # For other rows, we skip (empty cells)
                     
-                    for complex_idx, complex_item in enumerate(main_complex_array):
-                        # Remember current row position
-                        start_row = matrix.current_row
-                        
-                        # Process the complex item
-                        new_key = f"{prefix}.{main_complex_key}" if prefix else main_complex_key
-                        array_same_line = same_line and (complex_idx == 0)
-                        process_element(matrix, complex_item, new_key, array_same_line, depth + 1)
-                        
-                        # Calculate how many rows this complex item created
-                        end_row = matrix.current_row
-                        object_row_info.append((start_row, end_row))
-                        same_line = False
-                    
-                    # Now distribute primitive array values across ALL created rows in sequence
-                    for prim_key, prim_array in primitive_arrays:
-                        value_index = 0
-                        prim_header = f"{prefix}.{prim_key}" if prefix else prim_key
-                        x = matrix.get_or_create_header(prim_header)
-                        
-                        # Go through each data row and assign the next primitive value
-                        current_data_row = matrix.header_size
-                        while value_index < len(prim_array):
-                            # If we run out of existing rows, create new empty ones
-                            if current_data_row >= len(matrix.data):
-                                matrix.insert_row(len(matrix.data))
-                            matrix.inject_at_row(x, current_data_row, str(prim_array[value_index]))
-                            value_index += 1
-                            current_data_row += 1
-                else:
-                    # Original logic for cases without mixed complex/primitive arrays
-                    max_len = max(len(arr) for _, arr in array_fields)
-                    for i in range(max_len):
-                        array_same_line = same_line and (i == 0)
-                        for key, value in obj.items():
-                            if isinstance(value, list) and i < len(value):
-                                new_key = f"{prefix}.{key}" if prefix else key
-                                process_element(matrix, value[i], new_key, array_same_line, depth + 1)
-                                array_same_line = True
-                        same_line = False
+                    # Move to next row (except for last iteration)
+                    if row_idx < max_array_length - 1:
+                        matrix.new_line()
                 
                 if depth > 1:
                     matrix.parent_header()
                 return
         
-        # Standard processing for all other cases
+        # Standard processing for all other cases (depth != 1 or no mixed fields)
         for key, value in obj.items():
             new_key = f"{prefix}.{key}" if prefix else key
             process_element(matrix, value, new_key, same_line, depth + 1)
@@ -545,10 +528,11 @@ def process_element(matrix: Matrix, obj: Any, prefix: str, same_line: bool, dept
                 matrix.new_line()
                 process_element(matrix, item, prefix, False, depth + 1)
         else:
-            # Nested arrays - process items inline
+            # Nested arrays - process items starting from current position
             for i, item in enumerate(obj):
-                same_line = (i == 0)
-                process_element(matrix, item, prefix, same_line, depth + 1)
+                field_same_line = same_line and (i == 0)
+                process_element(matrix, item, prefix, field_same_line, depth + 1)
+                same_line = False
             
     else:
         # Convert boolean to lowercase like Java does
