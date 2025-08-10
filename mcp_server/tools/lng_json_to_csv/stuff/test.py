@@ -2,23 +2,107 @@ import unittest
 import sys
 import os
 import json
+import traceback
 
 # Add the parent directory to the path to import the tool
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from tool import json_to_csv, json_to_markdown
 
-class JsonToCsvTest(unittest.TestCase):
-    """Test cases exactly matching the Java JsonToCsvTest.java implementation."""
+class EnhancedJsonToCsvTest(unittest.TestCase):
+    """Enhanced test framework with detailed failure output.
     
-    def assert_r(self, expected: str):
-        """Helper method to assert conversion like Java assertR method."""
-        input_json = expected.split("\n\n")[0]
-        actual_csv = json_to_csv(input_json)
-        actual_markdown = json_to_markdown(input_json)
-        actual = input_json + "\n\n\n" + actual_csv + "\n\n" + actual_markdown
+    Features:
+    - SUCCESS: Shows brief success message for passing tests
+    - FAIL: Shows detailed comparison of input, expected, and actual results
+    - ERROR: Shows error details and traceback for unexpected failures
+    
+    Usage:
+        class MyTest(EnhancedJsonToCsvTest):
+            def test_something(self):
+                self.assert_r('''<input_json>
+                
+                
+                <expected_csv>
+                
+                
+                <expected_markdown>
+                ''')
+    """
+    
+    def assert_r(self, expected: str, test_name: str = None):
+        """Enhanced assertion method with detailed output formatting."""
+        if test_name is None:
+            test_name = self._testMethodName
         
-        self.assertEqual(expected, actual, 
-                        f"Conversion failed.\nExpected:\n{repr(expected)}\nActual:\n{repr(actual)}")
+        try:
+            # Split the expected string into components
+            parts = expected.split("\n\n\n")
+            if len(parts) != 3:
+                parts = expected.split("\n\n")
+                if len(parts) >= 3:
+                    input_json = parts[0]
+                    expected_csv = parts[1]
+                    expected_markdown = parts[2]
+                else:
+                    raise ValueError("Invalid expected format - should contain input JSON, expected CSV, and expected markdown")
+            else:
+                input_json = parts[0]
+                csv_and_markdown = parts[1] + "\n\n" + parts[2]
+                csv_md_parts = csv_and_markdown.split("\n\n")
+                expected_csv = csv_md_parts[0]
+                expected_markdown = csv_md_parts[1] if len(csv_md_parts) > 1 else ""
+            
+            # Generate actual results
+            actual_csv = json_to_csv(input_json)
+            actual_markdown = json_to_markdown(input_json)
+            
+            # Check if test passes
+            actual = input_json + "\n\n\n" + actual_csv + "\n\n" + actual_markdown
+            
+            if expected == actual:
+                # Test passed
+                print("=" * 64)
+                print(f"[SUCCESS] Test name: {test_name}")
+                print("=" * 64)
+            else:
+                # Test failed - show detailed output
+                print("=" * 64)
+                print(f"[FAIL] Test name: {test_name}")
+                print("-" * 55)
+                print("Input Json:")
+                print(input_json)
+                print("-" * 55)
+                print("Expected CSV:")
+                print(expected_csv)
+                print("-" * 55)
+                print("Actual CSV:")
+                print(actual_csv.rstrip())  # Remove trailing newline for cleaner output
+                print("-" * 55)
+                print("Expected Markdown:")
+                print(expected_markdown)
+                print("-" * 55)
+                print("Actual Markdown:")
+                print(actual_markdown.rstrip())  # Remove trailing newline for cleaner output
+                print("=" * 64)
+                
+                # Still raise the assertion error for unittest
+                self.assertEqual(expected, actual, 
+                                f"Test {test_name} failed - see detailed output above")
+                
+        except Exception as e:
+            # Handle unexpected errors
+            print("=" * 64)
+            print(f"[ERROR] Test name: {test_name}")
+            print("-" * 55)
+            print(f"Error: {str(e)}")
+            print("-" * 55)
+            print("Traceback:")
+            print(traceback.format_exc())
+            print("=" * 64)
+            raise
+
+class JsonToCsvTest(EnhancedJsonToCsvTest):
+    """Test cases exactly matching the Java JsonToCsvTest.java implementation."""
     
     def test_json_to_csv_simple_one_object_one_field(self):
         """Test conversion of simple JSON object with one field."""
@@ -1705,6 +1789,44 @@ account_number  |bank|currency|type   |       |amount           |category|date  
 ---------------------------------------------------------------------------------------------------------------------------------------------------
 3453458734563485|Bank|USD     |текущий|150000 |-2500            |Покупки |2024-12-20|Покупка в магазине  |1985      |Ствиен Пупкин|+1-234-567-89-10
                 |    |        |       |       |50000            |Зарплата|2024-12-19|Поступление зарплаты|          |             |                
+""")
+
+# Demo tests to show the framework capabilities
+class DemoTest(EnhancedJsonToCsvTest):
+    def test_demo_fail_example(self):
+        """Demonstration test that fails to show error output format."""
+        self.assert_r("""[
+    {
+        "field": "value1"
+    }
+]
+
+
+field
+expected_wrong_value
+
+
+field 
+------
+expected_wrong_value
+""")
+        
+    def test_demo_success_example(self):
+        """Demonstration test that passes."""
+        self.assert_r("""[
+    {
+        "field": "value1"
+    }
+]
+
+
+field
+value1
+
+
+field 
+------
+value1
 """)
 
 if __name__ == '__main__':
