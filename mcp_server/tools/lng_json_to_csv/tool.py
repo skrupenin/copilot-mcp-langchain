@@ -433,7 +433,15 @@ class Matrix:
         # Check all rows (including headers and data)
         for row in self.data:
             if x < len(row) and row[x] is not None:
-                max_length = max(max_length, len(str(row[x])))
+                cell_value = str(row[x]) if row[x] is not None else ""
+                max_length = max(max_length, len(cell_value))
+        
+        # Also check headers - they are part of the data matrix
+        for y in range(len(self.data)):
+            row = self.data[y]
+            if x < len(row) and row[x] is not None:
+                # Headers are already included in self.data, so no need to check separately
+                pass
                 
         return max_length
 
@@ -634,8 +642,17 @@ def analyze_structure(data: Any, prefix: str = "") -> dict:
         if isinstance(obj, dict):
             for key, value in obj.items():
                 child_path = f"{path}.{key}" if path else key
-                if isinstance(value, (dict, list)):
+                if isinstance(value, dict):
                     collect_leaf_paths(value, child_path)
+                elif isinstance(value, list):
+                    # Check if list contains objects or simple values
+                    if value and isinstance(value[0], dict):
+                        # List of objects - recurse
+                        for item in value:
+                            collect_leaf_paths(item, child_path)
+                    else:
+                        # List of simple values - treat as leaf
+                        all_leaf_paths.add(child_path)
                 else:
                     # This is a leaf field
                     all_leaf_paths.add(child_path)
@@ -662,6 +679,13 @@ def analyze_structure(data: Any, prefix: str = "") -> dict:
                 map_leaf_paths_to_objects(value, child_path)
                 
         elif isinstance(obj, list):
+            # If this path is itself a leaf path (list of simple values), track it
+            if path in all_leaf_paths:
+                if path not in path_leaf_paths:
+                    path_leaf_paths[path] = set()
+                path_leaf_paths[path].add(path)
+            
+            # Process list items
             for item in obj:
                 map_leaf_paths_to_objects(item, path)
     

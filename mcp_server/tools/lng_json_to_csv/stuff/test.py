@@ -1657,7 +1657,7 @@ name  |colors|
 ---------------------
 banana|yellow|100    
       |green |200    
-apple |red   |300       
+apple |red   |300    
 """)
         
     def test_json_to_csv_some_case(self):
