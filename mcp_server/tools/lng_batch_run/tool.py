@@ -182,6 +182,13 @@ Returns error details with failed tool name and variable context when any step f
                 "final_result": {
                     "type": "string",
                     "description": "Expression or value for the final result (default: 'ok')"
+                },
+                "context_fields": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    },
+                    "description": "Array of context field names to include in output. If empty or not provided, no context will be shown (saves tokens). Use ['*'] to show all context fields, or specify field names like ['var1', 'var2'] to show only those variables."
                 }
             },
             "required": []
@@ -267,6 +274,31 @@ async def run_tool(name: str, arguments: dict) -> list[types.Content]:
         result_dict["available_strategies"] = strategies
         if "pipeline_file" in arguments:
             result_dict["pipeline_source"] = arguments["pipeline_file"]
+        
+        # Filter context fields if specified
+        context_fields = merged_arguments.get("context_fields", [])
+        if "context" in result_dict:
+            original_context = result_dict["context"]
+            
+            if not context_fields:
+                # No context_fields specified - hide all context to save tokens
+                result_dict["context"] = {}
+                result_dict["context_filtered"] = True
+                result_dict["total_context_fields"] = len(original_context)
+                result_dict["shown_context_fields"] = 0
+            elif context_fields == ["*"]:
+                # Show all context
+                result_dict["context_filtered"] = False
+            else:
+                # Show only specified fields
+                filtered_context = {}
+                for field in context_fields:
+                    if field in original_context:
+                        filtered_context[field] = original_context[field]
+                result_dict["context"] = filtered_context
+                result_dict["context_filtered"] = True
+                result_dict["total_context_fields"] = len(original_context)
+                result_dict["shown_context_fields"] = len(filtered_context)
         
         # Return result in the expected format
         return [types.TextContent(
