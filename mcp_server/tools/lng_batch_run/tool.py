@@ -1,7 +1,7 @@
-import mcp.types as types
 import json
 import logging
 from typing import Any, Dict, List
+from mcp import types
 from mcp_server.tools.tool_registry import run_tool as execute_tool
 from mcp_server.pipeline import StrategyBasedExecutor
 
@@ -110,7 +110,7 @@ Returns error details with failed tool name and variable context when any step f
             "properties": {
                 "pipeline": {
                     "type": "array",
-                    "description": "Array of pipeline steps with tools, parameters, and variable mappings",
+                    "description": "Array of pipeline steps with tools, parameters, and variable mappings (optional if pipeline_file is provided)",
                     "items": {
                         "type": "object",
                         "properties": {
@@ -175,12 +175,16 @@ Returns error details with failed tool name and variable context when any step f
                         }
                     }
                 },
+                "pipeline_file": {
+                    "type": "string",
+                    "description": "Path to JSON file containing pipeline configuration (alternative to pipeline parameter)"
+                },
                 "final_result": {
                     "type": "string",
                     "description": "Expression or value for the final result (default: 'ok')"
                 }
             },
-            "required": ["pipeline"]
+            "required": []
         }
     }
 
@@ -195,13 +199,74 @@ async def run_tool(name: str, arguments: dict) -> list[types.Content]:
         strategies = executor.get_strategies()
         logger.info(f"Available strategies: {', '.join(strategies)}")
         
+        # Check if pipeline_file is provided
+        if "pipeline_file" in arguments:
+            pipeline_file = arguments["pipeline_file"]
+            logger.info(f"Loading pipeline from file: {pipeline_file}")
+            
+            try:
+                import os
+                # Read pipeline configuration from file
+                if not os.path.isabs(pipeline_file):
+                    # Make relative paths relative to the project root
+                    import mcp_server
+                    project_root = os.path.dirname(os.path.dirname(mcp_server.__file__))
+                    pipeline_file = os.path.join(project_root, pipeline_file)
+                
+                with open(pipeline_file, 'r', encoding='utf-8') as f:
+                    pipeline_config = json.load(f)
+                
+                # Merge file config with arguments, giving priority to direct arguments
+                merged_arguments = pipeline_config.copy()
+                merged_arguments.update({k: v for k, v in arguments.items() if k != "pipeline_file"})
+                
+                logger.info(f"Successfully loaded pipeline from {pipeline_file}")
+                
+            except FileNotFoundError:
+                return [types.TextContent(
+                    type="text", 
+                    text=json.dumps({
+                        "success": False,
+                        "error": f"Pipeline file not found: {pipeline_file}",
+                        "context": {},
+                        "architecture": "strategy-based"
+                    }, ensure_ascii=False, indent=2)
+                )]
+            except json.JSONDecodeError as e:
+                return [types.TextContent(
+                    type="text", 
+                    text=json.dumps({
+                        "success": False,
+                        "error": f"Invalid JSON in pipeline file {pipeline_file}: {str(e)}",
+                        "context": {},
+                        "architecture": "strategy-based"
+                    }, ensure_ascii=False, indent=2)
+                )]
+        else:
+            # Use arguments directly if no file specified
+            merged_arguments = arguments
+            
+        # Validate that we have either pipeline or pipeline_file
+        if "pipeline" not in merged_arguments and "pipeline_file" not in arguments:
+            return [types.TextContent(
+                type="text", 
+                text=json.dumps({
+                    "success": False,
+                    "error": "Either 'pipeline' parameter or 'pipeline_file' parameter is required",
+                    "context": {},
+                    "architecture": "strategy-based"
+                }, ensure_ascii=False, indent=2)
+            )]
+        
         # Execute pipeline using the strategy-based system
-        result = await executor.execute(arguments)
+        result = await executor.execute(merged_arguments)
         
         # Add architecture info to result
         result_dict = result.to_dict()
         result_dict["architecture"] = "strategy-based"
         result_dict["available_strategies"] = strategies
+        if "pipeline_file" in arguments:
+            result_dict["pipeline_source"] = arguments["pipeline_file"]
         
         # Return result in the expected format
         return [types.TextContent(

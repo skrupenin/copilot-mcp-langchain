@@ -104,5 +104,40 @@ echo "📋 TEST 18: Strategy architecture verification"
 python -m mcp_server.run run lng_batch_run '{"pipeline":[{"tool":"lng_count_words","params":{"input_text":"strategy test"},"output":"strategy_test"}]}'
 echo
 
+# Create test pipeline file for file-based tests
+echo "📁 Creating test_pipeline.json for file-based testing..."
+cat > mcp_server/tools/lng_batch_run/stuff/test_pipeline.json << 'EOF'
+{
+  "pipeline": [
+    {
+      "tool": "lng_count_words",
+      "params": {"input_text": "test pipeline from file"},
+      "output": "stats"
+    }
+  ],
+  "final_result": "Pipeline from file executed with ${stats.wordCount} words"
+}
+EOF
+echo
+
+# File-based pipeline tests
+echo "📋 TEST 19: File-based pipeline execution"
+python -m mcp_server.run run lng_batch_run '{"pipeline_file":"mcp_server/tools/lng_batch_run/stuff/test_pipeline.json"}'
+echo
+
+echo "📋 TEST 20: File-based pipeline with parameter override"
+python -m mcp_server.run run lng_batch_run '{"pipeline_file":"mcp_server/tools/lng_batch_run/stuff/test_pipeline.json","final_result":"File pipeline result: ${stats.wordCount}"}'
+echo
+
+echo "📋 TEST 21: File-based telemetry pipeline"
+python -m mcp_server.run run lng_batch_run '{"pipeline_file":"mcp_server/tools/lng_batch_run/stuff/telemetry_pipeline.json"}'
+echo
+
+# Clean up test files
+echo "🧹 Cleaning up test files..."
+rm -f mcp_server/tools/lng_batch_run/stuff/test_pipeline.json
+echo "Test pipeline file removed."
+echo
+
 echo "🎉 lng_batch_run testing completed!"
 echo "All major pipeline features have been tested for maximum coverage."

@@ -199,3 +199,71 @@ Designed for use with hotkey listener for automated workflows:
 1. Register hotkey → batch tool
 2. Define pipeline in tool parameters
 3. Execute complex operations with single keypress
+
+## File-Based Pipeline Configuration 📁
+
+**NEW**: Support for external pipeline configuration files for better organization and reusability!
+
+### Parameters
+
+- **pipeline_file** (string, optional) - Path to JSON file containing pipeline configuration
+- **pipeline** (array, optional) - Direct pipeline definition (if pipeline_file not provided)
+
+**Note**: Either `pipeline_file` or `pipeline` parameter is required.
+
+### Usage with Configuration Files
+
+```bash
+python -m mcp_server.run run lng_batch_run '{
+  "pipeline_file": "path/to/pipeline_config.json"
+}'
+```
+
+### File-based Pipeline Example
+
+Create a JSON file with your pipeline configuration:
+
+**telemetry_pipeline.json**:
+```json
+{
+  "pipeline": [
+    {
+      "tool": "lng_file_read",
+      "params": {"file_path": "data/telemetry.json"},
+      "output": "telemetry_data"
+    },
+    {
+      "tool": "lng_json_to_csv",
+      "params": {"json_data": "${JSON.parse(telemetry_data)}"},
+      "output": "csv_result"
+    },
+    {
+      "tool": "lng_file_write",
+      "params": {
+        "file_path": "output/telemetry_report.csv",
+        "content": "${csv_result}"
+      }
+    }
+  ],
+  "final_result": "Telemetry report generated successfully"
+}
+```
+
+### Benefits of File-Based Configuration
+
+- **Reusability**: Share pipelines across different executions
+- **Version Control**: Track pipeline changes in git
+- **Organization**: Keep complex pipelines in separate files
+- **Maintenance**: Easier to edit and debug large pipelines
+- **Parameter Override**: Can still override `final_result` and other parameters
+
+### Parameter Merging
+
+When using `pipeline_file`, you can still override specific parameters:
+
+```bash
+python -m mcp_server.run run lng_batch_run '{
+  "pipeline_file": "config/basic_pipeline.json",
+  "final_result": "Custom result: ${stats.wordCount} words processed"
+}'
+```
