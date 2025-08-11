@@ -40,12 +40,13 @@ class ToolStrategy(ExecutionStrategy):
             logger.debug(f"Detected tool type: {tool_type} for tool: {tool_name}")
             
             # Substitute variables in parameters based on tool type
-            if tool_type == "javascript":
-                substituted_params = self._substitute_for_javascript(params, context.variables)
-                logger.debug(f"JavaScript parameters after substitution: {substituted_params}")
+            if tool_type == "python_json":
+                # Special handling for Python tools that work with JSON data
+                substituted_params = self._substitute_for_python_json(params, context.variables)
+                logger.debug(f"Python-JSON parameters after substitution: {substituted_params}")
             else:
                 substituted_params = self._substitute_recursive(params, context.variables)
-                logger.debug(f"Python parameters after substitution: {substituted_params}")
+                logger.debug(f"Standard parameters after substitution: {substituted_params}")
             
             logger.debug(f"Tool parameters after substitution: {substituted_params}")
             
@@ -58,13 +59,18 @@ class ToolStrategy(ExecutionStrategy):
             # Parse and store result - extract and parse JSON from TextContent
             if isinstance(tool_result, list) and len(tool_result) > 0:
                 first_result = tool_result[0]
-                # If it's a TextContent object with JSON, parse it
+                # If it's a TextContent object, extract the text
                 if hasattr(first_result, 'text'):
+                    text_content = first_result.text
+                    # Try to parse as JSON, but if it fails, keep as text
                     try:
                         import json
-                        parsed_result = json.loads(first_result.text)
+                        parsed_result = json.loads(text_content)
+                        logger.debug(f"Successfully parsed tool result as JSON")
                     except (json.JSONDecodeError, AttributeError):
-                        parsed_result = first_result  # fallback to original
+                        # Not JSON - keep as plain text (useful for CSV, HTML, etc.)
+                        parsed_result = text_content
+                        logger.debug(f"Tool result kept as plain text (not JSON)")
                 else:
                     parsed_result = first_result
             else:
@@ -140,34 +146,27 @@ class ToolStrategy(ExecutionStrategy):
     
     def _detect_tool_type(self, tool_name: str) -> str:
         """Detect tool type based on tool name."""
-        if tool_name == "lng_javascript":
-            return "javascript"
+        if "json" in tool_name.lower():
+            # Tools that work with JSON data need special object handling
+            return "python_json"
         elif tool_name.startswith("lng_"):
             return "python"
         else:
             return "other"
     
-    def _substitute_for_javascript(self, obj: Any, variables: Dict[str, Any]) -> Any:
-        """Substitute expressions for JavaScript tools - keep objects as objects when possible."""
+    def _substitute_for_python_json(self, obj: Any, variables: Dict[str, Any]) -> Any:
+        """Substitute expressions for Python tools that expect JSON objects - keep objects as objects."""
         import json
         import re
         
         if isinstance(obj, dict):
             result = {}
             for k, v in obj.items():
-                substituted_value = self._substitute_for_javascript(v, variables)
-                
-                # Special handling for json_arrays parameter in JavaScript functions
-                if k == "json_arrays" and isinstance(substituted_value, list):
-                    # Convert each array element to JSON string for JavaScript processing
-                    result[k] = [json.dumps(item, ensure_ascii=False) if isinstance(item, (dict, list)) else item 
-                               for item in substituted_value]
-                else:
-                    result[k] = substituted_value
+                result[k] = self._substitute_for_python_json(v, variables)
             return result
             
         elif isinstance(obj, list):
-            return [self._substitute_for_javascript(item, variables) for item in obj]
+            return [self._substitute_for_python_json(item, variables) for item in obj]
         elif isinstance(obj, str):
             if "${" in obj or "$[" in obj:
                 # Handle each expression separately
@@ -181,11 +180,10 @@ class ToolStrategy(ExecutionStrategy):
                                 result = variables[var_name]
                                 logger.debug(f"Expression '{expr}' evaluated to: {result} (type: {type(result)})")
                                 
-                                # For JavaScript, keep objects as objects (don't convert to JSON strings)
-                                # The lng_javascript tool will handle the conversion properly
+                                # For Python JSON tools, keep objects as objects (don't convert to strings)
                                 if isinstance(result, (dict, list, int, float, bool, type(None))):
-                                    logger.debug(f"Keeping object as-is for JavaScript: {type(result)}")
-                                    return result  # Return the actual object, not JSON string
+                                    logger.debug(f"Keeping object as-is for Python JSON tool: {type(result)}")
+                                    return result  # Return the actual object, not string
                                 else:
                                     return str(result)
                         
@@ -208,7 +206,6 @@ class ToolStrategy(ExecutionStrategy):
                 else:
                     # This is a complex string with multiple expressions - do string substitution
                     result = re.sub(pattern, lambda m: str(replace_expression(m)), obj)
-                    logger.debug(f"Final substitution result: {result}")
                     return result
             return obj
         else:
