@@ -11,7 +11,7 @@ from typing import Any, Dict
 
 from .base import ExecutionStrategy
 from ..models import PipelineResult, ExecutionContext
-from ..utils import ExpressionEvaluator, ExpressionHandler
+from ..expressions import evaluate_expression
 
 logger = logging.getLogger('mcp_server.pipeline.strategies.delay')
 
@@ -20,8 +20,7 @@ class DelayStrategy(ExecutionStrategy):
     """Strategy for delays and timing control."""
     
     def __init__(self):
-        self.expression_evaluator = ExpressionEvaluator()
-        self.expression_handler = ExpressionHandler()
+        pass
     
     def can_handle(self, step: Dict[str, Any]) -> bool:
         """Handle delay and timing steps."""
@@ -44,8 +43,8 @@ class DelayStrategy(ExecutionStrategy):
             )
             
             if isinstance(delay_value, str):
-                # Evaluate expression for dynamic delays using expression handler
-                delay_seconds = float(self.expression_handler.evaluate_if_expression(delay_value, context.variables, self.expression_evaluator))
+                # Evaluate expression for dynamic delays
+                delay_seconds = float(evaluate_expression(delay_value, context.variables, expected_result_type="python"))
             else:
                 delay_seconds = float(delay_value)
             

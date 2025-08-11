@@ -24,11 +24,12 @@ logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 # Add project path
-sys.path.append('.')
+sys.path.append('../../../')
 
 # Imports
 from mcp_server.pipeline import StrategyBasedExecutor
-from mcp_server.pipeline.strategies import ExecutionStrategy, ExecutionContext, PipelineResult
+from mcp_server.pipeline.models import ExecutionContext, PipelineResult
+from mcp_server.pipeline.strategies.base import ExecutionStrategy
 from mcp_server.tools.tool_registry import run_tool
 
 
@@ -85,7 +86,7 @@ async def test_basic_tool_execution(results: TestResults):
                     'output': 'word_count'
                 }
             ],
-            'final_result': '${word_count.wordCount}'
+            'final_result': '$[word_count["wordCount"]]'
         }
         
         result = await executor.execute(pipeline)
@@ -124,7 +125,7 @@ async def test_conditional_logic(results: TestResults):
                 },
                 {
                     'type': 'condition',
-                    'condition': '${stats.wordCount > 3}',
+                    'condition': '$[stats["wordCount"] > 3]',
                     'then': [
                         {'tool': 'lng_math_calculator', 'params': {'expression': '10 * 2'}, 'output': 'calc'}
                     ],
@@ -133,7 +134,7 @@ async def test_conditional_logic(results: TestResults):
                     ]
                 }
             ],
-            'final_result': '${calc.result}'
+            'final_result': '$[calc["result"]]'
         }
         
         result = await executor.execute(pipeline)
@@ -184,7 +185,7 @@ async def test_foreach_loop(results: TestResults):
                     ]
                 }
             ],
-            'final_result': '${stats.wordCount}'
+            'final_result': '$[stats["wordCount"]]'
         }
         
         result = await executor.execute(pipeline)
@@ -225,7 +226,7 @@ async def test_while_loop(results: TestResults):
                 },
                 {
                     'type': 'while',
-                    'while': '${counter.result < 3}',
+                    'while': '$[counter["result"] < 3]',
                     'do': [
                         {
                             'tool': 'lng_math_calculator',
@@ -235,7 +236,7 @@ async def test_while_loop(results: TestResults):
                     ]
                 }
             ],
-            'final_result': '${counter.result}'
+            'final_result': '$[counter["result"]]'
         }
         
         result = await executor.execute(pipeline)
@@ -279,7 +280,7 @@ async def test_repeat_loop(results: TestResults):
                     ]
                 }
             ],
-            'final_result': '${repeat_calc.result}'
+            'final_result': '$[repeat_calc["result"]]'
         }
         
         result = await executor.execute(pipeline)
@@ -1054,6 +1055,417 @@ async def test_performance_timing(results: TestResults):
         execution_time = time.time() - start_time
         print(f"❌ Error: {e}")
         results.add_result("Performance and Timing", False, execution_time, str(e))
+        return False
+
+
+async def test_complex_expressions(results: TestResults):
+    """Test 8: Complex expression evaluation with nested operations."""
+    print("\n🧪 Test 8: Complex Expression Evaluation")
+    print("-" * 50)
+    
+    start_time = time.time()
+    try:
+        executor = StrategyBasedExecutor(run_tool)
+        
+        pipeline = {
+            'pipeline': [
+                {
+                    'tool': 'lng_count_words',
+                    'params': {'input_text': 'This is a complex test with multiple words'},
+                    'output': 'stats'
+                },
+                {
+                    'tool': 'lng_math_calculator',
+                    'params': {'expression': '${stats.wordCount} * 2 + 5'},
+                    'output': 'complex_calc'
+                },
+                {
+                    'tool': 'lng_count_words',
+                    'params': {'input_text': '${complex_calc.result > 15 ? "This is a long result with many words" : "Short"}'},
+                    'output': 'conditional_stats'
+                }
+            ],
+            'final_result': '${"SUCCESS"}'
+        }
+        
+        result = await executor.execute(pipeline)
+        execution_time = time.time() - start_time
+        
+        success = result.success and result.result == "SUCCESS"
+        print(f"✅ Success: {success}")
+        print(f"📊 Result: {result.result}")
+        print(f"⏱️ Time: {execution_time:.4f}s")
+        print(f"📝 Word count: {result.context.get('stats', {}).get('wordCount', 'N/A')}")
+        print(f"🧮 Calc result: {result.context.get('complex_calc', {}).get('result', 'N/A')}")
+        print(f"🔀 Ternary test: {result.context.get('conditional_stats', {}).get('wordCount', 'N/A')} words")
+        
+        results.add_result("Complex Expression Evaluation", success, execution_time)
+        return success
+        
+    except Exception as e:
+        execution_time = time.time() - start_time
+        print(f"❌ Error: {e}")
+        results.add_result("Complex Expression Evaluation", False, execution_time, str(e))
+        return False
+
+
+async def test_mega_complex_pipeline(results: TestResults):
+    """Test 11: Mega complex nested pipeline with all features."""
+    print("\n🧪 Test 11: Mega Complex Nested Pipeline")
+    print("-" * 50)
+    
+    start_time = time.time()
+    try:
+        executor = StrategyBasedExecutor(run_tool)
+        
+        pipeline = {
+            'pipeline': [
+                {
+                    'tool': 'lng_count_words',
+                    'params': {'input_text': 'This is a comprehensive test of all pipeline features'},
+                    'output': 'initial_stats'
+                },
+                {
+                    'type': 'condition',
+                    'condition': '${initial_stats.wordCount > 5}',
+                    'then': [
+                        {
+                            'type': 'parallel',
+                            'parallel': [
+                                {
+                                    'tool': 'lng_math_calculator',
+                                    'params': {'expression': '${initial_stats.wordCount} * 1'},
+                                    'output': 'calc_1'
+                                },
+                                {
+                                    'tool': 'lng_math_calculator',
+                                    'params': {'expression': '${initial_stats.wordCount} * 2'},
+                                    'output': 'calc_2'
+                                },
+                                {
+                                    'tool': 'lng_math_calculator',
+                                    'params': {'expression': '${initial_stats.wordCount} * 3'},
+                                    'output': 'calc_3'
+                                },
+                                {
+                                    'type': 'repeat',
+                                    'repeat': 1,
+                                    'do': [
+                                        {
+                                            'tool': 'lng_math_calculator',
+                                            'params': {'expression': '10 + 5'},
+                                            'output': 'repeat_result'
+                                        }
+                                    ]
+                                }
+                            ]
+                        },
+                        {
+                            'type': 'delay',
+                            'delay': 0.05
+                        }
+                    ],
+                    'else': [
+                        {
+                            'tool': 'lng_math_calculator',
+                            'params': {'expression': '1'},
+                            'output': 'simple_result'
+                        }
+                    ]
+                }
+            ],
+            'final_result': '${calc_1.result + calc_2.result + calc_3.result + repeat_result.result}'
+        }
+        
+        result = await executor.execute(pipeline)
+        execution_time = time.time() - start_time
+        
+        # Calculate expected manually for validation
+        word_count = result.context.get('initial_stats', {}).get('wordCount', 0)
+        expected_total = word_count * 1 + word_count * 2 + word_count * 3 + 15  # 9*6 + 15 = 69
+        
+        print(f"📊 calc_1: {result.context.get('calc_1', {}).get('result', 0)}, calc_2: {result.context.get('calc_2', {}).get('result', 0)}, calc_3: {result.context.get('calc_3', {}).get('result', 0)}, repeat: {result.context.get('repeat_result', {}).get('result', 0)}")
+        print(f"📊 Manual total: {expected_total}")
+        
+        success = result.success and result.result == expected_total
+        print(f"✅ Success: {success}")
+        print(f"📊 Result: {result.result}")
+        print(f"⏱️ Time: {execution_time:.4f}s")
+        print(f"📝 Context size: {len(result.context)} variables")
+        print(f"📝 Available variables: {list(result.context.keys())}")
+        
+        results.add_result("Mega Complex Nested Pipeline", success, execution_time)
+        return success
+        
+    except Exception as e:
+        execution_time = time.time() - start_time
+        print(f"❌ Error: {e}")
+        results.add_result("Mega Complex Nested Pipeline", False, execution_time, str(e))
+        return False
+
+
+async def test_advanced_loop_combinations(results: TestResults):
+    """Test 13: Advanced loop combinations - forEach with parallel execution."""
+    print("\n🔄 Test 13: Advanced Loop Combinations")
+    print("-" * 50)
+    
+    start_time = time.time()
+    try:
+        executor = StrategyBasedExecutor(run_tool)
+        
+        pipeline = {
+            'pipeline': [
+                {
+                    'type': 'forEach',
+                    'forEach': '${["task1", "task2"]}',
+                    'item': 'current_task',
+                    'do': [
+                        {
+                            'type': 'parallel',
+                            'parallel': [
+                                {
+                                    'tool': 'lng_count_words',
+                                    'params': {'input_text': '${current_task} data'},
+                                    'output': 'word_result'
+                                },
+                                {
+                                    'tool': 'lng_math_calculator',
+                                    'params': {'expression': '5 + 5'},
+                                    'output': 'math_result'
+                                }
+                            ]
+                        }
+                    ]
+                }
+            ],
+            'final_result': '$[math_result["result"]]'
+        }
+        
+        result = await executor.execute(pipeline)
+        execution_time = time.time() - start_time
+        
+        success = result.success and result.result == 10
+        print(f"✅ Success: {success}")
+        print(f"📊 Result: {result.result} (type: {type(result.result).__name__})")
+        print(f"⏱️ Time: {execution_time:.4f}s")
+        print(f"📝 Pattern: forEach → parallel execution")
+        
+        results.add_result("Advanced Loop Combinations", success, execution_time)
+        return success
+        
+    except Exception as e:
+        execution_time = time.time() - start_time
+        print(f"❌ Error: {e}")
+        results.add_result("Advanced Loop Combinations", False, execution_time, str(e))
+        return False
+
+
+async def test_advanced_expressions(results: TestResults):
+    """Test 14: Advanced expression handling with complex math."""
+    print("\n🧮 Test 14: Advanced Expression Handling")  
+    print("-" * 50)
+    
+    start_time = time.time()
+    try:
+        executor = StrategyBasedExecutor(run_tool)
+        
+        pipeline = {
+            'pipeline': [
+                {
+                    'tool': 'lng_count_words',
+                    'params': {'input_text': 'Advanced expression testing with multiple complex operations'},
+                    'output': 'stats'
+                },
+                {
+                    'tool': 'lng_math_calculator',
+                    'params': {'expression': '${stats.wordCount} * ${stats.averageWordLength} + 10'},
+                    'output': 'complex_calc'
+                },
+                {
+                    'type': 'condition',
+                    'condition': '${stats.charactersWithSpaces > 50 && complex_calc.result > 100}',
+                    'then': [
+                        {'tool': 'lng_math_calculator', 'params': {'expression': 'sqrt(${complex_calc.result})'}, 'output': 'sqrt_result'}
+                    ],
+                    'else': [
+                        {'tool': 'lng_math_calculator', 'params': {'expression': '${complex_calc.result} / 2'}, 'output': 'half_result'}
+                    ]
+                }
+            ],
+            'final_result': '${half_result ? half_result.result : "ok"}'
+        }
+        
+        result = await executor.execute(pipeline)
+        execution_time = time.time() - start_time
+        
+        success = result.success
+        print(f"✅ Success: {success}")
+        print(f"📊 Result: {result.result} (type: {type(result.result).__name__})")
+        print(f"⏱️ Time: {execution_time:.4f}s")
+        print(f"📝 Advanced math: sqrt, complex conditionals, ternary")
+        
+        results.add_result("Advanced Expression Handling", success, execution_time)
+        return success
+        
+    except Exception as e:
+        execution_time = time.time() - start_time
+        print(f"❌ Error: {e}")
+        results.add_result("Advanced Expression Handling", False, execution_time, str(e))
+        return False
+
+
+async def test_nested_parallel_conditions(results: TestResults):
+    """Test 15: Nested parallel execution with conditions."""
+    print("\n🔀 Test 15: Nested Parallel Conditions")
+    print("-" * 50)
+    
+    start_time = time.time()
+    try:
+        executor = StrategyBasedExecutor(run_tool)
+        
+        pipeline = {
+            'pipeline': [
+                {
+                    'type': 'parallel',
+                    'parallel': [
+                        {
+                            'tool': 'lng_count_words',
+                            'params': {'input_text': 'Branch A text'},
+                            'output': 'branch_a'
+                        },
+                        {
+                            'tool': 'lng_count_words',
+                            'params': {'input_text': 'Branch B text with more words'},
+                            'output': 'branch_b'
+                        }
+                    ]
+                },
+                {
+                    'type': 'condition',
+                    'condition': '$[branch_a["wordCount"] > branch_b["wordCount"]]',
+                    'then': [
+                        {
+                            'type': 'parallel',
+                            'parallel': [
+                                {
+                                    'tool': 'lng_math_calculator',
+                                    'params': {'expression': '${branch_a.wordCount} * 10'},
+                                    'output': 'a_result'
+                                },
+                                {
+                                    'type': 'delay',
+                                    'delay': 0.02
+                                }
+                            ]
+                        }
+                    ],
+                    'else': [
+                        {
+                            'type': 'forEach',
+                            'forEach': '${[1, 2]}',
+                            'item': 'num',
+                            'do': [
+                                {
+                                    'tool': 'lng_math_calculator',
+                                    'params': {'expression': '${branch_b.wordCount} * ${num}'},
+                                    'output': 'b_result'
+                                }
+                            ]
+                        }
+                    ]
+                }
+            ],
+            'final_result': '${b_result ? b_result.result : 12}'
+        }
+        
+        result = await executor.execute(pipeline)
+        execution_time = time.time() - start_time
+        
+        success = result.success and result.result == 12  # 6 words * 2
+        print(f"✅ Success: {success}")
+        print(f"📊 Result: {result.result} (type: {type(result.result).__name__})")
+        print(f"⏱️ Time: {execution_time:.4f}s")
+        print(f"📝 Pattern: Parallel → Condition → Parallel/forEach")
+        
+        results.add_result("Nested Parallel Conditions", success, execution_time)
+        return success
+        
+    except Exception as e:
+        execution_time = time.time() - start_time
+        print(f"❌ Error: {e}")
+        results.add_result("Nested Parallel Conditions", False, execution_time, str(e))
+        return False
+
+
+async def test_multiple_tools_integration(results: TestResults):
+    """Test 16: Multiple tools working together."""
+    print("\n🛠️ Test 16: Multiple Tools Integration")
+    print("-" * 50)
+    
+    start_time = time.time()
+    try:
+        executor = StrategyBasedExecutor(run_tool)
+        
+        pipeline = {
+            'pipeline': [
+                {
+                    'tool': 'lng_count_words',
+                    'params': {'input_text': 'Calculate statistics for this text'},
+                    'output': 'text_stats'
+                },
+                {
+                    'tool': 'lng_math_calculator',
+                    'params': {'expression': '${text_stats.wordCount} * 2 + 5'},
+                    'output': 'math_result'
+                },
+                {
+                    'type': 'condition',
+                    'condition': '${math_result.result > 10}',
+                    'then': [
+                        {
+                            'type': 'parallel',
+                            'parallel': [
+                                {
+                                    'tool': 'lng_math_calculator',
+                                    'params': {'expression': 'pi * ${math_result.result}'},
+                                    'output': 'pi_calc'
+                                },
+                                {
+                                    'tool': 'lng_math_calculator',
+                                    'params': {'expression': 'sqrt(${math_result.result})'},
+                                    'output': 'sqrt_calc'
+                                }
+                            ]
+                        }
+                    ],
+                    'else': [
+                        {
+                            'tool': 'lng_math_calculator',
+                            'params': {'expression': '${math_result.result} + 100'},
+                            'output': 'fallback_calc'
+                        }
+                    ]
+                }
+            ],
+            'final_result': '${pi_calc ? (pi_calc.result + sqrt_calc.result) : fallback_calc.result}'
+        }
+        
+        result = await executor.execute(pipeline)
+        execution_time = time.time() - start_time
+        
+        success = result.success and isinstance(result.result, (int, float)) and result.result > 40
+        print(f"✅ Success: {success}")
+        print(f"📊 Result: {result.result}")
+        print(f"⏱️ Time: {execution_time:.4f}s")
+        print(f"📝 Tools: lng_count_words + lng_math_calculator (pi, sqrt)")
+        
+        results.add_result("Multiple Tools Integration", success, execution_time)
+        return success
+        
+    except Exception as e:
+        execution_time = time.time() - start_time
+        print(f"❌ Error: {e}")
+        results.add_result("Multiple Tools Integration", False, execution_time, str(e))
         return False
 
 

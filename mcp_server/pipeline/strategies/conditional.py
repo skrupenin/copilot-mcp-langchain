@@ -10,7 +10,7 @@ from typing import Any, Dict
 
 from .base import ExecutionStrategy
 from ..models import PipelineResult, ExecutionContext
-from ..utils import ExpressionEvaluator, ExpressionHandler
+from ..expressions import evaluate_expression
 
 logger = logging.getLogger('mcp_server.pipeline.strategies.conditional')
 
@@ -19,8 +19,7 @@ class ConditionalStrategy(ExecutionStrategy):
     """Strategy for handling conditional logic (if-then-else)."""
     
     def __init__(self):
-        self.expression_evaluator = ExpressionEvaluator()
-        self.expression_handler = ExpressionHandler()
+        pass
     
     def can_handle(self, step: Dict[str, Any]) -> bool:
         """Handle steps with conditional logic."""
@@ -80,8 +79,8 @@ class ConditionalStrategy(ExecutionStrategy):
     def _evaluate_condition(self, condition: str, variables: Dict[str, Any]) -> bool:
         """Evaluate condition using JavaScript-like expressions."""
         try:
-            # Use expression handler to evaluate
-            result = self.expression_handler.evaluate_if_expression(condition, variables, self.expression_evaluator)
+            # Direct evaluation using new expression system
+            result = evaluate_expression(condition, variables, expected_result_type="python")
             
             # Convert to boolean using JavaScript-like truthiness
             if isinstance(result, bool):

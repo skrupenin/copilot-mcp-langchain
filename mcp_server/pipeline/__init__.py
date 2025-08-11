@@ -23,13 +23,8 @@ from .strategies import PipelineExecutor, StrategyBasedExecutor
 # Import data models
 from .models import PipelineResult, ExecutionContext, StepType
 
-# Import utility classes for advanced usage
-from .utils import (
-    ExpressionHandler,
-    ExpressionEvaluator,
-    VariableSubstitutor,
-    ResponseParser
-)
+# Import expression evaluation functions
+from .expressions import evaluate_expression, substitute_expressions
 
 # Legacy imports for backward compatibility
 from .core import (
@@ -51,11 +46,9 @@ __all__ = [
     'ExecutionContext', 
     'StepType',
     
-    # Utility classes
-    'ExpressionHandler',
-    'ExpressionEvaluator',
-    'VariableSubstitutor',
-    'ResponseParser',
+    # Utility functions
+    'evaluate_expression',
+    'substitute_expressions',
     
     # Legacy support (deprecated)
     'LegacyPipelineExecutor',

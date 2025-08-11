@@ -1,0 +1,156 @@
+{
+  "pipeline": [
+    {
+      "tool": "lng_javascript",
+      "params": {
+        "command": "execute",
+        "function_name": "setOrderMap"
+      },
+      "output": "order_map"
+    },
+    {
+      "tool": "lng_file_list",
+      "params": {
+        "directory_path": "work/telemetry/in",
+        "include_directories": false,
+        "include_files": true,
+        "pattern": "*.json",
+        "path_type": "absolute",
+        "output_format": "json"
+      },
+      "output": "telemetry_files"
+    },
+    {
+      "type": "forEach",
+      "forEach": "${telemetry_files.items}",
+      "item": "current_file",
+      "output": "file_content",
+      "item_output": "${file_data}",
+      "do": [
+        {
+          "tool": "lng_file_read",
+          "params": {
+            "file_path": "${current_file.absolute_path}",
+            "output_format": "plain_text"
+          },
+          "output": "file_data"
+        }
+      ]
+    },
+    {
+      "tool": "lng_file_write",
+      "params": {
+        "file_path": "work/telemetry/out/temp_flat_data.json",
+        "content": "${JSON.stringify(file_content.flat())}",
+        "mode": "overwrite"
+      },
+      "output": "flat_file"
+    },
+    {
+      "tool": "lng_file_read",
+      "params": {
+        "file_path": "work/telemetry/out/temp_flat_data.json",
+        "output_format": "plain_text"
+      },
+      "output": "merged_data"
+    },
+    {
+      "tool": "lng_file_write",
+      "params": {
+        "file_path": "work/telemetry/out/temp_for_descriptions.json",
+        "content": "${JSON.stringify(merged_data)}",
+        "mode": "overwrite"
+      },
+      "output": "temp_desc_file"
+    },
+    {
+      "tool": "lng_file_read",
+      "params": {
+        "file_path": "work/telemetry/out/temp_for_descriptions.json",
+        "output_format": "plain_text"
+      },
+      "output": "merged_data_str"
+    },
+    {
+      "tool": "lng_javascript",
+      "params": {
+        "command": "execute",
+        "function_name": "appendFieldsDescription",
+        "parameters": {
+          "data": "${merged_data_str}",
+          "orderMap": "${order_map}"
+        }
+      },
+      "output": "data_with_descriptions"
+    },
+    {
+      "tool": "lng_file_write",
+      "params": {
+        "file_path": "work/telemetry/out/temp_for_sorting.json",
+        "content": "${JSON.stringify(data_with_descriptions)}",
+        "mode": "overwrite"
+      },
+      "output": "temp_sort_file"
+    },
+    {
+      "tool": "lng_file_read",
+      "params": {
+        "file_path": "work/telemetry/out/temp_for_sorting.json",
+        "output_format": "plain_text"
+      },
+      "output": "data_with_descriptions_str"
+    },
+    {
+      "tool": "lng_javascript",
+      "params": {
+        "command": "execute",
+        "function_name": "appendFieldsDescription",
+        "parameters": {
+          "data": "${merged_data}",
+          "orderMap": "${order_map}"
+        }
+      },
+      "output": "data_with_descriptions"
+    },
+    {
+      "tool": "lng_javascript",
+      "params": {
+        "command": "execute",
+        "function_name": "prettyPrintAndSort",
+        "parameters": {
+          "data": "${data_with_descriptions_str}",
+          "orderMap": "${order_map}"
+        }
+      },
+      "output": "sorted_data"
+    },
+    {
+      "tool": "lng_file_write",
+      "params": {
+        "file_path": "work/telemetry/out/temp_merged_telemetry.json",
+        "content": "${JSON.stringify(sorted_data)}",
+        "mode": "overwrite"
+      },
+      "output": "temp_file"
+    },
+    {
+      "tool": "lng_json_to_csv",
+      "params": {
+        "input_file_path": "work/telemetry/out/temp_merged_telemetry.json",
+        "output_file_path": "work/telemetry/out/telemetry_complete_report.csv",
+        "format": "csv"
+      },
+      "output": "csv_result"
+    },
+    {
+      "tool": "lng_file_write",
+      "params": {
+        "file_path": "work/telemetry/out/processing_summary.txt",
+        "content": "✅ Telemetry Processing Complete!\n📊 Files processed: ${telemetry_files.items.length}\n📁 Source directory: work/telemetry/\n📄 Output CSV: work/telemetry_complete_report.csv\n🕒 Processing time: ${new Date().toISOString()}",
+        "mode": "overwrite"
+      },
+      "output": "file_saved"
+    }
+  ],
+  "final_result": "🎉 COMPLETE SUCCESS! Processed ${telemetry_files.items.length} telemetry files and generated consolidated CSV report: work/telemetry_complete_report.csv"
+}

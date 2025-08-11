@@ -1,5 +1,6 @@
 """
-Strategy-based pipeline executor.
+Strategy-basefrom ..models import PipelineResult, ExecutionContext, StepType
+from ..expressions import evaluate_expression, substitute_expressionsine executor.
 
 This module contains the main executor that orchestrates all pipeline strategies
 using composition pattern for maximum flexibility and extensibility.
@@ -16,13 +17,8 @@ from .loop import LoopStrategy
 from .parallel import ParallelStrategy
 from .delay import DelayStrategy
 
-from ..models import PipelineResult, ExecutionContext
-from ..utils import (
-    ExpressionEvaluator,
-    ExpressionHandler,
-    VariableSubstitutor,
-    ResponseParser
-)
+from ..models import PipelineResult, ExecutionContext, StepType
+from ..expressions import evaluate_expression, substitute_expressions
 
 logger = logging.getLogger('mcp_server.pipeline.strategies.executor')
 
@@ -55,10 +51,6 @@ class StrategyBasedExecutor:
     
     def __init__(self, tool_runner: Callable[[str, Dict[str, Any]], Any]):
         self.tool_runner = tool_runner
-        self.expression_evaluator = ExpressionEvaluator()
-        self.expression_handler = ExpressionHandler()
-        self.variable_substitutor = VariableSubstitutor()
-        self.response_parser = ResponseParser()
         
         # Initialize default strategies
         self.strategies: List[ExecutionStrategy] = []
@@ -119,7 +111,7 @@ class StrategyBasedExecutor:
             
             # Calculate final result
             try:
-                final_result = self.expression_evaluator.evaluate(final_result_expr, context.variables)
+                final_result = evaluate_expression(final_result_expr, context.variables, expected_result_type="python")
             except Exception as e:
                 logger.warning(f"Final result evaluation failed: {e}, using default")
                 final_result = "ok"

@@ -21,7 +21,7 @@ import logging
 import asyncio
 
 from .models import PipelineResult, ExecutionContext, StepType
-from .utils import ExpressionEvaluator, VariableSubstitutor, ResponseParser
+from .expressions import evaluate_expression, substitute_expressions
 
 logger = logging.getLogger('mcp_server.pipeline.core')
 
@@ -45,8 +45,6 @@ class LegacyPipelineExecutor:
             tool_runner: Function to execute tools (e.g., run_tool from tool_registry)
         """
         self.tool_runner = tool_runner
-        self.substitutor = VariableSubstitutor()
-        self.parser = ResponseParser()
         
         # Warn about deprecation
         logger.warning(
@@ -122,8 +120,8 @@ class LegacyPipelineExecutor:
             
             # Calculate final result
             try:
-                if isinstance(final_result_expr, str) and "${" in final_result_expr:
-                    final_result = self.substitutor.substitute(final_result_expr, context.variables)
+                if isinstance(final_result_expr, str) and ("${" in final_result_expr or "$[" in final_result_expr):
+                    final_result = substitute_expressions(final_result_expr, context.variables, expected_result_type="python")
                 else:
                     final_result = final_result_expr
             except Exception as e:
@@ -171,8 +169,18 @@ class LegacyPipelineExecutor:
         
         logger.info(f"Executing step {context.step_number}: {tool_name}")
         
-        # Substitute variables in parameters
-        substituted_params = self.substitutor.substitute_recursive(tool_params, context.variables)
+        # Substitute variables in parameters using new expression system
+        try:
+            # Simple recursive substitution for tool parameters
+            substituted_params = self._substitute_recursive(tool_params, context.variables)
+        except Exception as e:
+            return PipelineResult(
+                success=False,
+                error=f"Step {context.step_number}: Parameter substitution failed: {str(e)}",
+                step=context.step_number,
+                tool=tool_name,
+                context=context.variables
+            )
         
         logger.info(f"Step {context.step_number} params after substitution: {substituted_params}")
         
@@ -181,8 +189,11 @@ class LegacyPipelineExecutor:
         
         logger.info(f"Step {context.step_number} ({tool_name}) raw response: {tool_response}")
         
-        # Parse response
-        parsed_response = self.parser.parse(tool_response)
+        # Parse response - simple parsing
+        if isinstance(tool_response, list) and len(tool_response) > 0:
+            parsed_response = tool_response[0]  # Take first element
+        else:
+            parsed_response = tool_response
         
         logger.info(f"Step {context.step_number} ({tool_name}) parsed response: {parsed_response}")
         
@@ -192,6 +203,19 @@ class LegacyPipelineExecutor:
             logger.info(f"Step {context.step_number} stored result in variable '{output_var}': {type(parsed_response).__name__}")
         
         return PipelineResult(success=True)
+
+    def _substitute_recursive(self, obj: Any, variables: Dict[str, Any]) -> Any:
+        """Recursively substitute expressions in an object."""
+        if isinstance(obj, dict):
+            return {k: self._substitute_recursive(v, variables) for k, v in obj.items()}
+        elif isinstance(obj, list):
+            return [self._substitute_recursive(item, variables) for item in obj]
+        elif isinstance(obj, str):
+            if "${" in obj or "$[" in obj:
+                return substitute_expressions(obj, variables, expected_result_type="python")
+            return obj
+        else:
+            return obj
 
 
 # Backward compatibility aliases
@@ -217,22 +241,23 @@ async def execute_pipeline(config: Dict[str, Any], tool_runner: Callable[[str, D
 
 def evaluate_js_expression(expression: str, variables: Dict[str, Any]) -> Any:
     """Legacy function for backward compatibility."""
-    logger.warning("evaluate_js_expression function is deprecated. Use ExpressionEvaluator from utils instead.")
-    evaluator = ExpressionEvaluator()
-    return evaluator.evaluate(expression, variables)
+    logger.warning("evaluate_js_expression function is deprecated. Use evaluate_expression from expressions instead.")
+    return evaluate_expression(expression, variables, expected_result_type="python")
 
 
 def substitute_variables(text: str, variables: Dict[str, Any]) -> str:
     """Legacy function for backward compatibility."""
-    logger.warning("substitute_variables function is deprecated. Use VariableSubstitutor from utils instead.")
-    substitutor = VariableSubstitutor()
-    return substitutor.substitute(text, variables)
+    logger.warning("substitute_variables function is deprecated. Use substitute_expressions from expressions instead.")
+    return substitute_expressions(text, variables, expected_result_type="python")
 
 
 def parse_tool_response(response: List) -> Any:
     """Legacy function for backward compatibility."""
-    logger.warning("parse_tool_response function is deprecated. Use ResponseParser from utils instead.")
-    return ResponseParser.parse(response)
+    logger.warning("parse_tool_response function is deprecated. Parse responses directly.")
+    # Simple response parsing - return first element if it's a list, otherwise return as-is
+    if isinstance(response, list) and len(response) > 0:
+        return response[0]
+    return response
 
 
 # Export legacy classes and functions for backward compatibility
@@ -240,14 +265,6 @@ __all__ = [
     # Legacy classes
     'LegacyPipelineExecutor',
     'PipelineExecutor',  # Alias for compatibility
-    
-    # Re-exported from models and utils for compatibility
-    'PipelineResult',
-    'ExecutionContext',
-    'StepType',
-    'ExpressionEvaluator',
-    'VariableSubstitutor',
-    'ResponseParser',
     
     # Legacy functions
     'execute_pipeline',

@@ -37,7 +37,7 @@ Execute previously saved JavaScript functions with parameters.
 **Parameters:**
 - `command` (string, required): Must be "execute"
 - `function_name` (string, required): Name of the saved function to execute
-- `parameters` (string, required): Parameters to pass (JSON string or plain string)
+- `parameters` (string, required): Parameters to pass (JSON string, plain string or object)
 
 **Parameter Handling:**
 - If parameters is valid JSON string → parsed and passed as object
@@ -218,17 +218,28 @@ async def handle_list_command(parameters: dict) -> list[types.Content]:
         error_result = {"error": f"Error listing functions: {str(e)}"}
         return [types.TextContent(type="text", text=json.dumps(error_result, ensure_ascii=False))]
 
-def parse_parameters(param_string: str):
-    """Parse parameters - try JSON first, fallback to string."""
-    if not param_string:
+def parse_parameters(param_data):
+    """Parse parameters - accept both objects and JSON strings."""
+    if not param_data:
         return None
     
-    # Try to parse as JSON
+    # If it's already a dict/list/object, use it directly
+    if isinstance(param_data, (dict, list, int, float, bool)):
+        return param_data
+    
+    # If it's a string, try to parse as JSON
+    if isinstance(param_data, str):
+        try:
+            return json.loads(param_data)
+        except json.JSONDecodeError:
+            # If JSON parsing fails, return as string
+            return param_data
+    
+    # For other types, convert to string and try JSON parsing
     try:
-        return json.loads(param_string)
+        return json.loads(str(param_data))
     except json.JSONDecodeError:
-        # If JSON parsing fails, return as string
-        return param_string
+        return str(param_data)
 
 def execute_javascript_function(function_code: str, function_name: str, parameters):
     """Execute JavaScript function using PyMiniRacer."""

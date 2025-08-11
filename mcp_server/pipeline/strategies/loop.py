@@ -10,7 +10,7 @@ from typing import Any, Dict
 
 from .base import ExecutionStrategy
 from ..models import PipelineResult, ExecutionContext
-from ..utils import ExpressionEvaluator, ExpressionHandler, VariableSubstitutor
+from ..expressions import evaluate_expression
 
 logger = logging.getLogger('mcp_server.pipeline.strategies.loop')
 
@@ -19,9 +19,7 @@ class LoopStrategy(ExecutionStrategy):
     """Strategy for handling loops (forEach, while, repeat)."""
     
     def __init__(self):
-        self.expression_evaluator = ExpressionEvaluator()
-        self.expression_handler = ExpressionHandler()
-        self.variable_substitutor = VariableSubstitutor()
+        pass
     
     def can_handle(self, step: Dict[str, Any]) -> bool:
         """Handle loop-related steps."""
@@ -67,6 +65,8 @@ class LoopStrategy(ExecutionStrategy):
         item_var = step.get("item", "item")
         index_var = step.get("index", "index")
         body_steps = step.get("do", step.get("body", []))
+        item_output_expr = step.get("item_output")  
+        output_var = step.get("output") 
         
         if not collection_expr:
             return PipelineResult(
@@ -78,7 +78,7 @@ class LoopStrategy(ExecutionStrategy):
         
         # Get collection from variables - handle ${} expressions properly
         try:
-            collection = self.expression_handler.evaluate_if_expression(collection_expr, context.variables, self.expression_evaluator)
+            collection = evaluate_expression(collection_expr, context.variables, expected_result_type="python")
         except Exception as e:
             return PipelineResult(
                 success=False,
@@ -97,6 +97,9 @@ class LoopStrategy(ExecutionStrategy):
         
         logger.info(f"Step {context.step_number}: ForEach loop over {len(collection)} items")
         
+        # Initialize accumulator for results if item_output is specified
+        accumulated_results = [] if item_output_expr else None
+        
         # Execute body for each item
         for i, item in enumerate(collection):
             # Set loop variables
@@ -111,6 +114,16 @@ class LoopStrategy(ExecutionStrategy):
                 result = await executor._execute_sub_pipeline(body_steps, context, f"LOOP[{i}]")
                 if not result.success:
                     return result
+                
+                # If item_output is specified, evaluate and accumulate
+                if item_output_expr and accumulated_results is not None:
+                    try:
+                        item_result = evaluate_expression(item_output_expr, context.variables, expected_result_type="python")
+                        accumulated_results.append(item_result)
+                        logger.debug(f"ForEach iteration {i}: accumulated item result: {item_result}")
+                    except Exception as e:
+                        logger.warning(f"ForEach iteration {i}: failed to evaluate item_output: {str(e)}")
+                        
             finally:
                 # Restore original variables
                 if original_item is not None:
@@ -122,6 +135,11 @@ class LoopStrategy(ExecutionStrategy):
                     context.variables[index_var] = original_index
                 else:
                     context.variables.pop(index_var, None)
+        
+        # Store accumulated results if specified
+        if item_output_expr and output_var and accumulated_results is not None:
+            context.variables[output_var] = accumulated_results
+            logger.info(f"ForEach completed: accumulated {len(accumulated_results)} results in '{output_var}'")
         
         return PipelineResult(success=True, context=context.variables)
     
@@ -145,7 +163,7 @@ class LoopStrategy(ExecutionStrategy):
         while iteration < max_iterations:
             # Check condition
             try:
-                condition_result = self.expression_evaluator.evaluate(condition_expr, context.variables)
+                condition_result = evaluate_expression(condition_expr, context.variables, expected_result_type="python")
                 if not condition_result:
                     break
             except Exception as e:
@@ -188,7 +206,7 @@ class LoopStrategy(ExecutionStrategy):
                 count = int(count_expr)
             else:
                 # Use expression handler for evaluation
-                evaluated = self.expression_handler.evaluate_if_expression(str(count_expr), context.variables, self.expression_evaluator)
+                evaluated = evaluate_expression(str(count_expr), context.variables, expected_result_type="python")
                 count = int(evaluated)
         except Exception as e:
             return PipelineResult(
