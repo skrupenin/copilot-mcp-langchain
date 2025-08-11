@@ -151,8 +151,7 @@ def execute_javascript_function(function_code: str, function_name: str, paramete
             
             logger.info(f"[DEBUG] Retrieved {len(log_list)} JavaScript logs for '{function_name}' function")
             for i, log in enumerate(log_list):
-                print(f"JS Console: {log}")  # Original console output
-                logger.info(f"JS Console: {log}")  # Log file output
+                logger.info(f"JS Console: {log}") 
         except Exception as e:
             logger.error(f"[DEBUG] Error retrieving JavaScript logs: {e}")
         
