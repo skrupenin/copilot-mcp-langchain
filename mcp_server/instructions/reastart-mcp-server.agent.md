@@ -2,3 +2,4 @@
   + on Windows: `Get-Process python* | Where-Object { $_.ProcessName -like "*python*" } | Stop-Process -Force`
   + on Linux: `pkill -f python`
 - Then just call any MCP tool - server will start automatically.
+- Don't run the MCP server manually with `python -m mcp_server.run`.
