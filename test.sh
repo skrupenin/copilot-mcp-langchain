@@ -50,23 +50,23 @@ python -m mcp_server.run run lng_get_tools_info
 # sample of how to run python function
 python -m mcp_server.run run lng_count_words '{\"input_text\":\"Hello pirate!\"}'
 
-#####################
+#########################
 ### lng_llm_run_chain ###
-#####################
+#########################
 # it runs a simple chain with the input text
 # sample of how to run several python functions with langchain
 python -m mcp_server.run run lng_llm_run_chain '{\"input_text\":\"Hello pirate!\"}'
 
-######################
+##########################
 ### lng_llm_agent_demo ###
-######################
+##########################
 # it runs a simple agent demo with the input text
 # sample of how to run several python functions with langchain in Agent mode
 python -m mcp_server.run run lng_llm_agent_demo '{\"input_text\":\"Hello pirate!\",\"task\":\"Reverse this text and then capitalize it\"}'
 
-#############################
+#################################
 ### lng_llm_structured_output ###
-#############################
+#################################
 # it formats the output in different formats
 # possible output formats: json, xml, csv, yaml, pydantic
 
@@ -85,9 +85,9 @@ python -m mcp_server.run run lng_llm_structured_output '{\"question\":\"Tell me 
 # pydantic
 python -m mcp_server.run run lng_llm_structured_output '{\"question\":\"Tell me more about Matrix\",\"output_format\":\"pydantic\"}'
 
-############################
+################################
 ### lng_llm_chain_of_thought ###
-############################
+################################
 # it runs a chain of thought with memory
 # it allows to ask several questions in a row and remember the context
 # demonstration of technique
@@ -95,7 +95,7 @@ python -m mcp_server.run run lng_llm_structured_output '{\"question\":\"Tell me 
 # Run both questions in sequence within the same Python process to maintain memory
 python -m mcp_server.run batch lng_llm_chain_of_thought '{\"question\":\"If John has 5 apples and he gives 2 to Mary, how many apples does John have left?\",\"session_id\":\"apple_problem\",\"new_session\":true}' lng_llm_chain_of_thought '{\"question\":\"If John then buys 3 more apples, how many does he have now?\",\"session_id\":\"apple_problem\",\"new_session\":false}'
 
-############################################################
+###############################
 ### lng_llm_prompt_template ###
 ###############################
 # demonstration of unified prompt template management with file storage
@@ -106,9 +106,10 @@ python -m mcp_server.run batch lng_llm_chain_of_thought '{\"question\":\"If John
 python -m mcp_server.run run lng_llm_prompt_template '{\"command\":\"save\",\"template_name\":\"pirate_style\",\"template\":\"Tell me about {topic} in the style of {style}.\"}'
 python -m mcp_server.run run lng_llm_prompt_template '{\"command\":\"use\",\"template_name\":\"pirate_style\",\"topic\":\"artificial intelligence\",\"style\":\"a pirate\"}'
 
-###########################################
-### lng_rag_add_data ### lng_rag_search ###
-###########################################
+########################
+### lng_rag_add_data ### 
+### lng_rag_search   ###
+########################
 # it adds data to the RAG system and then searches for it
 # demonstration of RAG tools
 # NOTE: RAG search now requires a prompt template to be created first
@@ -159,10 +160,10 @@ python -m mcp_server.run run lng_winapi_send_hotkey '{\"pid\":18672,\"key\":\"F1
 # text input - uses 'text' parameter  
 python -m mcp_server.run run lng_winapi_send_hotkey '{\"pid\":18672,\"text\":\"Hello Windows Automation!\"}'
 
-##################################
-### lng_winapi_clipboard_set   ###
-### lng_winapi_clipboard_get   ###
-##################################
+################################
+### lng_winapi_clipboard_set ###
+### lng_winapi_clipboard_get ###
+################################
 # Set text to clipboard and then read it back
 python -m mcp_server.run batch lng_winapi_clipboard_set '{\"text\":\"Hello clipboard! 🎉\"}' lng_winapi_clipboard_get '{}'
 
@@ -257,9 +258,9 @@ python -m mcp_server.run run lng_javascript '{\"command\": \"execute\", \"functi
 # Test error handling - trying to add arrow function (should fail)
 python -m mcp_server.run run lng_javascript '{\"command\": \"add\", \"function_name\": \"arrowTest\", \"function_code\": \"const arrowTest = () => { return 1; }\"}'
 
-#########################
+#######################
 ### lng_json_to_csv ###
-#########################
+#######################
 # JSON to CSV/Markdown converter with pandas support
 
 ### TEXT MODE TESTS ###
@@ -327,6 +328,121 @@ rm -rf output/
 
 # Test tool functionality
 cd mcp_server/tools/lng_json_to_csv/stuff && python test_runner.py && cd ../../../../
+
+#####################
+### lng_file_read ###
+### lng_file_write ###
+#####################
+# Cross-platform file operations with encoding support and improved output formats
+
+# Create test file for reading
+echo -e "Line 1\nLine 2\nLine 3\nLine 4\nLine 5" > test_read.txt
+
+# Read entire file (default plain text format)
+python -m mcp_server.run run lng_file_read '{\"file_path\":\"test_read.txt\"}'
+
+# Read entire file (JSON format with metadata)
+python -m mcp_server.run run lng_file_read '{\"file_path\":\"test_read.txt\",\"output_format\":\"json\"}'
+
+# Read with UTF-8 encoding (explicit, plain text)
+python -m mcp_server.run run lng_file_read '{\"file_path\":\"test_read.txt\",\"encoding\":\"utf-8\"}'
+
+# Read with UTF-8 encoding (JSON format)
+python -m mcp_server.run run lng_file_read '{\"file_path\":\"test_read.txt\",\"encoding\":\"utf-8\",\"output_format\":\"json\"}'
+
+# Read with offset (skip first 2 lines, plain text)
+python -m mcp_server.run run lng_file_read '{\"file_path\":\"test_read.txt\",\"offset\":2}'
+
+# Read with offset (skip first 2 lines, JSON format)
+python -m mcp_server.run run lng_file_read '{\"file_path\":\"test_read.txt\",\"offset\":2,\"output_format\":\"json\"}'
+
+# Read with offset and limit (lines 2-4, plain text)
+python -m mcp_server.run run lng_file_read '{\"file_path\":\"test_read.txt\",\"offset\":1,\"limit\":3}'
+
+# Read with offset and limit (lines 2-4, JSON format)
+python -m mcp_server.run run lng_file_read '{\"file_path\":\"test_read.txt\",\"offset\":1,\"limit\":3,\"output_format\":\"json\"}'
+
+# Test relative path (plain text)
+python -m mcp_server.run run lng_file_read '{\"file_path\":\"./test_read.txt\"}'
+
+# Test absolute path with JSON format (Windows compatible)
+python -m mcp_server.run run lng_file_read '{\"file_path\":\"test_read.txt\",\"output_format\":\"json\"}'
+
+# Test non-existent file (returns JSON error regardless of format)
+python -m mcp_server.run run lng_file_read '{\"file_path\":\"nonexistent.txt\"}'
+
+# Test non-existent file with JSON format specified
+python -m mcp_server.run run lng_file_read '{\"file_path\":\"nonexistent_json.txt\",\"output_format\":\"json\"}'
+
+# Create new file (default create mode, returns JSON metadata)
+python -m mcp_server.run run lng_file_write '{\"file_path\":\"test_create.txt\",\"content\":\"Hello World!\\nThis is a new file.\"}'
+
+# Try to create existing file (should fail, returns JSON error)
+python -m mcp_server.run run lng_file_write '{\"file_path\":\"test_create.txt\",\"content\":\"This should fail\",\"mode\":\"create\"}'
+
+# Append to existing file (returns JSON metadata)
+python -m mcp_server.run run lng_file_write '{\"file_path\":\"test_create.txt\",\"content\":\"\\nAppended line 1\\nAppended line 2\",\"mode\":\"append\"}'
+
+# Read appended file to verify (plain text)
+python -m mcp_server.run run lng_file_read '{\"file_path\":\"test_create.txt\"}'
+
+# Read appended file to verify (JSON format)
+python -m mcp_server.run run lng_file_read '{\"file_path\":\"test_create.txt\",\"output_format\":\"json\"}'
+
+# Overwrite existing file (returns JSON metadata with size changes)
+python -m mcp_server.run run lng_file_write '{\"file_path\":\"test_create.txt\",\"content\":\"Completely new content!\\nFile was overwritten.\",\"mode\":\"overwrite\"}'
+
+# Read overwritten file to verify (plain text)
+python -m mcp_server.run run lng_file_read '{\"file_path\":\"test_create.txt\"}'
+
+# Create file in subdirectory (auto-create directories, JSON metadata)
+python -m mcp_server.run run lng_file_write '{\"file_path\":\"subdir/nested/deep_file.txt\",\"content\":\"File in nested directory\\nCreated automatically\"}'
+
+# Read from nested directory (JSON format with full metadata)
+python -m mcp_server.run run lng_file_read '{\"file_path\":\"subdir/nested/deep_file.txt\",\"output_format\":\"json\"}'
+
+# Test different encodings (Unicode characters, JSON metadata)
+python -m mcp_server.run run lng_file_write '{\"file_path\":\"utf8_test.txt\",\"content\":\"UTF-8: Hello 🌍! Русский текст. 中文字符. Émojis 🎉\",\"encoding\":\"utf-8\"}'
+
+# Read UTF-8 file (plain text to see Unicode)
+python -m mcp_server.run run lng_file_read '{\"file_path\":\"utf8_test.txt\",\"encoding\":\"utf-8\"}'
+
+# Read UTF-8 file (JSON format with metadata)
+python -m mcp_server.run run lng_file_read '{\"file_path\":\"utf8_test.txt\",\"encoding\":\"utf-8\",\"output_format\":\"json\"}'
+
+# Test empty content (JSON metadata)
+python -m mcp_server.run run lng_file_write '{\"file_path\":\"empty_file.txt\",\"content\":\"\"}'
+
+# Read empty file (plain text)
+python -m mcp_server.run run lng_file_read '{\"file_path\":\"empty_file.txt\"}'
+
+# Read empty file (JSON format)
+python -m mcp_server.run run lng_file_read '{\"file_path\":\"empty_file.txt\",\"output_format\":\"json\"}'
+
+# Test error handling - missing content parameter
+python -m mcp_server.run run lng_file_write '{\"file_path\":\"missing_content.txt\"}'
+
+# Test error handling - missing file_path parameter
+python -m mcp_server.run run lng_file_read '{\"encoding\":\"utf-8\"}'
+
+# Combined operations in batch mode (write + read JSON + append)
+python -m mcp_server.run batch lng_file_write '{\"file_path\":\"batch_test.txt\",\"content\":\"First line\\nSecond line\\nThird line\"}' lng_file_read '{\"file_path\":\"batch_test.txt\",\"output_format\":\"json\"}' lng_file_write '{\"file_path\":\"batch_test.txt\",\"content\":\"\\nAppended in batch\",\"mode\":\"append\"}'
+
+# Final read to see all changes (plain text)
+python -m mcp_server.run run lng_file_read '{\"file_path\":\"batch_test.txt\"}'
+
+# Final read to see all changes (JSON format with metadata)
+python -m mcp_server.run run lng_file_read '{\"file_path\":\"batch_test.txt\",\"output_format\":\"json\"}'
+
+# Advanced test: offset beyond file length (should return empty content)
+python -m mcp_server.run run lng_file_read '{\"file_path\":\"test_read.txt\",\"offset\":100,\"output_format\":\"json\"}'
+
+# Clean up test files
+rm -f test_read.txt test_create.txt utf8_test.txt empty_file.txt batch_test.txt
+rm -rf subdir/
+
+# Test tool functionality with test script
+cd mcp_server/tools/lng_file/stuff && python test.py && cd ../../../../
 
 ########################
 ### clean all caches ###

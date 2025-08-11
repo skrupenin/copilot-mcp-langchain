@@ -1,0 +1,3 @@
+enabled: true
+description: "Cross-platform file operations with encoding support - read and write text files"
+dependencies: []
