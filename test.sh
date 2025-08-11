@@ -220,43 +220,57 @@ python -m mcp_server.run run lng_webhook_server '{\"operation\":\"stop\",\"name\
 # Universal test suite (comprehensive testing)
 cd mcp_server/tools/lng_webhook_server/stuff && python test_webhook_universal.py && cd ../../../../
 
-######################
-### lng_javascript ###
-######################
+##############################
+### lng_javascript_list    ###
+### lng_javascript_add     ###
+### lng_javascript_execute ###
+##############################
 # JavaScript function management and execution with PyMiniRacer
 
 # List all saved JavaScript functions (initially empty)
-python -m mcp_server.run run lng_javascript '{\"command\": \"list\"}'
+python -m mcp_server.run run lng_javascript_list '{}'
 
-# Save a simple greeting function
-python -m mcp_server.run run lng_javascript '{\"command\": \"add\", \"function_name\": \"greet\", \"function_code\": \"function greet(params) { return \\\"Hello, \\\" + params; }\"}'
+# Save a simple greeting function using lng_javascript_add
+python -m mcp_server.run run lng_javascript_add '{\"function_name\": \"greet\", \"function_code\": \"function greet(params) { console.log(\\\"Greeting:\\\", params); return \\\"Hello, \\\" + params; }\"}'
 
-# Save a mathematical calculation function
-python -m mcp_server.run run lng_javascript '{\"command\": \"add\", \"function_name\": \"calculateSum\", \"function_code\": \"function calculateSum(params) { return params.a + params.b; }\"}'
+# Save a mathematical calculation function with console logging
+python -m mcp_server.run run lng_javascript_add '{\"function_name\": \"calculateSum\", \"function_code\": \"function calculateSum(params) { console.log(\\\"Calculating sum:\\\", params); const result = params.a + params.b; console.log(\\\"Result:\\\", result); return result; }\"}'
 
-# Save a complex calculation function with destructuring and array methods
-python -m mcp_server.run run lng_javascript '{\"command\": \"add\", \"function_name\": \"complexCalc\", \"function_code\": \"function complexCalc(params) { const { numbers, operation } = params; if (operation === \\\"sum\\\") return numbers.reduce((a, b) => a + b, 0); if (operation === \\\"product\\\") return numbers.reduce((a, b) => a * b, 1); return \\\"Invalid operation\\\"; }\"}'
+# Save a complex calculation function with destructuring, array methods, and detailed logging
+python -m mcp_server.run run lng_javascript_add '{\"function_name\": \"complexCalc\", \"function_code\": \"function complexCalc(params) { console.log(\\\"Starting complex calculation\\\", params); const { numbers, operation } = params; if (operation === \\\"sum\\\") { const result = numbers.reduce((a, b) => a + b, 0); console.log(\\\"Sum operation completed:\\\", result); return result; } if (operation === \\\"product\\\") { const result = numbers.reduce((a, b) => a * b, 1); console.log(\\\"Product operation completed:\\\", result); return result; } console.warn(\\\"Invalid operation:\\\", operation); return \\\"Invalid operation\\\"; }\"}'
+
+# Save a function with comprehensive console logging examples
+python -m mcp_server.run run lng_javascript_add '{\"function_name\": \"debugExample\", \"function_code\": \"function debugExample(params) { console.log(\\\"Function called with:\\\", JSON.stringify(params)); console.warn(\\\"This is a warning message\\\"); if (params.debug) { console.error(\\\"Debug mode enabled - showing detailed info\\\"); } const result = { input: params, timestamp: new Date().toISOString(), processed: true }; console.log(\\\"Returning result:\\\", JSON.stringify(result)); return result; }\"}'
 
 # List all saved functions after adding them
-python -m mcp_server.run run lng_javascript '{\"command\": \"list\"}'
+python -m mcp_server.run run lng_javascript_list '{}'
 
-# Execute greeting function with string parameter
-python -m mcp_server.run run lng_javascript '{\"command\": \"execute\", \"function_name\": \"greet\", \"parameters\": \"World\"}'
+# Execute greeting function with string parameter using lng_javascript_execute
+python -m mcp_server.run run lng_javascript_execute '{\"function_name\": \"greet\", \"parameters\": \"World\"}'
 
-# Execute sum function with JSON parameters
-python -m mcp_server.run run lng_javascript '{\"command\": \"execute\", \"function_name\": \"calculateSum\", \"parameters\": \"{\\\"a\\\": 5, \\\"b\\\": 3}\"}'
+# Execute sum function with object parameters (recommended approach)
+python -m mcp_server.run run lng_javascript_execute '{\"function_name\": \"calculateSum\", \"parameters\": {\"a\": 5, \"b\": 3}}'
 
 # Execute complex function with array sum operation
-python -m mcp_server.run run lng_javascript '{\"command\": \"execute\", \"function_name\": \"complexCalc\", \"parameters\": \"{\\\"numbers\\\": [1, 2, 3, 4], \\\"operation\\\": \\\"sum\\\"}\"}'
+python -m mcp_server.run run lng_javascript_execute '{\"function_name\": \"complexCalc\", \"parameters\": {\"numbers\": [1, 2, 3, 4], \"operation\": \"sum\"}}'
 
 # Execute complex function with array product operation
-python -m mcp_server.run run lng_javascript '{\"command\": \"execute\", \"function_name\": \"complexCalc\", \"parameters\": \"{\\\"numbers\\\": [2, 3, 4], \\\"operation\\\": \\\"product\\\"}\"}'
+python -m mcp_server.run run lng_javascript_execute '{\"function_name\": \"complexCalc\", \"parameters\": {\"numbers\": [2, 3, 4], \"operation\": \"product\"}}'
+
+# Execute debug function to see comprehensive console logging
+python -m mcp_server.run run lng_javascript_execute '{\"function_name\": \"debugExample\", \"parameters\": {\"data\": \"test\", \"debug\": true, \"options\": {\"verbose\": true}}}'
+
+# Test complex object parameters
+python -m mcp_server.run run lng_javascript_execute '{\"function_name\": \"debugExample\", \"parameters\": {\"user\": {\"name\": \"John\", \"age\": 30}, \"settings\": {\"theme\": \"dark\", \"notifications\": true}, \"items\": [\"item1\", \"item2\", \"item3\"]}}'
 
 # Test error handling - trying to execute non-existent function
-python -m mcp_server.run run lng_javascript '{\"command\": \"execute\", \"function_name\": \"nonexistent\", \"parameters\": \"test\"}'
+python -m mcp_server.run run lng_javascript_execute '{\"function_name\": \"nonexistent\", \"parameters\": \"test\"}'
 
 # Test error handling - trying to add arrow function (should fail)
-python -m mcp_server.run run lng_javascript '{\"command\": \"add\", \"function_name\": \"arrowTest\", \"function_code\": \"const arrowTest = () => { return 1; }\"}'
+python -m mcp_server.run run lng_javascript_add '{\"function_name\": \"arrowTest\", \"function_code\": \"const arrowTest = () => { return 1; }\"}'
+
+# Test batch execution with pipeline - create and execute function in one pipeline
+python -m mcp_server.run run lng_batch_run '{\"pipeline\": [{\"tool\": \"lng_javascript_add\", \"params\": {\"function_name\": \"quickTest\", \"function_code\": \"function quickTest(params) { console.log(\\\"Quick test:\\\", params); return \\\"OK: \\\" + JSON.stringify(params); }\"}, \"output\": \"save_result\"}, {\"tool\": \"lng_javascript_execute\", \"params\": {\"function_name\": \"quickTest\", \"parameters\": {\"message\": \"batch execution test\"}}, \"output\": \"exec_result\"}], \"final_result\": \"${exec_result}\"}'
 
 #######################
 ### lng_json_to_csv ###
