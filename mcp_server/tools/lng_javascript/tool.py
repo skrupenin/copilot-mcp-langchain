@@ -190,7 +190,8 @@ async def handle_execute_command(parameters: dict) -> list[types.Content]:
             return [types.TextContent(type="text", text=json.dumps(result, ensure_ascii=False))]
         
     except Exception as e:
-        error_result = {"error": f"Error executing function: {str(e)}"}
+        function_name = parameters.get("function_name", "unknown")
+        error_result = {"error": f"Error executing function '{function_name}': {str(e)}"}
         return [types.TextContent(type="text", text=json.dumps(error_result, ensure_ascii=False))]
 
 async def handle_list_command(parameters: dict) -> list[types.Content]:
@@ -247,4 +248,4 @@ def execute_javascript_function(function_code: str, function_name: str, paramete
         return result
         
     except Exception as e:
-        raise Exception(f"JavaScript execution error: {str(e)}")
+        raise Exception(f"JavaScript execution error in function '{function_name}': {str(e)}")
