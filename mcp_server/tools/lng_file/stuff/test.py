@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Comprehensive test script for lng_file tools
+Comprehensive test script for lng_file tools (read, write, list)
 Tests all functionality including edge cases, encodings, and error handling
 """
 
@@ -14,6 +14,7 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from read.tool import run_tool as read_tool
 from write.tool import run_tool as write_tool
+from list.tool import run_tool as list_tool
 
 def print_test_result(test_name, result, expected_success=True):
     """Helper function to print test results consistently"""
@@ -252,12 +253,154 @@ async def test_file_operations():
         print_test_result("Test 22: Multiple operations on same file", final_result, True)
         
         print("\n" + "=" * 80)
+        print("📁 TESTING lng_file_list")
+        print("=" * 80)
+        
+        # Create test directory structure for listing tests
+        subdir1 = os.path.join(temp_dir, "subdir1")
+        subdir2 = os.path.join(temp_dir, "subdir2")
+        hidden_dir = os.path.join(temp_dir, ".hidden")
+        os.makedirs(subdir1, exist_ok=True)
+        os.makedirs(subdir2, exist_ok=True)
+        os.makedirs(hidden_dir, exist_ok=True)
+        
+        # Create various test files
+        with open(os.path.join(temp_dir, "file1.txt"), "w") as f:
+            f.write("test content 1")
+        with open(os.path.join(temp_dir, "file2.py"), "w") as f:
+            f.write("print('hello')")
+        with open(os.path.join(temp_dir, ".hidden_file"), "w") as f:
+            f.write("hidden content")
+        with open(os.path.join(subdir1, "nested.txt"), "w") as f:
+            f.write("nested file")
+        with open(os.path.join(subdir2, "another.py"), "w") as f:
+            f.write("another python file")
+        with open(os.path.join(hidden_dir, "hidden_nested.txt"), "w") as f:
+            f.write("hidden nested content")
+        
+        # Test 23: Basic directory listing (simple format)
+        result = await list_tool("lng_file_list", {
+            "directory_path": temp_dir
+        })
+        print_test_result("Test 23: Basic directory listing (simple format)", result, True)
+        
+        # Test 24: Directory listing with absolute paths
+        result = await list_tool("lng_file_list", {
+            "directory_path": temp_dir,
+            "path_type": "absolute"
+        })
+        print_test_result("Test 24: Directory listing with absolute paths", result, True)
+        
+        # Test 25: List only files (exclude directories)
+        result = await list_tool("lng_file_list", {
+            "directory_path": temp_dir,
+            "include_directories": False
+        })
+        print_test_result("Test 25: List only files", result, True)
+        
+        # Test 26: List only directories (exclude files)
+        result = await list_tool("lng_file_list", {
+            "directory_path": temp_dir,
+            "include_files": False
+        })
+        print_test_result("Test 26: List only directories", result, True)
+        
+        # Test 27: Recursive listing
+        result = await list_tool("lng_file_list", {
+            "directory_path": temp_dir,
+            "recursive": True
+        })
+        print_test_result("Test 27: Recursive directory listing", result, True)
+        
+        # Test 28: Pattern filtering (*.py files)
+        result = await list_tool("lng_file_list", {
+            "directory_path": temp_dir,
+            "pattern": "*.py",
+            "recursive": True
+        })
+        print_test_result("Test 28: Pattern filtering (*.py files)", result, True)
+        
+        # Test 29: Pattern filtering (*.txt files) with absolute paths
+        result = await list_tool("lng_file_list", {
+            "directory_path": temp_dir,
+            "pattern": "*.txt",
+            "path_type": "absolute",
+            "recursive": True
+        })
+        print_test_result("Test 29: Pattern filtering (*.txt) with absolute paths", result, True)
+        
+        # Test 30: Include hidden files
+        result = await list_tool("lng_file_list", {
+            "directory_path": temp_dir,
+            "show_hidden": True
+        })
+        print_test_result("Test 30: Include hidden files", result, True)
+        
+        # Test 31: Detailed output format
+        result = await list_tool("lng_file_list", {
+            "directory_path": temp_dir,
+            "output_format": "detailed"
+        })
+        print_test_result("Test 31: Detailed output format", result, True)
+        
+        # Test 32: JSON output format
+        result = await list_tool("lng_file_list", {
+            "directory_path": temp_dir,
+            "output_format": "json"
+        })
+        print_test_result("Test 32: JSON output format", result, True)
+        
+        # Test 33: Recursive listing with hidden files and JSON format
+        result = await list_tool("lng_file_list", {
+            "directory_path": temp_dir,
+            "recursive": True,
+            "show_hidden": True,
+            "output_format": "json"
+        })
+        print_test_result("Test 33: Recursive with hidden files (JSON format)", result, True)
+        
+        # Test 34: Test error - non-existent directory
+        result = await list_tool("lng_file_list", {
+            "directory_path": os.path.join(temp_dir, "nonexistent_dir")
+        })
+        print_test_result("Test 34: Non-existent directory (should fail)", result, False)
+        
+        # Test 35: Test error - path is file, not directory
+        result = await list_tool("lng_file_list", {
+            "directory_path": test_file
+        })
+        print_test_result("Test 35: Path is file not directory (should fail)", result, False)
+        
+        # Test 36: Test error - missing directory path
+        result = await list_tool("lng_file_list", {
+            "pattern": "*.txt"
+        })
+        print_test_result("Test 36: Missing directory_path parameter (should fail)", result, False)
+        
+        # Test 37: Complex combination - recursive *.txt files with detailed output
+        result = await list_tool("lng_file_list", {
+            "directory_path": temp_dir,
+            "pattern": "*.txt",
+            "recursive": True,
+            "show_hidden": True,
+            "output_format": "detailed",
+            "path_type": "absolute"
+        })
+        print_test_result("Test 37: Complex combination test", result, True)
+        
+        print("\n" + "=" * 80)
         print("📊 TEST SUMMARY")
         print("=" * 80)
         print("✅ All tests completed!")
         print("📝 Check individual test results above for pass/fail status")
         print(f"🗂️  Temporary test directory: {temp_dir}")
         print("🔍 For detailed analysis, review the JSON outputs and error messages")
+        print("\n🧪 Total tests run:")
+        print("   • lng_file_write: 9 tests")
+        print("   • lng_file_read: 11 tests") 
+        print("   • lng_file_list: 15 tests")
+        print("   • Integration: 2 tests")
+        print("   📈 Total: 37 tests")
 
 if __name__ == "__main__":
     import asyncio

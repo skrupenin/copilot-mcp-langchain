@@ -444,6 +444,75 @@ rm -rf subdir/
 # Test tool functionality with test script
 cd mcp_server/tools/lng_file/stuff && python test.py && cd ../../../../
 
+#####################
+### lng_file_list ###
+#####################
+# Lists files and directories with flexible filtering and output options
+
+# Create test directory structure for listing examples
+mkdir -p test_list_dir/subdir1 test_list_dir/subdir2 test_list_dir/.hidden
+echo "Content 1" > test_list_dir/file1.txt
+echo "Content 2" > test_list_dir/file2.py
+echo "print('hello')" > test_list_dir/script.py
+echo "Hidden content" > test_list_dir/.hidden_file
+echo "Nested content 1" > test_list_dir/subdir1/nested.txt
+echo "Nested content 2" > test_list_dir/subdir2/another.py
+echo "Hidden nested" > test_list_dir/.hidden/hidden_nested.txt
+
+# Basic directory listing (simple format, relative paths)
+python -m mcp_server.run run lng_file_list '{\"directory_path\":\"test_list_dir\"}'
+
+# Directory listing with absolute paths
+python -m mcp_server.run run lng_file_list '{\"directory_path\":\"test_list_dir\",\"path_type\":\"absolute\"}'
+
+# List only files (exclude directories)
+python -m mcp_server.run run lng_file_list '{\"directory_path\":\"test_list_dir\",\"include_directories\":false}'
+
+# List only directories (exclude files)
+python -m mcp_server.run run lng_file_list '{\"directory_path\":\"test_list_dir\",\"include_files\":false}'
+
+# Recursive listing (all files and directories)
+python -m mcp_server.run run lng_file_list '{\"directory_path\":\"test_list_dir\",\"recursive\":true}'
+
+# Pattern filtering - only .py files
+python -m mcp_server.run run lng_file_list '{\"directory_path\":\"test_list_dir\",\"pattern\":\"*.py\",\"recursive\":true}'
+
+# Pattern filtering - only .txt files with absolute paths
+python -m mcp_server.run run lng_file_list '{\"directory_path\":\"test_list_dir\",\"pattern\":\"*.txt\",\"path_type\":\"absolute\",\"recursive\":true}'
+
+# Include hidden files and directories
+python -m mcp_server.run run lng_file_list '{\"directory_path\":\"test_list_dir\",\"show_hidden\":true}'
+
+# Detailed output format (with file sizes, timestamps, permissions)
+python -m mcp_server.run run lng_file_list '{\"directory_path\":\"test_list_dir\",\"output_format\":\"detailed\"}'
+
+# JSON output format (full metadata)
+python -m mcp_server.run run lng_file_list '{\"directory_path\":\"test_list_dir\",\"output_format\":\"json\"}'
+
+# Complex example: recursive .py files with hidden files in detailed format
+python -m mcp_server.run run lng_file_list '{\"directory_path\":\"test_list_dir\",\"pattern\":\"*.py\",\"recursive\":true,\"show_hidden\":true,\"output_format\":\"detailed\"}'
+
+# Complex example: all files recursively with absolute paths in JSON format
+python -m mcp_server.run run lng_file_list '{\"directory_path\":\"test_list_dir\",\"recursive\":true,\"show_hidden\":true,\"path_type\":\"absolute\",\"output_format\":\"json\"}'
+
+# List current directory (using relative path)
+python -m mcp_server.run run lng_file_list '{\"directory_path\":\".\"}'
+
+# List specific subdirectory
+python -m mcp_server.run run lng_file_list '{\"directory_path\":\"test_list_dir/subdir1\"}'
+
+# Test error handling - non-existent directory
+python -m mcp_server.run run lng_file_list '{\"directory_path\":\"nonexistent_directory\"}'
+
+# Test error handling - path is file, not directory (using one of our test files)
+python -m mcp_server.run run lng_file_list '{\"directory_path\":\"test_list_dir/file1.txt\"}'
+
+# Test error handling - missing directory_path parameter
+python -m mcp_server.run run lng_file_list '{\"pattern\":\"*.txt\"}'
+
+# Clean up test directory
+rm -rf test_list_dir
+
 ########################
 ### clean all caches ###
 ########################

@@ -40,6 +40,28 @@ Writes text content to files with multiple write modes and comprehensive metadat
 - `encoding` (optional): File encoding, default: 'utf-8'
 - `mode` (optional): Write mode - 'create', 'overwrite', or 'append'
 
+### lng_file_list
+Lists all files and directories in a specified directory with flexible filtering and output options.
+
+**Key Features:**
+- **Multiple Output Formats**: Simple list, detailed view, or JSON with metadata
+- Path type options: relative (default) or absolute paths
+- Recursive directory traversal support
+- Pattern-based filtering (glob-style patterns like *.txt)
+- Type filtering: files only, directories only, or both
+- Hidden file inclusion control
+- Comprehensive error handling
+
+**Parameters:**
+- `directory_path` (required): Path to the directory to list
+- `path_type` (optional): 'relative' (default) or 'absolute' paths
+- `include_directories` (optional): Include directories, default: true
+- `include_files` (optional): Include files, default: true
+- `recursive` (optional): List recursively in subdirectories, default: false
+- `pattern` (optional): Filter by glob pattern (e.g., '*.py', '*.txt')
+- `show_hidden` (optional): Include hidden files/directories, default: false
+- `output_format` (optional): 'list' (default), 'detailed', or 'json'
+
 ## Usage Examples
 
 ### Reading Files
@@ -66,6 +88,25 @@ python -m mcp_server.run run lng_file_write '{"file_path":"log.txt","content":"N
 
 # Write with Unicode content
 python -m mcp_server.run run lng_file_write '{"file_path":"unicode.txt","content":"Hello 🌍!","encoding":"utf-8"}'
+```
+
+### Listing Directory Contents
+
+```bash
+# List all files and directories (simple format)
+python -m mcp_server.run run lng_file_list '{"directory_path":"."}'
+
+# List only files with absolute paths
+python -m mcp_server.run run lng_file_list '{"directory_path":".","path_type":"absolute","include_directories":false}'
+
+# List Python files recursively
+python -m mcp_server.run run lng_file_list '{"directory_path":"src","recursive":true,"pattern":"*.py"}'
+
+# Detailed listing with file information
+python -m mcp_server.run run lng_file_list '{"directory_path":"docs","output_format":"detailed"}'
+
+# JSON format with full metadata
+python -m mcp_server.run run lng_file_list '{"directory_path":"logs","output_format":"json"}'
 ```
 
 ## Output Formats
@@ -113,6 +154,67 @@ Line 3 of file
     "file_size_bytes": 25,
     "success": true,
     "timestamp": "2025-08-11T12:00:00.000000"
+  }
+}
+```
+
+### lng_file_list Output Formats
+
+**Simple List Format (default)**
+```
+file1.txt
+file2.py
+subdirectory/
+file3.md
+```
+
+**Detailed Format**
+```
+Directory listing: /path/to/directory
+Total items: 4
+
+     file: file1.txt (1024 bytes)
+     file: file2.py (2048 bytes)
+directory: subdirectory/
+     file: file3.md (512 bytes)
+```
+
+**JSON Format**
+```json
+{
+  "items": [
+    {
+      "path": "file1.txt",
+      "name": "file1.txt",
+      "type": "file",
+      "size": 1024,
+      "modified_time": 1691835600.0,
+      "permissions": "644",
+      "is_hidden": false,
+      "absolute_path": "/path/to/directory/file1.txt"
+    },
+    {
+      "path": "subdirectory",
+      "name": "subdirectory",
+      "type": "directory",
+      "size": null,
+      "modified_time": 1691835700.0,
+      "permissions": "755",
+      "is_hidden": false,
+      "absolute_path": "/path/to/directory/subdirectory"
+    }
+  ],
+  "metadata": {
+    "operation": "file_list",
+    "directory_path": "/path/to/directory",
+    "path_type": "relative",
+    "include_directories": true,
+    "include_files": true,
+    "recursive": false,
+    "show_hidden": false,
+    "pattern": null,
+    "total_items": 2,
+    "success": true
   }
 }
 ```
