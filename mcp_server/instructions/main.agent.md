@@ -3,6 +3,7 @@
 - Follow `./assign-issue-to-coding-agent.agent.md` when I asked to create issue on Github an to assign it to the Coding Agent.
 - Always follow `./activate-virtualenv.agent.md` in any case activate the virtual environment before starting any python stuff in terminal.
 - Follow `./check-mcp-enabled.agent.md` if there is no MCP enabled or you need to check if MCP is enabled.
+- Follow `./reastart-mcp-server.agent.md` if you need to restart MCP server after some changes.
 - Follow `./choose-library.agent.md` when you need to choose a library for Python.
 - Follow `./update-install.agent.md` if you suggest any `pip install xxxx`.
 - Follow `./git-repo.agent.md` if you need to work with git repository.
