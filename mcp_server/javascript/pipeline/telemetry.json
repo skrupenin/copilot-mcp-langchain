@@ -1,9 +1,8 @@
 {
   "pipeline": [
     {
-      "tool": "lng_javascript",
+      "tool": "lng_javascript_execute",
       "params": {
-        "command": "execute",
         "function_name": "setOrderMap"
       },
       "output": "order_map"
@@ -38,72 +37,18 @@
       ]
     },
     {
-      "tool": "lng_file_write",
+      "tool": "lng_javascript_execute",
       "params": {
-        "file_path": "work/telemetry/out/temp_flat_data.json",
-        "content": "${JSON.stringify(file_content.flat())}",
-        "mode": "overwrite"
-      },
-      "output": "flat_file"
-    },
-    {
-      "tool": "lng_file_read",
-      "params": {
-        "file_path": "work/telemetry/out/temp_flat_data.json",
-        "output_format": "plain_text"
+        "function_name": "mergeJsons",
+        "parameters": {
+          "json_arrays": "${file_content}"
+        }
       },
       "output": "merged_data"
     },
     {
-      "tool": "lng_file_write",
+      "tool": "lng_javascript_execute",
       "params": {
-        "file_path": "work/telemetry/out/temp_for_descriptions.json",
-        "content": "${JSON.stringify(merged_data)}",
-        "mode": "overwrite"
-      },
-      "output": "temp_desc_file"
-    },
-    {
-      "tool": "lng_file_read",
-      "params": {
-        "file_path": "work/telemetry/out/temp_for_descriptions.json",
-        "output_format": "plain_text"
-      },
-      "output": "merged_data_str"
-    },
-    {
-      "tool": "lng_javascript",
-      "params": {
-        "command": "execute",
-        "function_name": "appendFieldsDescription",
-        "parameters": {
-          "data": "${merged_data_str}",
-          "orderMap": "${order_map}"
-        }
-      },
-      "output": "data_with_descriptions"
-    },
-    {
-      "tool": "lng_file_write",
-      "params": {
-        "file_path": "work/telemetry/out/temp_for_sorting.json",
-        "content": "${JSON.stringify(data_with_descriptions)}",
-        "mode": "overwrite"
-      },
-      "output": "temp_sort_file"
-    },
-    {
-      "tool": "lng_file_read",
-      "params": {
-        "file_path": "work/telemetry/out/temp_for_sorting.json",
-        "output_format": "plain_text"
-      },
-      "output": "data_with_descriptions_str"
-    },
-    {
-      "tool": "lng_javascript",
-      "params": {
-        "command": "execute",
         "function_name": "appendFieldsDescription",
         "parameters": {
           "data": "${merged_data}",
@@ -113,34 +58,32 @@
       "output": "data_with_descriptions"
     },
     {
-      "tool": "lng_javascript",
+      "tool": "lng_javascript_execute",
       "params": {
-        "command": "execute",
         "function_name": "prettyPrintAndSort",
         "parameters": {
-          "data": "${data_with_descriptions_str}",
+          "data": "${data_with_descriptions}",
           "orderMap": "${order_map}"
         }
       },
       "output": "sorted_data"
     },
     {
-      "tool": "lng_file_write",
-      "params": {
-        "file_path": "work/telemetry/out/temp_merged_telemetry.json",
-        "content": "${JSON.stringify(sorted_data)}",
-        "mode": "overwrite"
-      },
-      "output": "temp_file"
-    },
-    {
       "tool": "lng_json_to_csv",
       "params": {
-        "input_file_path": "work/telemetry/out/temp_merged_telemetry.json",
-        "output_file_path": "work/telemetry/out/telemetry_complete_report.csv",
+        "json_data": "${sorted_data}",
         "format": "csv"
       },
-      "output": "csv_result"
+      "output": "csv_content"
+    },
+    {
+      "tool": "lng_file_write",
+      "params": {
+        "file_path": "work/telemetry/out/telemetry_complete_report.csv",
+        "content": "${csv_content}",
+        "mode": "overwrite"
+      },
+      "output": "csv_file_saved"
     },
     {
       "tool": "lng_file_write",
@@ -152,5 +95,5 @@
       "output": "file_saved"
     }
   ],
-  "final_result": "🎉 COMPLETE SUCCESS! Processed ${telemetry_files.items.length} telemetry files and generated consolidated CSV report: work/telemetry_complete_report.csv"
+  "final_result": "🎉 COMPLETE SUCCESS! Processed ${telemetry_files.items.length} telemetry files and generated consolidated CSV report: work/telemetry/out/telemetry_complete_report.csv"
 }

@@ -291,6 +291,9 @@ def substitute_expressions(text: str, context: Dict[str, Any], expected_result_t
         expr = match.group(0)
         try:
             result = evaluate_expression(expr, context, expected_result_type, step_info)
+            # Use JSON representation for complex objects instead of str()
+            if isinstance(result, (dict, list)):
+                return json.dumps(result, ensure_ascii=False)
             return str(result) if result is not None else ""
         except Exception as e:
             logger.error(f"Failed to substitute expression '{expr}': {e}")

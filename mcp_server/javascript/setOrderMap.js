@@ -1,5 +1,5 @@
 function setOrderMap() {
-    return JSON.stringify({
+    return {
         "": [
             "date",
             "total_active_users",
@@ -83,5 +83,5 @@ function setOrderMap() {
             "total_code_lines_accepted",
             "total_code_lines_suggested"
         ]
-    });
+    };
 }

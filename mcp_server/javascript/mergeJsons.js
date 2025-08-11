@@ -2,7 +2,6 @@ function mergeJsons(parameters) {
     const { json_arrays } = parameters;
     
     if (!Array.isArray(json_arrays)) {
-        console.warn('json_arrays should be an array, got:', typeof json_arrays);
         return [];
     }
     
@@ -12,15 +11,12 @@ function mergeJsons(parameters) {
             try {
                 return JSON.parse(arr);
             } catch (e) {
-                console.warn('Failed to parse JSON array:', arr);
                 return [];
             }
         }
-        // If it's already an array or object, use it directly
         if (Array.isArray(arr)) {
             return arr;
         }
-        // If it's a single object, wrap it in an array
         if (typeof arr === 'object' && arr !== null) {
             return [arr];
         }
