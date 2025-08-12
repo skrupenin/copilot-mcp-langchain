@@ -132,7 +132,7 @@ python hotkey_service.py status
 ### Complex Pipeline Example
 ```bash
 # Auto-translate clipboard Russian text to English
-python -m mcp_server.run run lng_winapi_hotkey_listener '{\"operation\":\"register\",\"hotkey\":\"ctrl+shift+alt+f11\",\"tool_name\":\"lng_batch_run\",\"tool_json\":{\"pipeline\":[{\"tool\":\"lng_winapi_clipboard_get\",\"params\":{},\"output\":\"clipboard_text\"},{\"tool\":\"lng_llm_prompt_template\",\"params\":{\"command\":\"use\",\"template_name\":\"translate_to_en_b2\",\"text\":\"${clipboard_text.content || clipboard_text.unicode_text}\"},\"output\":\"translated_text\"},{\"tool\":\"lng_winapi_clipboard_set\",\"params\":{\"text\":\"${translated_text}\"},\"output\":\"final_result\"}],\"final_result\":\"${translated_text}\"}}'
+python -m mcp_server.run run lng_winapi_hotkey_listener '{\"operation\":\"register\",\"hotkey\":\"ctrl+shift+alt+f11\",\"tool_name\":\"lng_batch_run\",\"tool_json\":{\"pipeline\":[{\"tool\":\"lng_winapi_clipboard_get\",\"params\":{},\"output\":\"clipboard_text\"},{\"tool\":\"lng_llm_prompt_template\",\"params\":{\"command\":\"use\",\"template_name\":\"translate_to_en_b2\",\"text\":\"{! clipboard_text.content || clipboard_text.unicode_text !}\"},\"output\":\"translated_text\"},{\"tool\":\"lng_winapi_clipboard_set\",\"params\":{\"text\":\"{! translated_text !}\"},\"output\":\"final_result\"}],\"final_result\":\"{! translated_text !}\"}}'
 ```
 
 ## Troubleshooting

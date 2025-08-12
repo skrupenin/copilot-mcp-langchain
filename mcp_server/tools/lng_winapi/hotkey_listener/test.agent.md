@@ -41,7 +41,7 @@ python -m mcp_server.run run lng_llm_prompt_template '{\"command\":\"save\",\"te
 ### Step 5: Register translation hotkey
 **Purpose:** Register Ctrl+Shift+Alt+F11 for automatic translation pipeline
 ```bash
-python -m mcp_server.run run lng_winapi_hotkey_listener '{\"operation\":\"register\",\"hotkey\":\"ctrl+shift+alt+f11\",\"tool_name\":\"lng_batch_run\",\"tool_json\":{\"pipeline\":[{\"tool\":\"lng_winapi_clipboard_get\",\"params\":{},\"output\":\"clipboard_text\"},{\"tool\":\"lng_llm_prompt_template\",\"params\":{\"command\":\"use\",\"template_name\":\"translate_to_en_b2\",\"text\":\"${clipboard_text.content || clipboard_text.unicode_text}\"},\"output\":\"translated_text\"},{\"tool\":\"lng_winapi_clipboard_set\",\"params\":{\"text\":\"${translated_text}\"},\"output\":\"final_result\"}],\"final_result\":\"${translated_text}\"}}'
+python -m mcp_server.run run lng_winapi_hotkey_listener '{\"operation\":\"register\",\"hotkey\":\"ctrl+shift+alt+f11\",\"tool_name\":\"lng_batch_run\",\"tool_json\":{\"pipeline\":[{\"tool\":\"lng_winapi_clipboard_get\",\"params\":{},\"output\":\"clipboard_text\"},{\"tool\":\"lng_llm_prompt_template\",\"params\":{\"command\":\"use\",\"template_name\":\"translate_to_en_b2\",\"text\":\"{! clipboard_text.content || clipboard_text.unicode_text !}\"},\"output\":\"translated_text\"},{\"tool\":\"lng_winapi_clipboard_set\",\"params\":{\"text\":\"{! translated_text !}\"},\"output\":\"final_result\"}],\"final_result\":\"{! translated_text !}\"}}'
 ```
 **Expected:** `{"success": true, "message": "Hotkey ctrl+shift+alt+f11 registered successfully", "hotkey_id": XXXX}`
 

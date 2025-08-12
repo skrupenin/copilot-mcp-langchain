@@ -8,7 +8,8 @@ Executes a batch pipeline of tool calls with variable substitution using JavaScr
 
 - **Sequential execution** - Tools run one after another
 - **Variable passing** - Store results and use in subsequent steps
-- **JavaScript expressions** - Use `${expression}` syntax for data manipulation
+- **JavaScript expressions** - Use `{! expression !}` syntax for data manipulation
+- **Python expressions** - Use `[! expression !]` syntax for Python-based calculations
 - **Conditional logic** - `if/then/else` statements with expression evaluation
 - **Loop support** - `forEach`, `while`, and `repeat` iterations
 - **Parallel execution** - Run multiple tools simultaneously
@@ -25,11 +26,11 @@ python -m mcp_server.run run lng_batch_run '{
   "pipeline": [
     {
       "tool": "tool_name",
-      "params": {"param": "${variable}"},
+      "params": {"param": "{! variable !}"},
       "output": "variable_name"
     }
   ],
-  "final_result": "${result_expression}"
+  "final_result": "{! result_expression !}"
 }'
 ```
 
@@ -45,15 +46,15 @@ python -m mcp_server.run run lng_batch_run '{
     },
     {
       "tool": "lng_count_words",
-      "params": {"input_text": "${clipboard_content.content}"},
+      "params": {"input_text": "{! clipboard_content.content !}"},
       "output": "word_stats"
     },
     {
       "tool": "lng_winapi_clipboard_set",
-      "params": {"text": "Analysis: ${word_stats.wordCount} words, ${word_stats.charactersWithSpaces} chars"}
+      "params": {"text": "Analysis: {! word_stats.wordCount !} words, {! word_stats.charactersWithSpaces !} chars"}
     }
   ],
-  "final_result": "Text analysis completed with ${word_stats.wordCount} words"
+  "final_result": "Text analysis completed with {! word_stats.wordCount !} words"
 }'
 ```
 
@@ -67,13 +68,19 @@ python -m mcp_server.run run lng_batch_run '{
 
 ## Variable Substitution
 
-Variables are substituted using `${expression}` syntax:
+Variables are substituted using expression syntax:
 
-- `${variable}` - Direct variable access
-- `${variable.property}` - Object property access
-- `${variable || 'default'}` - Fallback values
-- `${variable ? 'yes' : 'no'}` - Conditional expressions
-- `${JSON.stringify(variable)}` - JSON serialization
+**JavaScript expressions:**
+- `{! variable !}` - Direct variable access
+- `{! variable.property !}` - Object property access
+- `{! variable || 'default' !}` - Fallback values
+- `{! variable ? 'yes' : 'no' !}` - Conditional expressions
+- `{! JSON.stringify(variable) !}` - JSON serialization
+
+**Python expressions:**
+- `[! variable !]` - Direct variable access
+- `[! len(variable) if variable else 0 !]` - Python conditional expressions
+- `[! sum(item.value for item in variable) !]` - Python comprehensions
 
 ## Examples
 
@@ -82,7 +89,7 @@ Variables are substituted using `${expression}` syntax:
 {
   "pipeline": [
     {"tool": "lng_winapi_clipboard_get", "params": {}, "output": "clipboard_text"},
-    {"tool": "lng_winapi_clipboard_set", "params": {"text": "${clipboard_text.content}"}}
+    {"tool": "lng_winapi_clipboard_set", "params": {"text": "{! clipboard_text.content !}"}}
   ],
   "final_result": "ok"
 }
@@ -93,8 +100,8 @@ Variables are substituted using `${expression}` syntax:
 {
   "pipeline": [
     {"tool": "lng_winapi_clipboard_get", "params": {}, "output": "text"},
-    {"tool": "lng_count_words", "params": {"input_text": "${text.content}"}, "output": "count"},
-    {"tool": "lng_winapi_clipboard_set", "params": {"text": "Words: ${count.wordCount}"}}
+    {"tool": "lng_count_words", "params": {"input_text": "{! text.content !}"}, "output": "count"},
+    {"tool": "lng_winapi_clipboard_set", "params": {"text": "Words: {! count.wordCount !}"}}
   ],
   "final_result": "completed"
 }
@@ -141,12 +148,12 @@ If any step fails, execution stops and returns:
 ```json
 {
   "type": "condition",
-  "condition": "${stats.wordCount > 10}",
+  "condition": "{! stats.wordCount > 10 !}",
   "then": [
-    {"tool": "lng_winapi_clipboard_set", "params": {"text": "Long text: ${stats.wordCount} words"}}
+    {"tool": "lng_winapi_clipboard_set", "params": {"text": "Long text: {! stats.wordCount !} words"}}
   ],
   "else": [
-    {"tool": "lng_winapi_clipboard_set", "params": {"text": "Short text: ${stats.wordCount} words"}}
+    {"tool": "lng_winapi_clipboard_set", "params": {"text": "Short text: {! stats.wordCount !} words"}}
   ]
 }
 ```
@@ -155,10 +162,10 @@ If any step fails, execution stops and returns:
 ```json
 {
   "type": "forEach",
-  "forEach": "${collection}",
+  "forEach": "{! collection !}",
   "item": "current_item",
   "do": [
-    {"tool": "lng_count_words", "params": {"input_text": "${current_item}"}, "output": "stats_${current_item}"}
+    {"tool": "lng_count_words", "params": {"input_text": "{! current_item !}"}, "output": "stats_{! current_item !}"}
   ]
 }
 ```
@@ -234,14 +241,14 @@ Create a JSON file with your pipeline configuration:
     },
     {
       "tool": "lng_json_to_csv",
-      "params": {"json_data": "${JSON.parse(telemetry_data)}"},
+      "params": {"json_data": "{! JSON.parse(telemetry_data) !}"},
       "output": "csv_result"
     },
     {
       "tool": "lng_file_write",
       "params": {
         "file_path": "output/telemetry_report.csv",
-        "content": "${csv_result}"
+        "content": "{! csv_result !}"
       }
     }
   ],
@@ -264,6 +271,6 @@ When using `pipeline_file`, you can still override specific parameters:
 ```bash
 python -m mcp_server.run run lng_batch_run '{
   "pipeline_file": "config/basic_pipeline.json",
-  "final_result": "Custom result: ${stats.wordCount} words processed"
+  "final_result": "Custom result: {! stats.wordCount !} words processed"
 }'
 ```

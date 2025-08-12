@@ -181,17 +181,17 @@ python -m mcp_server.run run lng_winapi_clipboard_set '{\"text\":\"Test with ret
 #####################
 
 # Simple clipboard copy pipeline
-python -m mcp_server.run run lng_batch_run '{\"pipeline\": [{\"tool\": \"lng_winapi_clipboard_get\", \"params\": {}, \"output\": \"clipboard_text\"}, {\"tool\": \"lng_winapi_clipboard_set\", \"params\": {\"text\": \"${clipboard_text.content}\"}}], \"final_result\": \"ok\"}'
+python -m mcp_server.run run lng_batch_run '{\"pipeline\": [{\"tool\": \"lng_winapi_clipboard_get\", \"params\": {}, \"output\": \"clipboard_text\"}, {\"tool\": \"lng_winapi_clipboard_set\", \"params\": {\"text\": \"{! clipboard_text.content !}\"}}], \"final_result\": \"ok\"}'
 
 # Process clipboard text with property access
-python -m mcp_server.run run lng_batch_run '{\"pipeline\": [{\"tool\": \"lng_winapi_clipboard_get\", \"params\": {}, \"output\": \"clipboard_text\"}, {\"tool\": \"lng_winapi_clipboard_set\", \"params\": {\"text\": \"Processed: ${clipboard_text.content}\"}}], \"final_result\": \"${clipboard_text.success}\"}'
+python -m mcp_server.run run lng_batch_run '{\"pipeline\": [{\"tool\": \"lng_winapi_clipboard_get\", \"params\": {}, \"output\": \"clipboard_text\"}, {\"tool\": \"lng_winapi_clipboard_set\", \"params\": {\"text\": \"Processed: {! clipboard_text.content !}\"}}], \"final_result\": \"{! clipboard_text.success !}\"}'
 
 # Count words in clipboard and set result back
-python -m mcp_server.run run lng_batch_run '{\"pipeline\": [{\"tool\": \"lng_winapi_clipboard_get\", \"params\": {}, \"output\": \"clipboard_text\"}, {\"tool\": \"lng_count_words\", \"params\": {\"input_text\": \"${clipboard_text.content}\"}, \"output\": \"word_count\"}, {\"tool\": \"lng_winapi_clipboard_set\", \"params\": {\"text\": \"Word count: ${word_count}\"}}], \"final_result\": \"completed\"}'
+python -m mcp_server.run run lng_batch_run '{\"pipeline\": [{\"tool\": \"lng_winapi_clipboard_get\", \"params\": {}, \"output\": \"clipboard_text\"}, {\"tool\": \"lng_count_words\", \"params\": {\"input_text\": \"{! clipboard_text.content !}\"}, \"output\": \"word_count\"}, {\"tool\": \"lng_winapi_clipboard_set\", \"params\": {\"text\": \"Word count: {! word_count !}\"}}], \"final_result\": \"completed\"}'
 
-#########################
+##########################
 ### lng_webhook_server ###
-#########################
+##########################
 # Universal webhook server constructor with pipeline integration
 
 # List existing webhooks
@@ -270,7 +270,7 @@ python -m mcp_server.run run lng_javascript_execute '{\"function_name\": \"nonex
 python -m mcp_server.run run lng_javascript_add '{\"function_name\": \"arrowTest\", \"function_code\": \"const arrowTest = () => { return 1; }\"}'
 
 # Test batch execution with pipeline - create and execute function in one pipeline
-python -m mcp_server.run run lng_batch_run '{\"pipeline\": [{\"tool\": \"lng_javascript_add\", \"params\": {\"function_name\": \"quickTest\", \"function_code\": \"function quickTest(params) { console.log(\\\"Quick test:\\\", params); return \\\"OK: \\\" + JSON.stringify(params); }\"}, \"output\": \"save_result\"}, {\"tool\": \"lng_javascript_execute\", \"params\": {\"function_name\": \"quickTest\", \"parameters\": {\"message\": \"batch execution test\"}}, \"output\": \"exec_result\"}], \"final_result\": \"${exec_result}\"}'
+python -m mcp_server.run run lng_batch_run '{\"pipeline\": [{\"tool\": \"lng_javascript_add\", \"params\": {\"function_name\": \"quickTest\", \"function_code\": \"function quickTest(params) { console.log(\\\"Quick test:\\\", params); return \\\"OK: \\\" + JSON.stringify(params); }\"}, \"output\": \"save_result\"}, {\"tool\": \"lng_javascript_execute\", \"params\": {\"function_name\": \"quickTest\", \"parameters\": {\"message\": \"batch execution test\"}}, \"output\": \"exec_result\"}], \"final_result\": \"{! exec_result !}\"}'
 
 #######################
 ### lng_json_to_csv ###

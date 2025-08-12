@@ -112,7 +112,7 @@ echo
 
 # Test 18: Batch execution - create and execute function using lng_batch_run
 echo "📋 TEST 18: Batch execution - create and execute function (lng_batch_run)"
-python -m mcp_server.run run lng_batch_run '{"pipeline": [{"tool": "lng_javascript_add", "params": {"function_name": "batchTest", "function_code": "function batchTest(params) { console.log(\"Batch function called:\", params); return \"Batch result: \" + JSON.stringify(params); }"}, "output": "add_result"}, {"tool": "lng_javascript_execute", "params": {"function_name": "batchTest", "parameters": {"message": "batch execution test", "success": true}}, "output": "exec_result"}], "final_result": "${exec_result}"}'
+python -m mcp_server.run run lng_batch_run '{"pipeline": [{"tool": "lng_javascript_add", "params": {"function_name": "batchTest", "function_code": "function batchTest(params) { console.log(\"Batch function called:\", params); return \"Batch result: \" + JSON.stringify(params); }"}, "output": "add_result"}, {"tool": "lng_javascript_execute", "params": {"function_name": "batchTest", "parameters": {"message": "batch execution test", "success": true}}, "output": "exec_result"}], "final_result": "{! exec_result !}"}'
 echo
 
 # Test 19: String manipulation with extensive logging using lng_javascript_add and lng_javascript_execute

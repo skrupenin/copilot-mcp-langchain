@@ -20,14 +20,14 @@ async def tool_info() -> dict:
     {
       "tool": "tool_name",
       "params": {
-        "param1": "${variable_name}",
-        "param2": "${variable_name.property || 'default'}"
+        "param1": "{! variable_name !}",
+        "param2": "{! variable_name.property || 'default' !}"
       },
       "output": "variable_name"
     },
     {
       "type": "condition",
-      "condition": "${variable_name.property > 5}",
+      "condition": "{! variable_name.property > 5 !}",
       "then": [
         {"tool": "tool_if_true", "params": {...}}
       ],
@@ -37,14 +37,14 @@ async def tool_info() -> dict:
     },
     {
       "type": "forEach",
-      "forEach": "${collection}",
+      "forEach": "{! collection !}",
       "item": "current_item",
       "do": [
-        {"tool": "process_item", "params": {"input": "${current_item}"}}
+        {"tool": "process_item", "params": {"input": "{! current_item !}"}}
       ]
     }
   ],
-  "final_result": "${last_variable || 'ok'}"
+  "final_result": "{! last_variable || 'ok' !}"
 }
 ```
 
@@ -57,20 +57,28 @@ async def tool_info() -> dict:
 📦 **Modular Design** - Easy to extend with new strategies
 
 **Variable Substitution:**
-• `${variable}` - Direct variable value
-• `${variable.property}` - Object property access
-• `${variable || 'default'}` - Fallback values
-• `${variable ? value1 : value2}` - Conditional expressions
-• `${JSON.stringify(variable)}` - JSON serialization
+• `{! variable !}` - JavaScript expressions - Direct variable value
+• `[! variable !]` - Python expressions - Native Python evaluation
+• `{! variable.property !}` - Object property access
+• `{! variable || 'default' !}` - Fallback values
+• `{! variable ? value1 : value2 !}` - Conditional expressions
+• `[! len(variable) if variable else 0 !]` - Python conditional expressions
+• `{! JSON.stringify(variable) !}` - JSON serialization
 
 **Available Step Types:**
-• `{"tool": "name", "params": {}, "output": "var"}` - Tool execution
-• `{"type": "condition", "condition": "${expr}", "then": [...], "else": [...]}` - Conditional logic
-• `{"type": "forEach", "forEach": "${collection}", "item": "var", "do": [...]}` - Loop over collection
-• `{"type": "while", "while": "${condition}", "do": [...]}` - While loop
+• `{"tool": "name", "params": {}, "output": "var", "output_log": "debug_log"}` - Tool execution with optional logging
+• `{"type": "condition", "condition": "{! expr !}", "then": [...], "else": [...]}` - Conditional logic
+• `{"type": "forEach", "forEach": "{! collection !}", "item": "var", "do": [...]}` - Loop over collection
+• `{"type": "while", "while": "{! condition !}", "do": [...]}` - While loop
 • `{"type": "repeat", "repeat": 3, "do": [...]}` - Repeat N times
-• `{"type": "parallel", "parallel": [...]}` - Parallel execution
+• `{"type": "parallel", "parallel": [...], "maxConcurrent": 5}` - Parallel execution with concurrency limit
 • `{"type": "delay", "delay": 1.5}` - Sleep/wait
+
+**Advanced Features:**
+🔍 **Context Filtering** - Use `context_fields: ["var1", "var2"]` or `["*"]` to control output verbosity
+📁 **File-based Pipelines** - Use `pipeline_file: "path/to/config.json"` for external configuration
+📊 **Debug Logging** - Add `output_log: "debug_name"` to save step outputs to timestamped files
+🔀 **Dual Expression System** - Mix JavaScript `{! !}` and Python `[! !]` expressions in same pipeline
 
 **Example with Multiple Strategies:**
 ```json
@@ -79,12 +87,12 @@ async def tool_info() -> dict:
     {"tool": "lng_winapi_clipboard_get", "params": {}, "output": "clipboard"},
     {
       "type": "condition",
-      "condition": "${clipboard.success}",
+      "condition": "{! clipboard.success !}",
       "then": [
         {
           "type": "parallel",
           "parallel": [
-            {"tool": "lng_count_words", "params": {"input_text": "${clipboard.content}"}, "output": "stats"},
+            {"tool": "lng_count_words", "params": {"input_text": "{! clipboard.content !}"}, "output": "stats"},
             {"tool": "lng_save_screenshot", "params": {}}
           ]
         }
@@ -171,6 +179,10 @@ Returns error details with failed tool name and variable context when any step f
                                     "type": "object"
                                 },
                                 "description": "Steps to execute in parallel"
+                            },
+                            "maxConcurrent": {
+                                "type": "integer",
+                                "description": "Maximum number of concurrent parallel tasks (default: 10, only applies to parallel steps)"
                             },
                             "delay": {
                                 "type": ["number", "string"],
