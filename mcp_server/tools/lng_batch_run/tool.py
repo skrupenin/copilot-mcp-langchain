@@ -131,6 +131,10 @@ Returns error details with failed tool name and variable context when any step f
                                 "type": "string",
                                 "description": "Variable name to store the tool result"
                             },
+                            "output_log": {
+                                "type": "string", 
+                                "description": "Optional log name to save output data as timestamped file in mcp_server/logs/pipeline_debug/"
+                            },
                             "condition": {
                                 "type": "string",
                                 "description": "Condition expression for conditional steps"

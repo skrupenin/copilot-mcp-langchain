@@ -82,6 +82,13 @@ class ToolStrategy(ExecutionStrategy):
             if output_var:
                 context.variables[output_var] = json_compatible_result
                 logger.debug(f"Stored JSON-compatible result in variable '{output_var}': {type(json_compatible_result).__name__}")
+                
+                # Save output log if output_log is specified
+                if "output_log" in step:
+                    try:
+                        self._save_output_log(step["output_log"], json_compatible_result)
+                    except Exception as log_error:
+                        logger.warning(f"Failed to save output log: {log_error}")
             
             return PipelineResult(success=True, context=context.variables)
             
@@ -210,3 +217,29 @@ class ToolStrategy(ExecutionStrategy):
             return obj
         else:
             return obj
+    
+    def _save_output_log(self, log_name: str, output_data: Any) -> None:
+        """Save output data to a timestamped log file."""
+        import os
+        import json
+        from datetime import datetime
+        
+        # Create debug logs directory if it doesn't exist
+        import mcp_server
+        project_root = os.path.dirname(os.path.dirname(mcp_server.__file__))
+        debug_dir = os.path.join(project_root, "mcp_server", "logs", "pipeline_debug")
+        os.makedirs(debug_dir, exist_ok=True)
+        
+        # Generate timestamped filename
+        timestamp = datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
+        filename = f"{timestamp}_{log_name}.log"
+        file_path = os.path.join(debug_dir, filename)
+        
+        # Save data as pretty-printed JSON
+        try:
+            with open(file_path, 'w', encoding='utf-8') as f:
+                json.dump(output_data, f, ensure_ascii=False, indent=2)
+            logger.info(f"Saved output log: {filename}")
+        except Exception as e:
+            logger.error(f"Failed to save output log {filename}: {e}")
+            raise

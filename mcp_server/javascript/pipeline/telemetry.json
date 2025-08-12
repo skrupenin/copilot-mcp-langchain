@@ -44,15 +44,15 @@
           "json_arrays": "${file_content}"
         }
       },
-      "output": "merged_data"
+      "output": "merged_data",
+      "output_log": "after_merge"
     },
     {
       "tool": "lng_javascript_execute",
       "params": {
         "function_name": "appendFieldsDescription",
         "parameters": {
-          "data": "${merged_data}",
-          "orderMap": "${order_map}"
+          "data": "${merged_data}"
         }
       },
       "output": "data_with_descriptions"
@@ -74,7 +74,8 @@
         "json_data": "${sorted_data}",
         "format": "csv"
       },
-      "output": "csv_content"
+      "output": "csv_content",
+      "output_log": "final_csv"
     },
     {
       "tool": "lng_file_write",

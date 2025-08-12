@@ -7,13 +7,10 @@
  * @returns {Array} Sorted and pretty formatted data
  */
 function prettyPrintAndSort(params) {
-    console.log('[prettyPrintAndSort] Starting sorting process');
-    
     const data = params.data;
     const orderMap = params.orderMap;
     
     if (!Array.isArray(data)) {
-        console.error('[prettyPrintAndSort] Data is not an array:', typeof data);
         return data;
     }
     
@@ -55,15 +52,8 @@ function prettyPrintAndSort(params) {
     
     try {
         const sortedData = data.map(item => sortObjectKeys(item));
-        console.log(`[prettyPrintAndSort] Sorted ${sortedData.length} items`);
         return sortedData;
     } catch (e) {
-        console.error('[prettyPrintAndSort] Error sorting data:', e.message);
         return data; // Return original data if sorting fails
     }
-}
-
-// Export for Node.js usage
-if (typeof module !== 'undefined' && module.exports) {
-    module.exports = prettyPrintAndSort;
 }

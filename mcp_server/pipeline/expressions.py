@@ -36,8 +36,8 @@ class ExpressionEvaluationError(Exception):
         self.original_error = original_error
         
         super().__init__(
-            f"Expression evaluation failed in {strategy_name} at step {step_info.get('step', 'unknown')}: "
-            f"'{expression}' -> {str(original_error)}"
+            f"Expression evaluation failed in '{strategy_name}' at step '{step_info.get('step', 'unknown')}': "
+            f"'{expression}' -> '{str(original_error)}'"
         )
 
 

@@ -3,23 +3,17 @@
  * 
  * @param {Object} params - Parameters object
  * @param {Array} params.data - The telemetry data array
- * @param {Object} params.orderMap - The order map for field sorting
  * @returns {Array} Data with descriptions added as first element
  */
 function appendFieldsDescription(params) {
-    console.log('[appendFieldsDescription] Processing data with descriptions');
-    
     const data = params.data;
-    const orderMap = params.orderMap;
     
+    let result;
     if (!Array.isArray(data)) {
-        console.error('[appendFieldsDescription] Data is not an array:', typeof data);
-        return data;
+        result = [data];
+    } else {
+        result = [...data];
     }
-    
-    // Create a copy of the data array
-    let result = [...data];
-    
     // Add descriptions as first element
     const descriptions = {
         "date": "The date for which the usage metrics are aggregated, in YYYY-MM-DD format.",
@@ -93,12 +87,6 @@ function appendFieldsDescription(params) {
     };
     
     result.unshift(descriptions);
-    
-    console.log(`[appendFieldsDescription] Added descriptions. Total elements: ${result.length}`);
+    // Возвращаем массив объектов, не сериализуем в строку
     return result;
-}
-
-// Export for Node.js usage
-if (typeof module !== 'undefined' && module.exports) {
-    module.exports = appendFieldsDescription;
 }
