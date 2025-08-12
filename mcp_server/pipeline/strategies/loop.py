@@ -10,7 +10,7 @@ from typing import Any, Dict
 
 from .base import ExecutionStrategy
 from ..models import PipelineResult, ExecutionContext
-from ..expressions import evaluate_expression
+from ..expressions import substitute_in_object, parse_substituted_string
 
 logger = logging.getLogger('mcp_server.pipeline.strategies.loop')
 
@@ -76,10 +76,20 @@ class LoopStrategy(ExecutionStrategy):
                 context=context.variables
             )
         
-        # Get collection from variables - handle ${} expressions properly
+        # Get collection from variables - handle all expression types
         try:
-            collection = evaluate_expression(collection_expr, context.variables, expected_result_type="python")
+            logger.info(f"DEBUG: forEach expression: '{collection_expr}', context keys: {list(context.variables.keys())}")
+            
+            # Подставляем выражения через единую точку (результат - строка)
+            substituted_expr = substitute_in_object(collection_expr, context.variables)
+            logger.info(f"DEBUG: forEach after substitution: {substituted_expr!r}")
+            
+            # Интерпретируем строку как Python объект для forEach
+            collection = parse_substituted_string(substituted_expr, context.variables)
+            logger.info(f"DEBUG: forEach parsed collection: {type(collection)} = {collection}")
+            
         except Exception as e:
+            logger.error(f"DEBUG: forEach expression evaluation error: {str(e)}")
             return PipelineResult(
                 success=False,
                 error=f"Step {context.step_number}: forEach collection evaluation failed: {str(e)}",
@@ -118,7 +128,9 @@ class LoopStrategy(ExecutionStrategy):
                 # If item_output is specified, evaluate and accumulate
                 if item_output_expr and accumulated_results is not None:
                     try:
-                        item_result = evaluate_expression(item_output_expr, context.variables, expected_result_type="python")
+                        # Подставляем выражения и парсим результат
+                        substituted_result = substitute_in_object(item_output_expr, context.variables)
+                        item_result = parse_substituted_string(substituted_result, context.variables)
                         accumulated_results.append(item_result)
                         logger.debug(f"ForEach iteration {i}: accumulated item result: {item_result}")
                     except Exception as e:
@@ -163,7 +175,9 @@ class LoopStrategy(ExecutionStrategy):
         while iteration < max_iterations:
             # Check condition
             try:
-                condition_result = evaluate_expression(condition_expr, context.variables, expected_result_type="python")
+                # Подставляем выражения и парсим результат как Python объект
+                substituted_condition = substitute_in_object(condition_expr, context.variables)
+                condition_result = parse_substituted_string(substituted_condition, context.variables)
                 if not condition_result:
                     break
             except Exception as e:
@@ -205,8 +219,9 @@ class LoopStrategy(ExecutionStrategy):
             if isinstance(count_expr, (int, float)):
                 count = int(count_expr)
             else:
-                # Use expression handler for evaluation
-                evaluated = evaluate_expression(str(count_expr), context.variables, expected_result_type="python")
+                # Подставляем выражения и парсим результат
+                substituted_count = substitute_in_object(str(count_expr), context.variables)
+                evaluated = parse_substituted_string(substituted_count, context.variables)
                 count = int(evaluated)
         except Exception as e:
             return PipelineResult(

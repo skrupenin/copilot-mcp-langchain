@@ -11,7 +11,7 @@ from typing import Any, Dict, Callable
 
 from .base import ExecutionStrategy
 from ..models import PipelineResult, ExecutionContext
-from ..expressions import substitute_expressions
+from ..expressions import substitute_in_object, parse_substituted_string
 
 logger = logging.getLogger('mcp_server.pipeline.strategies.tool')
 
@@ -35,18 +35,12 @@ class ToolStrategy(ExecutionStrategy):
             
             logger.info(f"Step {context.step_number}: Executing tool '{tool_name}'")
             
-            # Determine tool type for smart parameter conversion
-            tool_type = self._detect_tool_type(tool_name)
-            logger.debug(f"Detected tool type: {tool_type} for tool: {tool_name}")
+            # Determine if tool expects native Python objects or strings
+            preserve_objects = self._should_preserve_objects(tool_name)
             
-            # Substitute variables in parameters based on tool type
-            if tool_type == "python_json":
-                # Special handling for Python tools that work with JSON data
-                substituted_params = self._substitute_for_python_json(params, context.variables)
-                logger.debug(f"Python-JSON parameters after substitution: {substituted_params}")
-            else:
-                substituted_params = self._substitute_recursive(params, context.variables)
-                logger.debug(f"Standard parameters after substitution: {substituted_params}")
+            # Substitute variables in parameters using unified expression processing
+            substituted_params = substitute_in_object(params, context.variables, preserve_objects=preserve_objects)
+            logger.debug(f"Parameters after substitution: {substituted_params}")
             
             logger.debug(f"Tool parameters after substitution: {substituted_params}")
             
@@ -107,19 +101,6 @@ class ToolStrategy(ExecutionStrategy):
     def strategy_name(self) -> str:
         return "Tool"
     
-    def _substitute_recursive(self, obj: Any, variables: Dict[str, Any]) -> Any:
-        """Recursively substitute expressions in an object."""
-        if isinstance(obj, dict):
-            return {k: self._substitute_recursive(v, variables) for k, v in obj.items()}
-        elif isinstance(obj, list):
-            return [self._substitute_recursive(item, variables) for item in obj]
-        elif isinstance(obj, str):
-            if "${" in obj or "$[" in obj:
-                return substitute_expressions(obj, variables, expected_result_type="python")
-            return obj
-        else:
-            return obj
-    
     def _ensure_json_compatible(self, obj: Any) -> Any:
         """Ensure object is JSON-serializable."""
         import json
@@ -151,72 +132,15 @@ class ToolStrategy(ExecutionStrategy):
         else:
             return str(obj)
     
-    def _detect_tool_type(self, tool_name: str) -> str:
-        """Detect tool type based on tool name."""
-        if "json" in tool_name.lower():
-            # Tools that work with JSON data need special object handling
-            return "python_json"
-        elif tool_name.startswith("lng_"):
-            return "python"
-        else:
-            return "other"
-    
-    def _substitute_for_python_json(self, obj: Any, variables: Dict[str, Any]) -> Any:
-        """Substitute expressions for Python tools that expect JSON objects - keep objects as objects."""
-        import json
-        import re
+    def _should_preserve_objects(self, tool_name: str) -> bool:
+        """Determine if tool expects native Python objects or strings."""
+        # Tools that work with JSON data structures need Python objects
+        python_object_tools = {
+            "lng_json_to_csv",      # Expects json_data as array/object
+            "lng_javascript_execute", # parameters field expects objects
+        }
         
-        if isinstance(obj, dict):
-            result = {}
-            for k, v in obj.items():
-                result[k] = self._substitute_for_python_json(v, variables)
-            return result
-            
-        elif isinstance(obj, list):
-            return [self._substitute_for_python_json(item, variables) for item in obj]
-        elif isinstance(obj, str):
-            if "${" in obj or "$[" in obj:
-                # Handle each expression separately
-                def replace_expression(match):
-                    expr = match.group(0)
-                    try:
-                        # For simple variable substitution like ${variable_name}, get directly from context
-                        if expr.startswith('${') and expr.endswith('}'):
-                            var_name = expr[2:-1].strip()
-                            if var_name in variables:
-                                result = variables[var_name]
-                                logger.debug(f"Expression '{expr}' evaluated to: {result} (type: {type(result)})")
-                                
-                                # For Python JSON tools, keep objects as objects (don't convert to strings)
-                                if isinstance(result, (dict, list, int, float, bool, type(None))):
-                                    logger.debug(f"Keeping object as-is for Python JSON tool: {type(result)}")
-                                    return result  # Return the actual object, not string
-                                else:
-                                    return str(result)
-                        
-                        # For complex expressions, use substitute_expressions
-                        result = substitute_expressions(expr, variables, expected_result_type="python")
-                        logger.debug(f"Complex expression '{expr}' evaluated to: {result} (type: {type(result)})")
-                        return result
-                            
-                    except Exception as e:
-                        logger.warning(f"Failed to evaluate expression '{expr}': {e}")
-                        return expr  # Return original expression on error
-                
-                # Check if this is a simple single expression that should return the object directly
-                pattern = r'\$\{[^}]+\}|\$\[[^\]]+\]'
-                matches = re.findall(pattern, obj)
-                
-                if len(matches) == 1 and matches[0] == obj.strip():
-                    # This is a single expression - return the object directly
-                    return replace_expression(re.match(pattern, obj.strip()))
-                else:
-                    # This is a complex string with multiple expressions - do string substitution
-                    result = re.sub(pattern, lambda m: str(replace_expression(m)), obj)
-                    return result
-            return obj
-        else:
-            return obj
+        return tool_name in python_object_tools
     
     def _save_output_log(self, log_name: str, output_data: Any) -> None:
         """Save output data to a timestamped log file."""
@@ -231,7 +155,7 @@ class ToolStrategy(ExecutionStrategy):
         os.makedirs(debug_dir, exist_ok=True)
         
         # Generate timestamped filename
-        timestamp = datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
+        timestamp = datetime.now().strftime("%Y-%m-%d_%H-%M-%S-%f")
         filename = f"{timestamp}_{log_name}.log"
         file_path = os.path.join(debug_dir, filename)
         

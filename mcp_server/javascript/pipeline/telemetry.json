@@ -17,19 +17,20 @@
         "path_type": "absolute",
         "output_format": "json"
       },
-      "output": "telemetry_files"
+      "output": "telemetry_files",
+      "output_log": "file_list_debug"
     },
     {
       "type": "forEach",
-      "forEach": "${telemetry_files.items}",
+      "forEach": "{! telemetry_files.items !}",
       "item": "current_file",
       "output": "file_content",
-      "item_output": "${file_data}",
+      "item_output": "{! file_data !}",
       "do": [
         {
           "tool": "lng_file_read",
           "params": {
-            "file_path": "${current_file.absolute_path}",
+            "file_path": "{! current_file.absolute_path !}",
             "output_format": "plain_text"
           },
           "output": "file_data"
@@ -41,7 +42,7 @@
       "params": {
         "function_name": "mergeJsons",
         "parameters": {
-          "json_arrays": "${file_content}"
+          "json_arrays": "{! file_content !}"
         }
       },
       "output": "merged_data",
@@ -52,7 +53,7 @@
       "params": {
         "function_name": "appendFieldsDescription",
         "parameters": {
-          "data": "${merged_data}"
+          "data": "{! merged_data !}"
         }
       },
       "output": "data_with_descriptions",
@@ -63,8 +64,8 @@
       "params": {
         "function_name": "prettyPrintAndSort",
         "parameters": {
-          "data": "${data_with_descriptions}",
-          "orderMap": "${order_map}"
+          "data": "{! data_with_descriptions !}",
+          "orderMap": "{! order_map !}"
         }
       },
       "output": "sorted_data",
@@ -73,7 +74,7 @@
     {
       "tool": "lng_json_to_csv",
       "params": {
-        "json_data": "${sorted_data}",
+        "json_data": "{! sorted_data !}",
         "format": "csv"
       },
       "output": "csv_content",
@@ -83,11 +84,11 @@
       "tool": "lng_file_write",
       "params": {
         "file_path": "work/telemetry/out/telemetry_complete_report.csv",
-        "content": "${csv_content}",
+        "content": "{! csv_content !}",
         "mode": "overwrite"
       },
       "output": "csv_file_saved"
     }
   ],
-  "final_result": "${`✅ Telemetry processing complete! CSV report saved to: ${csv_file_saved.metadata.file_path}`}"
+  "final_result": "✅ Telemetry processing complete! CSV report saved to: {! csv_file_saved.metadata.file_path !}"
 }
