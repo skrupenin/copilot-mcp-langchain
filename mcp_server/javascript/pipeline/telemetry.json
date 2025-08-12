@@ -55,7 +55,8 @@
           "data": "${merged_data}"
         }
       },
-      "output": "data_with_descriptions"
+      "output": "data_with_descriptions",
+      "output_log": "with_descriptions"
     },
     {
       "tool": "lng_javascript_execute",
@@ -66,7 +67,8 @@
           "orderMap": "${order_map}"
         }
       },
-      "output": "sorted_data"
+      "output": "sorted_data",
+      "output_log": "pretty_printed"
     },
     {
       "tool": "lng_json_to_csv",
@@ -85,16 +87,7 @@
         "mode": "overwrite"
       },
       "output": "csv_file_saved"
-    },
-    {
-      "tool": "lng_file_write",
-      "params": {
-        "file_path": "work/telemetry/out/processing_summary.txt",
-        "content": "✅ Telemetry Processing Complete!\n📊 Files processed: ${telemetry_files.items.length}\n📁 Source directory: work/telemetry/\n📄 Output CSV: work/telemetry_complete_report.csv\n🕒 Processing time: ${new Date().toISOString()}",
-        "mode": "overwrite"
-      },
-      "output": "file_saved"
     }
   ],
-  "final_result": "🎉 COMPLETE SUCCESS! Processed ${telemetry_files.items.length} telemetry files and generated consolidated CSV report: work/telemetry/out/telemetry_complete_report.csv"
+  "final_result": "${`✅ Telemetry processing complete! CSV report saved to: ${csv_file_saved.metadata.file_path}`}"
 }

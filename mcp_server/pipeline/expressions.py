@@ -229,10 +229,23 @@ class PythonExpressionStrategy(ExpressionStrategy):
             raise ExpressionEvaluationError("PythonStrategy", expression, step_info, e)
 
 
+class PlainTextStrategy(ExpressionStrategy):
+    """Strategy for handling plain text (no expression syntax)"""
+    
+    def can_handle(self, expression: str) -> bool:
+        """Handle any expression that doesn't match other strategies"""
+        return not (expression.startswith('${') and expression.endswith('}')) and not (expression.startswith('$[') and expression.endswith(']'))
+    
+    def evaluate(self, expression: str, context: Dict[str, Any], expected_result_type: str, step_info: Dict[str, Any] = None) -> Any:
+        """Return plain text as-is."""
+        return self.format_result(expression, expected_result_type)
+
+
 # Global registry of expression strategies
 _strategies: List[ExpressionStrategy] = [
     JavaScriptExpressionStrategy(),
-    PythonExpressionStrategy()
+    PythonExpressionStrategy(),
+    PlainTextStrategy()  # Add as last fallback
 ]
 
 
