@@ -23,7 +23,7 @@ def test_dual_expressions():
     
     # Test 1: Python expression (flattening nested list)
     print("Test 1: Python list flattening")
-    py_expr = "$[[item for sublist in all_file_contents for item in sublist]]"
+    py_expr = "[! [item for sublist in all_file_contents for item in sublist] !]"
     try:
         result = evaluate_expression(py_expr, variables, expected_result_type="python")
         print(f"Expression: {py_expr}")
@@ -39,7 +39,7 @@ def test_dual_expressions():
     
     # Test 2: JavaScript expression (simple variable)
     print("Test 2: JavaScript simple variable")
-    js_expr = "${simple_var}"
+    js_expr = "{! simple_var !}"
     try:
         result = evaluate_expression(js_expr, variables, expected_result_type="python")
         print(f"Expression: {js_expr}")
@@ -54,7 +54,7 @@ def test_dual_expressions():
     
     # Test 3: Python simple variable
     print("Test 3: Python simple variable")
-    py_expr = "$[simple_var]"
+    py_expr = "[! simple_var !]"
     try:
         result = evaluate_expression(py_expr, variables, expected_result_type="python")
         print(f"Expression: {py_expr}")
@@ -69,7 +69,7 @@ def test_dual_expressions():
     
     # Test 4: JavaScript expression (JSON.stringify)
     print("Test 4: JavaScript JSON.stringify")
-    js_expr = "${JSON.stringify(all_file_contents)}"
+    js_expr = "{! JSON.stringify(all_file_contents) !}"
     try:
         result = evaluate_expression(js_expr, variables, expected_result_type="python")
         print(f"Expression: {js_expr}")
@@ -84,7 +84,7 @@ def test_dual_expressions():
     
     # Test 5: Python expression with len()
     print("Test 5: Python len() function")
-    py_expr = "$[len(all_file_contents)]"
+    py_expr = "[! len(all_file_contents) !]"
     try:
         result = evaluate_expression(py_expr, variables, expected_result_type="python")
         print(f"Expression: {py_expr}")
@@ -112,7 +112,7 @@ def test_advanced_expressions():
     
     # Test 6: JavaScript ternary operator
     print("Test 6: JavaScript ternary operator")
-    js_expr = "${score >= 90 ? 'Excellent' : 'Good'}"
+    js_expr = "{! score >= 90 ? 'Excellent' : 'Good' !}"
     try:
         result = evaluate_expression(js_expr, variables, expected_result_type="python")
         print(f"Expression: {js_expr}")
@@ -126,7 +126,7 @@ def test_advanced_expressions():
     
     # Test 7: Python filter and sum
     print("Test 7: Python filter and sum")
-    py_expr = "$[sum(item['price'] for item in items if item['category'] == 'A')]"
+    py_expr = "[! sum(item['price'] for item in items if item['category'] == 'A') !]"
     try:
         result = evaluate_expression(py_expr, variables, expected_result_type="python")
         print(f"Expression: {py_expr}")
@@ -140,7 +140,7 @@ def test_advanced_expressions():
     
     # Test 8: JavaScript array operations
     print("Test 8: JavaScript array operations")
-    js_expr = "${numbers.filter(n => n > 3).reduce((a, b) => a + b, 0)}"
+    js_expr = "{! numbers.filter(n => n > 3).reduce((a, b) => a + b, 0) !}"
     try:
         result = evaluate_expression(js_expr, variables, expected_result_type="python")
         print(f"Expression: {js_expr}")
@@ -162,7 +162,7 @@ def test_advanced_expressions():
             ]
         }
     }
-    js_expr = "${data.users.find(u => u.id === 2).profile.name}"
+    js_expr = "{! data.users.find(u => u.id === 2).profile.name !}"
     try:
         result = evaluate_expression(js_expr, nested_vars, expected_result_type="python")
         print(f"Expression: {js_expr}")
@@ -176,7 +176,7 @@ def test_advanced_expressions():
     
     # Test 10: Python equivalent of nested access
     print("Test 10: Python nested access")
-    py_expr = "$[data['users'][1]['profile']['name']]"  # Direct access to second user (index 1)
+    py_expr = "[! data['users'][1]['profile']['name'] !]"  # Direct access to second user (index 1)
     try:
         result = evaluate_expression(py_expr, nested_vars, expected_result_type="python")
         print(f"Expression: {py_expr}")
@@ -199,7 +199,7 @@ def test_substitution_expressions():
     
     # Test 11: Mixed expressions in text
     print("Test 11: Mixed expression substitution")
-    text = "Hello ${name}, you are $[age] years old and have ${skills.length} skills. Grade: ${score >= 90 ? 'A' : 'B'}"
+    text = "Hello {! name !}, you are [! age !] years old and have {! skills.length !} skills. Grade: {! score >= 90 ? 'A' : 'B' !}"
     try:
         result = substitute_expressions(text, variables, expected_result_type="python")
         print(f"Template: {text}")
@@ -214,7 +214,7 @@ def test_substitution_expressions():
     
     # Test 12: JSON result type
     print("Test 12: JSON result type")
-    py_expr = "$[skills[:2]]"  # First 2 skills
+    py_expr = "[! skills[:2] !]"  # First 2 skills
     try:
         result = evaluate_expression(py_expr, variables, expected_result_type="json")
         print(f"Expression: {py_expr}")
@@ -237,7 +237,7 @@ def test_error_handling():
     # Test 13: Invalid JavaScript
     print("Test 13: Invalid JavaScript syntax")
     try:
-        result = evaluate_expression("${invalid.syntax..}", variables, expected_result_type="python")
+        result = evaluate_expression("{! invalid.syntax.. !}", variables, expected_result_type="python")
         print(f"❌ ERROR: Should have failed but got: {result}")
     except Exception as e:
         print(f"✅ PASSED: Correctly caught error: {type(e).__name__}")
@@ -247,7 +247,7 @@ def test_error_handling():
     # Test 14: Invalid Python
     print("Test 14: Invalid Python syntax")
     try:
-        result = evaluate_expression("$[invalid syntax here]", variables, expected_result_type="python")
+        result = evaluate_expression("[! invalid syntax here !]", variables, expected_result_type="python")
         print(f"❌ ERROR: Should have failed but got: {result}")
     except Exception as e:
         print(f"✅ PASSED: Correctly caught error: {type(e).__name__}")
@@ -257,7 +257,7 @@ def test_error_handling():
     # Test 15: Undefined variable
     print("Test 15: Undefined variable")
     try:
-        result = evaluate_expression("${undefined_var}", variables, expected_result_type="python")
+        result = evaluate_expression("{! undefined_var !}", variables, expected_result_type="python")
         print(f"❌ ERROR: Should have failed but got: {result}")
     except Exception as e:
         print(f"✅ PASSED: Correctly caught error: {type(e).__name__}")

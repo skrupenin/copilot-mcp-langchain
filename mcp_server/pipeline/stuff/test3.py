@@ -25,17 +25,17 @@ def get_test_context():
 
 def test_javascript_to_python():
     """Test 1: JavaScript expressions returning Python objects"""
-    print("🧪 Test 1: JavaScript ${} expressions → Python objects")
+    print("🧪 Test 1: JavaScript {!  !} expressions → Python objects")
     print("-" * 50)
     
     context = get_test_context()
     tests = [
-        ("${users}", ['Alice', 'Bob', 'Charlie']),
-        ("${users.length}", 3),  
-        ("${config.debug}", True),
-        ("${count > 3}", True),
-        ("${message + ' - ' + users[0]}", "Hello World - Alice"),
-        ("${nested.items.map(x => x.value).reduce((a,b) => a+b, 0)}", 30),
+        ("{! users !}", ['Alice', 'Bob', 'Charlie']),
+        ("{! users.length !}", 3),  
+        ("{! config.debug !}", True),
+        ("{! count > 3 !}", True),
+        ("{! message + ' - ' + users[0] !}", "Hello World - Alice"),
+        ("{! nested.items.map(x => x.value).reduce((a,b) => a+b, 0) !}", 30),
     ]
     
     for expr, expected in tests:
@@ -50,17 +50,17 @@ def test_javascript_to_python():
 
 def test_javascript_to_json():
     """Test 2: JavaScript expressions returning JSON strings"""
-    print("🧪 Test 2: JavaScript ${} expressions → JSON strings")
+    print("🧪 Test 2: JavaScript {!  !} expressions → JSON strings")
     print("-" * 50)
     
     context = get_test_context()
     tests = [
-        ("${users}", '["Alice", "Bob", "Charlie"]'),
-        ("${users.length}", '3'),  
-        ("${config.debug}", 'true'),
-        ("${count > 3}", 'true'),
-        ("${message + ' - ' + users[0]}", '"Hello World - Alice"'),
-        ("${nested.items.map(x => x.value).reduce((a,b) => a+b, 0)}", '30'),
+        ("{! users !}", '["Alice", "Bob", "Charlie"]'),
+        ("{! users.length !}", '3'),  
+        ("{! config.debug !}", 'true'),
+        ("{! count > 3 !}", 'true'),
+        ("{! message + ' - ' + users[0] !}", '"Hello World - Alice"'),
+        ("{! nested.items.map(x => x.value).reduce((a,b) => a+b, 0) !}", '30'),
     ]
     
     for expr, expected in tests:
@@ -75,18 +75,18 @@ def test_javascript_to_json():
 
 def test_python_to_python():
     """Test 3: Python expressions returning Python objects"""
-    print("🧪 Test 3: Python $[] expressions → Python objects")
+    print("🧪 Test 3: Python [!  !] expressions → Python objects")
     print("-" * 50)
     
     context = get_test_context()
     tests = [
-        ("$[users]", ['Alice', 'Bob', 'Charlie']),
-        ("$[len(users)]", 3),
-        ("$[config['debug']]", True), 
-        ("$[count > 3]", True),
-        ("$[message + ' - ' + users[0]]", "Hello World - Alice"),
-        ("$[sum(item['value'] for item in nested['items'])]", 30),
-        ("$[[item['name'] for item in nested['items'] if item['value'] > 15]]", ['item2']),
+        ("[! users !]", ['Alice', 'Bob', 'Charlie']),
+        ("[! len(users) !]", 3),
+        ("[! config['debug'] !]", True), 
+        ("[! count > 3 !]", True),
+        ("[! message + ' - ' + users[0] !]", "Hello World - Alice"),
+        ("[! sum(item['value'] for item in nested['items']) !]", 30),
+        ("[! [item['name'] for item in nested['items'] if item['value'] > 15] !]", ['item2']),
     ]
     
     for expr, expected in tests:
@@ -101,18 +101,18 @@ def test_python_to_python():
 
 def test_python_to_json():
     """Test 4: Python expressions returning JSON strings"""
-    print("🧪 Test 4: Python $[] expressions → JSON strings")
+    print("🧪 Test 4: Python [!  !] expressions → JSON strings")
     print("-" * 50)
     
     context = get_test_context()
     tests = [
-        ("$[users]", '["Alice", "Bob", "Charlie"]'),
-        ("$[len(users)]", '3'),
-        ("$[config['debug']]", 'true'), 
-        ("$[count > 3]", 'true'),
-        ("$[message + ' - ' + users[0]]", '"Hello World - Alice"'),
-        ("$[sum(item['value'] for item in nested['items'])]", '30'),
-        ("$[[item['name'] for item in nested['items'] if item['value'] > 15]]", '["item2"]'),
+        ("[! users !]", '["Alice", "Bob", "Charlie"]'),
+        ("[! len(users) !]", '3'),
+        ("[! config['debug'] !]", 'true'), 
+        ("[! count > 3 !]", 'true'),
+        ("[! message + ' - ' + users[0] !]", '"Hello World - Alice"'),
+        ("[! sum(item['value'] for item in nested['items']) !]", '30'),
+        ("[! [item['name'] for item in nested['items'] if item['value'] > 15] !]", '["item2"]'),
     ]
     
     for expr, expected in tests:
@@ -132,9 +132,9 @@ def test_fallback_plain_text():
     
     context = get_test_context()
     tests = [
-        ("plain text", None, "null"),
-        ("no expressions here", None, "null"),
-        ("just a string", None, "null")
+        ("plain text", "plain text", '"plain text"'),
+        ("no expressions here", "no expressions here", '"no expressions here"'),
+        ("just a string", "just a string", '"just a string"')
     ]
     
     for text, expected_py, expected_json in tests:
