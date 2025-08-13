@@ -18,7 +18,7 @@ async def tool_info() -> dict:
 - Must be declared functions (not arrow functions)
 - Function name must match the function_name parameter
 - Functions can contain any JavaScript code including async/await
-- Functions are stored in mcp_server/javascript/ directory with .js extension
+- Functions are stored in mcp_server/config/javascript/ directory with .js extension
 
 **Example:**
 ```json
@@ -71,7 +71,7 @@ async def run_tool(name: str, parameters: dict) -> list[types.Content]:
         result = {
             "message": f"Function '{function_name}' saved successfully",
             "function_name": function_name,
-            "storage_path": f"mcp_server/javascript/{function_name}.js"
+            "storage_path": f"mcp_server/config/javascript/{function_name}.js"
         }
         
         return [types.TextContent(type="text", text=json.dumps(result, indent=2, ensure_ascii=False))]
