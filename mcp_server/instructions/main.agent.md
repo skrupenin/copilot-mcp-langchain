@@ -1,4 +1,6 @@
 - All the insturctions are placed in `./mcp_server/instructions/` folder. If you are asked to create another one - please add it in this folder as new file, and add one line to this file describing what this file is about.
+- Follow `./multi-agent-orchestrator.agent.md` when working in a multi-agent environment with delegated sub-agents.
+- Follow `./cleanup-before-commit.agent.md` when you are asked to evaluate a decision before committing and understand what is a production file and what is scaffolding, do the following.
 - Follow `./tool-requirements-gathering.agent.md` when you need to gather requirements before creating a tool.
 - Follow `./assign-issue-to-coding-agent.agent.md` when I asked to create issue on Github an to assign it to the Coding Agent.
 - Always follow `./activate-virtualenv.agent.md` in any case activate the virtual environment before starting any python stuff in terminal.

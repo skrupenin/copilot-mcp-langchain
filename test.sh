@@ -50,6 +50,23 @@ python -m mcp_server.run run lng_get_tools_info
 # sample of how to run python function
 python -m mcp_server.run run lng_count_words '{\"input_text\":\"Hello pirate!\"}'
 
+###############################
+### lng_multi_agent_manager ###
+###############################
+# Multi-agent system for delegating code analysis to specialized sub-agents
+
+# Test basic functionality
+python mcp_server/tools/lng_multi_agent/stuff/test_basic.py
+
+# Create a sub-agent for file operations
+python -m mcp_server.run run lng_multi_agent_manager '{\"operation\":\"create_agent\",\"name\":\"File Agent\",\"module_path\":\"mcp_server/tools/lng_file\",\"available_tools\":[\"lng_file_read\",\"lng_file_list\"],\"description\":\"Handles file operations\"}'
+
+# List all agents
+python -m mcp_server.run run lng_multi_agent_manager '{\"operation\":\"list_agents\"}'
+
+# Find agent by module path
+python -m mcp_server.run run lng_multi_agent_manager '{\"operation\":\"find_agent\",\"module_path\":\"mcp_server/tools/lng_file\"}'
+
 #########################
 ### lng_llm_run_chain ###
 #########################
