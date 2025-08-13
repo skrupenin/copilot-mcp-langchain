@@ -147,7 +147,7 @@ This runs comprehensive tests including:
 
 ## 💾 Persistence
 
-- Configurations saved to `mcp_server/webhooks/{name}.json`
+- Configurations saved to `mcp_server/config/webhook/{name}.json`
 - Logs written to `mcp_server/logs/webhook/{name}_{timestamp}.log`
 - Auto-restoration on MCP server restart via `init()` function
 

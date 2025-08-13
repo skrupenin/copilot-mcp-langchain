@@ -126,7 +126,7 @@ class JavaScriptSeparateToolsTester:
         expected = {
             "message": "Function 'greet' saved successfully",
             "function_name": "greet",
-            "storage_path": "mcp_server/javascript/greet.js"
+            "storage_path": "mcp_server/config/javascript/greet.js"
         }
         
         self.assert_result("Add simple function (lng_javascript_add)", expected, result)
@@ -186,7 +186,7 @@ class JavaScriptSeparateToolsTester:
         expected = {
             "message": "Function 'calculateSum' saved successfully",
             "function_name": "calculateSum",
-            "storage_path": "mcp_server/javascript/calculateSum.js"
+            "storage_path": "mcp_server/config/javascript/calculateSum.js"
         }
         
         self.assert_result("Add complex function with logging (lng_javascript_add)", expected, result)
@@ -261,7 +261,7 @@ class JavaScriptSeparateToolsTester:
         expected = {
             "message": "Function 'debugExample' saved successfully",
             "function_name": "debugExample",
-            "storage_path": "mcp_server/javascript/debugExample.js"
+            "storage_path": "mcp_server/config/javascript/debugExample.js"
         }
         
         self.assert_result("Add debug function (lng_javascript_add)", expected, result)
@@ -513,7 +513,7 @@ class JavaScriptSeparateToolsTester:
         expected = {
             "message": "Function 'greet' saved successfully",
             "function_name": "greet",
-            "storage_path": "mcp_server/javascript/greet.js"
+            "storage_path": "mcp_server/config/javascript/greet.js"
         }
         
         self.assert_result("Add simple function", expected, result)
@@ -560,7 +560,7 @@ class JavaScriptSeparateToolsTester:
         expected = {
             "message": "Function 'calculateSum' saved successfully",
             "function_name": "calculateSum",
-            "storage_path": "mcp_server/javascript/calculateSum.js"
+            "storage_path": "mcp_server/config/javascript/calculateSum.js"
         }
         
         self.assert_result("Add complex function", expected, result)
@@ -619,7 +619,7 @@ class JavaScriptSeparateToolsTester:
         expected = {
             "message": "Function 'processArray' saved successfully",
             "function_name": "processArray",
-            "storage_path": "mcp_server/javascript/processArray.js"
+            "storage_path": "mcp_server/config/javascript/processArray.js"
         }
         
         self.assert_result("Add modern JavaScript function", expected, result)

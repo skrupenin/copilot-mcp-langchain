@@ -436,7 +436,7 @@ async def update_webhook(params: dict) -> list[types.Content]:
 async def _save_webhook_config(name: str, config: dict):
     """Save webhook configuration to file."""
     import os
-    config_dir = "mcp_server/webhooks"
+    config_dir = "mcp_server/config/webhook"
     os.makedirs(config_dir, exist_ok=True)
     
     # Create a clean config copy without server instance
@@ -481,7 +481,7 @@ async def _stop_webhook_by_name(name: str):
         del ACTIVE_WEBHOOKS[name]
         
         # Remove config file
-        config_file = f"mcp_server/webhooks/{name}.json"
+        config_file = f"mcp_server/config/webhook/{name}.json"
         if os.path.exists(config_file):
             os.remove(config_file)
             
@@ -517,7 +517,7 @@ def init():
     logger.info("Initializing webhook server - restoring saved configurations")
     
     try:
-        config_dir = "mcp_server/webhooks"
+        config_dir = "mcp_server/config/webhook"
         if not os.path.exists(config_dir):
             logger.info("No webhooks directory found, skipping restoration")
             return
@@ -556,7 +556,7 @@ async def _ensure_webhooks_restored():
 async def _restore_webhooks_async():
     """Restore webhooks asynchronously."""
     try:
-        config_dir = "mcp_server/webhooks"
+        config_dir = "mcp_server/config/webhook"
         
         for filename in os.listdir(config_dir):
             if filename.endswith('.json'):
