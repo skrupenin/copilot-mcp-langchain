@@ -465,40 +465,69 @@ class MultiAgentManager:
     """Manager for multiple sub-agents"""
     def __init__(self):
         self.agents: Dict[str, SubAgent] = {}
-        self.config_file = Path("mcp_server/config/multi_agent/agents.json")
+        self.config_dir = Path("mcp_server/config/multi_agent")
         self._load_configs()
     
-    def _load_configs(self):
-        """Load agent configurations from file"""
-        if self.config_file.exists():
-            try:
-                with open(self.config_file, 'r') as f:
-                    data = json.load(f)
-                
-                for agent_data in data.get("agents", []):
-                    config = SubAgentConfig.from_dict(agent_data)
-                    agent = SubAgent(config)
-                    self.agents[config.agent_id] = agent
-                    
-                logger.info(f"Loaded {len(self.agents)} sub-agents from config")
-            except Exception as e:
-                logger.error(f"Error loading agent configs: {e}")
+    def _name_to_filename(self, name: str) -> str:
+        """Convert agent name to filename (using hyphens instead of spaces)"""
+        # Replace spaces with hyphens, convert to lowercase, remove special chars
+        filename = name.lower().replace(' ', '-')
+        # Keep only alphanumeric characters and hyphens
+        filename = ''.join(c for c in filename if c.isalnum() or c == '-')
+        # Remove multiple consecutive hyphens
+        filename = '-'.join(filter(None, filename.split('-')))
+        return f"{filename}.json"
     
-    def _save_configs(self):
-        """Save agent configurations to file"""
+    def _load_configs(self):
+        """Load agent configurations from individual files"""
+        if not self.config_dir.exists():
+            logger.info("Multi-agent config directory does not exist yet")
+            return
+            
+        for json_file in self.config_dir.glob("*.json"):
+            try:
+                with open(json_file, 'r', encoding='utf-8') as f:
+                    agent_data = json.load(f)
+                
+                config = SubAgentConfig.from_dict(agent_data)
+                agent = SubAgent(config)
+                self.agents[config.agent_id] = agent
+                logger.info(f"Loaded agent {config.name} from {json_file.name}")
+                
+            except Exception as e:
+                logger.error(f"Error loading agent from {json_file}: {e}")
+        
+        logger.info(f"Loaded {len(self.agents)} sub-agents total")
+    
+    def _save_agent_config(self, config: SubAgentConfig):
+        """Save individual agent configuration to file"""
         try:
-            data = {
-                "agents": [agent.config.to_dict() for agent in self.agents.values()]
-            }
-            
             # Ensure directory exists
-            self.config_file.parent.mkdir(parents=True, exist_ok=True)
+            self.config_dir.mkdir(parents=True, exist_ok=True)
             
-            with open(self.config_file, 'w') as f:
-                json.dump(data, f, indent=2)
+            filename = self._name_to_filename(config.name)
+            file_path = self.config_dir / filename
+            
+            with open(file_path, 'w', encoding='utf-8') as f:
+                json.dump(config.to_dict(), f, indent=2, ensure_ascii=False)
+                
+            logger.info(f"Saved agent {config.name} to {filename}")
                 
         except Exception as e:
-            logger.error(f"Error saving agent configs: {e}")
+            logger.error(f"Error saving agent config for {config.name}: {e}")
+    
+    def _remove_agent_config(self, config: SubAgentConfig):
+        """Remove individual agent configuration file"""
+        try:
+            filename = self._name_to_filename(config.name)
+            file_path = self.config_dir / filename
+            
+            if file_path.exists():
+                file_path.unlink()
+                logger.info(f"Removed agent config file {filename}")
+                
+        except Exception as e:
+            logger.error(f"Error removing agent config file for {config.name}: {e}")
     
     def create_agent(self, name: str, module_path: str, available_tools: List[str], description: str = "") -> str:
         """Create a new sub-agent"""
@@ -517,7 +546,8 @@ class MultiAgentManager:
         agent = SubAgent(config)
         self.agents[agent_id] = agent
         
-        self._save_configs()
+        # Save individual agent config
+        self._save_agent_config(config)
         
         logger.info(f"Created sub-agent {name} with ID {agent_id} for module {module_path}")
         return agent_id
@@ -525,11 +555,18 @@ class MultiAgentManager:
     def remove_agent(self, agent_id: str) -> bool:
         """Remove a sub-agent"""
         if agent_id in self.agents:
-            agent_name = self.agents[agent_id].config.name
+            agent = self.agents[agent_id]
+            agent_name = agent.config.name
+            
             # Log session end before removing agent
-            self.agents[agent_id].conversation_logger.log_session_end()
+            agent.conversation_logger.log_session_end()
+            
+            # Remove config file
+            self._remove_agent_config(agent.config)
+            
+            # Remove from memory
             del self.agents[agent_id]
-            self._save_configs()
+            
             logger.info(f"Removed sub-agent {agent_name} with ID {agent_id}")
             return True
         return False
@@ -539,7 +576,13 @@ class MultiAgentManager:
         if agent_id not in self.agents:
             return f"Agent with ID {agent_id} not found"
         
-        return await self.agents[agent_id].process_query(question)
+        result = await self.agents[agent_id].process_query(question)
+        
+        # Update last active time and save config
+        self.agents[agent_id].config.last_active = datetime.now()
+        self._save_agent_config(self.agents[agent_id].config)
+        
+        return result
     
     def list_agents(self) -> List[dict]:
         """List all sub-agents"""
@@ -584,10 +627,15 @@ This tool manages a system of sub-agents, each responsible for monitoring and an
 
 **create_agent** - Create a new sub-agent:
 - `operation` (string, required): "create_agent"
-- `name` (string, required): Human-readable name for the agent
+- `name` (string, required): Human-readable name for the agent (can contain spaces)
 - `module_path` (string, required): Path to the module this agent will monitor
 - `available_tools` (array, required): List of tool names from tool_registry this agent can use
 - `description` (string, optional): Description of the agent's purpose
+
+**Important**: Agent configuration files will be created using lowercase with hyphens (-) instead of spaces in filenames:
+- "Frontend Agent" → `frontend-agent.json`
+- "API Manager" → `api-manager.json`
+- "Database Handler" → `database-handler.json`
 
 **query_agent** - Send query to a sub-agent:
 - `operation` (string, required): "query_agent"  
@@ -619,7 +667,7 @@ This tool manages a system of sub-agents, each responsible for monitoring and an
                 },
                 "name": {
                     "type": "string",
-                    "description": "Name for the agent (for create_agent)"
+                    "description": "Name for the agent (for create_agent). Can contain spaces - the filename will automatically use hyphens instead."
                 },
                 "module_path": {
                     "type": "string", 
