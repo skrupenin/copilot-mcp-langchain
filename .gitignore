@@ -7,9 +7,9 @@ mcp_server/logs/hotkey_core.log
 mcp_server/logs/pipeline
 mcp_server/logs/multi_agent/*
 !mcp_server/logs/multi_agent/readme.md
-mcp_server/prompts
-mcp_server/hotkeys
-mcp_server/webhooks
 mcp_server/logs/webhook
+mcp_server/config/prompt
+mcp_server/config/hotkey
+mcp_server/config/webhook
 work
 .env

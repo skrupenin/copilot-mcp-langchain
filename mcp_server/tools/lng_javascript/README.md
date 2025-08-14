@@ -112,7 +112,7 @@ Show all saved JavaScript functions.
 - Must be **declared functions** (not arrow functions)
 - Function name must match the `function_name` parameter
 - Functions can contain any JavaScript code including async/await
-- Functions are stored in `mcp_server/javascript/` directory with `.js` extension
+- Functions are stored in `mcp_server/config/javascript/` directory with `.js` extension
 
 **Parameter Handling in lng_javascript_execute:**
 
@@ -178,6 +178,6 @@ All console messages will be captured and appear in the server logs like this:
 ## Technical Details
 
 - **Engine**: PyMiniRacer for JavaScript execution
-- **Storage**: File-based storage in `mcp_server/javascript/`
+- **Storage**: File-based storage in `mcp_server/config/javascript/`
 - **Logging**: Dual output (console + log file) with prefixed messages
 - **Error Handling**: Comprehensive error capture and reporting

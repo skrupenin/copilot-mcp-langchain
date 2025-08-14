@@ -3,7 +3,7 @@ import json
 from mcp_server.file_state_manager import FileStateManager
 
 # Create file state manager for JavaScript functions
-javascript_manager = FileStateManager("mcp_server/javascript")
+javascript_manager = FileStateManager("mcp_server/config/javascript")
 
 async def tool_info() -> dict:
     """Returns information about the lng_javascript_list tool."""
@@ -43,7 +43,7 @@ async def run_tool(name: str, parameters: dict) -> list[types.Content]:
             result = {
                 "message": f"Found {len(function_names)} saved JavaScript function(s)",
                 "functions": function_names,
-                "storage_directory": "mcp_server/javascript/"
+                "storage_directory": "mcp_server/config/javascript/"
             }
         
         return [types.TextContent(type="text", text=json.dumps(result, indent=2, ensure_ascii=False))]

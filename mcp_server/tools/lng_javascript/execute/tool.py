@@ -8,7 +8,7 @@ from mcp_server.file_state_manager import FileStateManager
 logger = logging.getLogger(__name__)
 
 # Create file state manager for JavaScript functions
-javascript_manager = FileStateManager("mcp_server/javascript")
+javascript_manager = FileStateManager("mcp_server/config/javascript")
 
 async def tool_info() -> dict:
     """Returns information about the lng_javascript_execute tool."""

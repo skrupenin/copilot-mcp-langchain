@@ -32,7 +32,7 @@ async def tool_info() -> dict:
 2. Use: `{"command": "use", "template_name": "pirate", "topic": "AI", "style": "a pirate"}`
 3. List: `{"command": "list"}`
 
-Templates are stored in `mcp_server/prompts/` directory as `.prompt` files.""",
+Templates are stored in `mcp_server/config/prompt/` directory as `.prompt` files.""",
         "schema": {
             "type": "object",
             "required": ["command"],
@@ -86,7 +86,7 @@ async def _save_template(parameters: dict) -> list[types.Content]:
     
     try:
         prompts_manager.set(template_name, template_text, extension=".prompt")
-        return [types.TextContent(type="text", text=f"Prompt template '{template_name}' saved successfully to mcp_server/prompts/{template_name}.prompt")]
+        return [types.TextContent(type="text", text=f"Prompt template '{template_name}' saved successfully to mcp_server/config/prompt/{template_name}.prompt")]
     except Exception as e:
         return [types.TextContent(type="text", text=f"Error saving prompt template: {str(e)}")]
 
