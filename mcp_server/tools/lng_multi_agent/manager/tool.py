@@ -276,6 +276,8 @@ class SubAgentConfig:
     available_tools: List[str]
     description: str
     system_prompt_template: str
+    max_iterations: int
+    max_execution_time: int
     created_at: datetime
     last_active: datetime
     
@@ -287,6 +289,8 @@ class SubAgentConfig:
             "available_tools": self.available_tools,
             "description": self.description,
             "system_prompt_template": self.system_prompt_template,
+            "max_iterations": self.max_iterations,
+            "max_execution_time": self.max_execution_time,
             "created_at": self.created_at.isoformat(),
             "last_active": self.last_active.isoformat()
         }
@@ -300,6 +304,8 @@ class SubAgentConfig:
             available_tools=data["available_tools"],
             description=data["description"],
             system_prompt_template=data.get("system_prompt_template", "multi_agent_default"),
+            max_iterations=data.get("max_iterations", 20),
+            max_execution_time=data.get("max_execution_time", 120),
             created_at=datetime.fromisoformat(data["created_at"]),
             last_active=datetime.fromisoformat(data["last_active"])
         )
@@ -430,9 +436,11 @@ class SubAgent:
                     agent=AgentType.STRUCTURED_CHAT_ZERO_SHOT_REACT_DESCRIPTION,
                     verbose=True,
                     memory=self.memory.memory,
-                    callbacks=[self.callback_handler]
+                    callbacks=[self.callback_handler],
+                    max_iterations=self.config.max_iterations,
+                    max_execution_time=self.config.max_execution_time
                 )
-                logger.info(f"Agent {self.config.agent_id}: Initialized with {len(self.tools)} tools")
+                logger.info(f"Agent {self.config.agent_id}: Initialized with {len(self.tools)} tools, max_iterations={self.config.max_iterations}, max_execution_time={self.config.max_execution_time}")
             else:
                 logger.warning(f"Agent {self.config.agent_id}: No tools available")
                 self.agent = None
@@ -504,13 +512,32 @@ Important: Always provide a clear summary of your analysis. Focus on answering t
             # Combine system context with the question
             full_input = f"{system_context}\n\nQuestion: {question}"
             
-            # Process with agent
-            if hasattr(self.agent, 'ainvoke'):
-                # Use async version if available
-                result = await self.agent.ainvoke({"input": full_input})
-            else:
-                # Fallback to sync version
-                result = self.agent.invoke({"input": full_input})
+            # Process with agent - add timeout wrapper
+            try:
+                if hasattr(self.agent, 'ainvoke'):
+                    # Use async version with timeout
+                    result = await asyncio.wait_for(
+                        self.agent.ainvoke({"input": full_input}), 
+                        timeout=self.config.max_execution_time + 5  # Add 5 seconds buffer
+                    )
+                else:
+                    # Fallback to sync version with timeout
+                    result = await asyncio.wait_for(
+                        asyncio.get_event_loop().run_in_executor(
+                            None, 
+                            lambda: self.agent.invoke({"input": full_input})
+                        ), 
+                        timeout=self.config.max_execution_time + 5
+                    )
+            except asyncio.TimeoutError:
+                # Handle timeout separately from other limits
+                timeout_msg = f"❌ TIMEOUT ERROR: Agent execution exceeded {self.config.max_execution_time + 5} seconds.\n\n"
+                timeout_msg += f"📝 Current limits: {self.config.max_iterations} iterations, {self.config.max_execution_time} seconds\n"
+                timeout_msg += f"💡 To increase limits, update the agent config file with higher max_execution_time value."
+                
+                logger.warning(f"Agent {self.config.agent_id}: Execution timeout after {self.config.max_execution_time + 5} seconds")
+                self.conversation_logger.log_error(timeout_msg)
+                return timeout_msg
             
             # Extract the response
             response = result.get("output", "No response generated")
@@ -530,10 +557,26 @@ Important: Always provide a clear summary of your analysis. Focus on answering t
             return summary
             
         except Exception as e:
-            error_msg = f"Error processing query: {str(e)}"
-            logger.error(f"Agent {self.config.agent_id}: {error_msg}")
-            self.conversation_logger.log_error(error_msg)
-            return error_msg
+            # Check if it's a limit-related error
+            error_str = str(e).lower()
+            is_limit_error = any(keyword in error_str for keyword in [
+                'iteration', 'timeout', 'time limit', 'max_iterations', 'max_execution_time', 'limit', 'exceeded'
+            ])
+            
+            if is_limit_error:
+                limit_msg = f"❌ EXECUTION LIMIT REACHED: Agent exceeded configured limits.\n\n"
+                limit_msg += f"📝 Current limits: {self.config.max_iterations} iterations, {self.config.max_execution_time} seconds\n"
+                limit_msg += f"💡 To increase limits, update the agent config file with higher max_iterations or max_execution_time values."
+                
+                logger.warning(f"Agent {self.config.agent_id}: Execution limit reached - {str(e)}")
+                self.conversation_logger.log_error(limit_msg)
+                return limit_msg
+            else:
+                # Handle other errors
+                error_msg = f"Error processing query: {str(e)}"
+                logger.error(f"Agent {self.config.agent_id}: {error_msg}")
+                self.conversation_logger.log_error(error_msg)
+                return error_msg
     
     def _create_summary(self, question: str, response: str) -> str:
         """Create a summary of the interaction"""
@@ -630,7 +673,7 @@ class MultiAgentManager:
         except Exception as e:
             logger.error(f"Error removing agent config file for {config.name}: {e}")
     
-    def create_agent(self, name: str, module_path: str, available_tools: List[str], description: str = "", system_prompt_template: str = "multi_agent_default") -> str:
+    def create_agent(self, name: str, module_path: str, available_tools: List[str], description: str = "", system_prompt_template: str = "multi_agent_default", max_iterations: int = 20, max_execution_time: int = 120) -> str:
         """Create a new sub-agent"""
         agent_id = str(uuid.uuid4())
         
@@ -641,6 +684,8 @@ class MultiAgentManager:
             available_tools=available_tools,
             description=description,
             system_prompt_template=system_prompt_template,
+            max_iterations=max_iterations,
+            max_execution_time=max_execution_time,
             created_at=datetime.now(),
             last_active=datetime.now()
         )
@@ -810,13 +855,16 @@ async def run_tool(name: str, parameters: dict) -> list[types.Content]:
             module_path = parameters.get("module_path", "")
             available_tools = parameters.get("available_tools", [])
             description = parameters.get("description", "")
+            system_prompt_template = parameters.get("system_prompt_template", "multi_agent_default")
+            max_iterations = parameters.get("max_iterations", 20)
+            max_execution_time = parameters.get("max_execution_time", 120)
             
             if not agent_name or not module_path or not available_tools:
                 return [types.TextContent(type="text", text=json.dumps({
                     "error": "name, module_path, and available_tools are required for create_agent operation"
                 }, ensure_ascii=False))]
             
-            agent_id = manager.create_agent(agent_name, module_path, available_tools, description)
+            agent_id = manager.create_agent(agent_name, module_path, available_tools, description, system_prompt_template, max_iterations, max_execution_time)
             
             result = {
                 "operation": "create_agent",
@@ -825,7 +873,10 @@ async def run_tool(name: str, parameters: dict) -> list[types.Content]:
                 "name": agent_name,
                 "module_path": module_path,
                 "available_tools": available_tools,
-                "description": description
+                "description": description,
+                "system_prompt_template": system_prompt_template,
+                "max_iterations": max_iterations,
+                "max_execution_time": max_execution_time
             }
             
         elif operation == "query_agent":
@@ -839,13 +890,23 @@ async def run_tool(name: str, parameters: dict) -> list[types.Content]:
             
             response = await manager.query_agent(agent_id, question)
             
+            # Check if response indicates an error (contains error indicators)
+            is_error = any(error_indicator in response for error_indicator in [
+                "❌", "Error processing query", "EXECUTION LIMIT REACHED", "failed to initialize"
+            ])
+            
             result = {
                 "operation": "query_agent",
-                "success": True,
+                "success": not is_error,
                 "agent_id": agent_id,
                 "question": question,
                 "response": response
             }
+            
+            # Add error fields if it's an error
+            if is_error:
+                result["error"] = "Agent execution failed due to limits or other error"
+                result["error_type"] = "execution_limit" if "LIMIT REACHED" in response else "agent_error"
             
         elif operation == "list_agents":
             agents = manager.list_agents()

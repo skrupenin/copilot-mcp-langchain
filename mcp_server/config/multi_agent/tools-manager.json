@@ -9,6 +9,8 @@
   ],
   "description": "Agent for managing and analyzing system tools. Investigates available tools, their configuration and functionality.",
   "system_prompt_template": "multi_agent_default",
+  "max_iterations": 20,
+  "max_execution_time": 120,
   "created_at": "2025-08-14T15:52:56.211756",
   "last_active": "2025-08-14T15:52:56.211759"
 }
