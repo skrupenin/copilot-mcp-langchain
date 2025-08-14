@@ -16,6 +16,7 @@ from langchain.schema import BaseMessage, HumanMessage, AIMessage
 from pydantic import BaseModel, Field
 from mcp_server.llm import llm
 from importlib import import_module
+from mcp_server.pipeline.expressions import evaluate_expression
 
 logger = logging.getLogger('mcp_server.tools.lng_multi_agent_manager')
 
@@ -203,6 +204,11 @@ class DirectToolWrapper(BaseTool):
                 
         except Exception as e:
             error_msg = f"Error executing {self.name}: {str(e)}"
+            
+            # Add helpful hint about getting tool information
+            if "parameter" in str(e).lower() or "argument" in str(e).lower() or "missing" in str(e).lower():
+                error_msg += f"\n\n💡 **Hint**: Use `lng_get_tools_info(tools=\"{self.name}\")` to see required parameters and usage examples."
+            
             if self.conversation_logger:
                 self.conversation_logger.log_error(error_msg)
             return error_msg
@@ -251,6 +257,11 @@ class DirectToolWrapper(BaseTool):
                 
         except Exception as e:
             error_msg = f"Error executing {self.name}: {str(e)}"
+            
+            # Add helpful hint about getting tool information
+            if "parameter" in str(e).lower() or "argument" in str(e).lower() or "missing" in str(e).lower():
+                error_msg += f"\n\n💡 **Hint**: Use `lng_get_tools_info(tools=\"{self.name}\")` to see required parameters and usage examples."
+            
             if self.conversation_logger:
                 self.conversation_logger.log_error(error_msg)
             return error_msg
@@ -359,6 +370,24 @@ class SubAgent:
         try:
             from mcp_server.tools.tool_registry import tool_definitions
             
+            # Always add lng_get_tools_info automatically (hardcoded)
+            help_tool_info = None
+            for tool in tool_definitions:
+                if tool["name"] == "lng_get_tools_info":
+                    help_tool_info = tool
+                    break
+            
+            if help_tool_info:
+                help_wrapper = DirectToolWrapper(
+                    name=help_tool_info['name'],
+                    description=f"Get help information about available tools",
+                    tool_module_path=help_tool_info['module_path'],
+                    conversation_logger=self.conversation_logger
+                )
+                self.tools.append(help_wrapper)
+                logger.info(f"Agent {self.config.agent_id}: Automatically added lng_get_tools_info")
+            
+            # Add configured tools
             for tool_name in self.config.available_tools:
                 try:
                     # Find tool in registry
@@ -418,18 +447,58 @@ class SubAgent:
                 self.conversation_logger.log_error(error_msg)
                 return error_msg
             
-            # Create system prompt with context about the module
-            system_context = f"""You are a specialized agent responsible for module: {self.config.module_path}
-            
+            # Create base prompt template with expression support
+            base_prompt_template = """You are a specialized agent responsible for module: {! config.module_path !}
+
 Your role is to:
 1. Analyze and understand code in your assigned module
-2. Answer questions about the module's functionality, structure, and implementation
+2. Answer questions about the module's functionality, structure, and implementation  
+3. Provide clear, concise summaries of your findings
+4. Use available tools to read and analyze files when needed
+
+Module Description: {! config.description !}
+
+Available Tools: {! config.available_tools_list !}
+
+⚠️ **Need help with tools?** Use `lng_get_tools_info` with specific tool names:
+- Example: `lng_get_tools_info(tools="lng_file_list,lng_file_read")`
+- This will show you parameter requirements and usage examples
+
+Important: Always provide a clear summary of your analysis. Focus on answering the specific question asked."""
+
+            # Create context for template evaluation
+            all_available_tools = ['lng_get_tools_info'] + self.config.available_tools
+            template_context = {
+                "config": {
+                    "module_path": self.config.module_path,
+                    "description": self.config.description,
+                    "available_tools_list": ', '.join(all_available_tools)
+                },
+                "base_dir": os.path.dirname(os.path.abspath(__file__))
+            }
+            
+            try:
+                # Use expression evaluator to process template
+                system_context = evaluate_expression(base_prompt_template, template_context)
+            except Exception as e:
+                logger.warning(f"Template evaluation failed, using fallback: {e}")
+                # Fallback to simple string formatting
+                all_tools_fallback = ['lng_get_tools_info'] + self.config.available_tools
+                system_context = f"""You are a specialized agent responsible for module: {self.config.module_path}
+
+Your role is to:
+1. Analyze and understand code in your assigned module
+2. Answer questions about the module's functionality, structure, and implementation  
 3. Provide clear, concise summaries of your findings
 4. Use available tools to read and analyze files when needed
 
 Module Description: {self.config.description}
 
-Available Tools: {', '.join(self.config.available_tools)}
+Available Tools: {', '.join(all_tools_fallback)}
+
+⚠️ **Need help with tools?** Use `lng_get_tools_info` with specific tool names:
+- Example: `lng_get_tools_info(tools="lng_file_list,lng_file_read")`
+- This will show you parameter requirements and usage examples
 
 Important: Always provide a clear summary of your analysis. Focus on answering the specific question asked."""
             

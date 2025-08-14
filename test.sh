@@ -43,6 +43,12 @@ python mcp_server/test/server.py
 # it returns all available MCP tools and their descriptions
 python -m mcp_server.run run lng_get_tools_info
 
+# Get information about specific tools only (filtered results)
+python -m mcp_server.run run lng_get_tools_info '{\"tools\":\"lng_file_list,lng_file_read\"}'
+
+# Get information about single tool
+python -m mcp_server.run run lng_get_tools_info '{\"tools\":\"lng_count_words\"}'
+
 #######################
 ### lng_count_words ###
 #######################
@@ -53,19 +59,16 @@ python -m mcp_server.run run lng_count_words '{\"input_text\":\"Hello pirate!\"}
 ###############################
 ### lng_multi_agent_manager ###
 ###############################
-# Multi-agent system for delegating code analysis to specialized sub-agents
+# Multi-agent system - agents automatically get lng_get_tools_info built-in
 
-# Test basic functionality
-python mcp_server/tools/lng_multi_agent/stuff/test_basic.py
-
-# Create a sub-agent for file operations
+# Create a sub-agent
 python -m mcp_server.run run lng_multi_agent_manager '{\"operation\":\"create_agent\",\"name\":\"File Agent\",\"module_path\":\"mcp_server/tools/lng_file\",\"available_tools\":[\"lng_file_read\",\"lng_file_list\"],\"description\":\"Handles file operations\"}'
 
 # List all agents
 python -m mcp_server.run run lng_multi_agent_manager '{\"operation\":\"list_agents\"}'
 
-# Find agent by module path
-python -m mcp_server.run run lng_multi_agent_manager '{\"operation\":\"find_agent\",\"module_path\":\"mcp_server/tools/lng_file\"}'
+# Query agent - it will use lng_get_tools_info automatically when needed
+python -m mcp_server.run run lng_multi_agent_manager '{\"operation\":\"query_agent\",\"agent_id\":\"AGENT_ID_FROM_LIST\",\"question\":\"What files are in your module directory?\"}'
 
 #########################
 ### lng_llm_run_chain ###
