@@ -19,6 +19,36 @@ from importlib import import_module
 
 logger = logging.getLogger('mcp_server.tools.lng_multi_agent_manager')
 
+class AgentCallbackHandler(BaseCallbackHandler):
+    """Callback handler to log agent's intermediate thoughts and reasoning"""
+    
+    def __init__(self, conversation_logger):
+        self.conversation_logger = conversation_logger
+        self.step_count = 0
+    
+    def on_llm_start(self, serialized, prompts, **kwargs):
+        """Called when LLM starts generating response"""
+        self.conversation_logger.log_agent_response(f"[THINKING] LLM started processing...")
+    
+    def on_llm_end(self, response, **kwargs):
+        """Called when LLM finishes generating response"""
+        if hasattr(response, 'generations') and response.generations:
+            for generation in response.generations:
+                for gen in generation:
+                    if hasattr(gen, 'text'):
+                        self.conversation_logger.log_agent_response(f"[REASONING] {gen.text}")
+    
+    def on_agent_action(self, action, **kwargs):
+        """Called when agent decides to take an action"""
+        self.step_count += 1
+        self.conversation_logger.log_agent_response(
+            f"[STEP {self.step_count}] Action: {action.tool}, Input: {action.tool_input}"
+        )
+    
+    def on_agent_finish(self, finish, **kwargs):
+        """Called when agent finishes"""
+        self.conversation_logger.log_agent_response(f"[FINISHED] {finish.return_values.get('output', 'No output')}")
+
 class ConversationLogger:
     """Conversation logging for each sub-agent in a separate file"""
     
@@ -311,9 +341,11 @@ class SubAgent:
         self.tools = []
         self.agent = None
         
-        # Create LLM instance
-        callback_manager = None
-        self.llm = llm(callbacks=callback_manager, verbose=False)
+        # Create callback handler for detailed logging
+        self.callback_handler = AgentCallbackHandler(self.conversation_logger)
+        
+        # Create LLM instance with callback
+        self.llm = llm(callbacks=[self.callback_handler], verbose=True)
         
         # Initialize tools directly
         self._initialize_tools()
@@ -363,8 +395,9 @@ class SubAgent:
                     tools=self.tools,
                     llm=self.llm,
                     agent=AgentType.STRUCTURED_CHAT_ZERO_SHOT_REACT_DESCRIPTION,
-                    verbose=False,
-                    memory=self.memory.memory
+                    verbose=True,
+                    memory=self.memory.memory,
+                    callbacks=[self.callback_handler]
                 )
                 logger.info(f"Agent {self.config.agent_id}: Initialized with {len(self.tools)} tools")
             else:
