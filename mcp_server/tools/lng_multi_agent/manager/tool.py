@@ -25,7 +25,7 @@ class ConversationLogger:
     def __init__(self, agent_id: str, agent_name: str):
         self.agent_id = agent_id
         self.agent_name = agent_name
-        self.log_dir = Path("mcp_server/logs/multiagent")
+        self.log_dir = Path("mcp_server/logs/multi_agent")
         self.log_dir.mkdir(parents=True, exist_ok=True)
         
         # Create log file name based on agent ID and name

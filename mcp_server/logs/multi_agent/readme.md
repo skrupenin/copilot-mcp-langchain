@@ -1,6 +1,6 @@
 # Multi-Agent Conversation Logs
 
-This folder (`mcp_server/logs/multiagent/`) contains conversation logs between the user and sub-agents of the multi-agent management system.
+This folder (`mcp_server/logs/multi_agent/`) contains conversation logs between the user and sub-agents of the multi-agent management system.
 
 ## Log Structure
 
