@@ -20,7 +20,7 @@ async def tool_info() -> dict:
 **Example Usage:**
 - First, create a prompt template: lng_llm_prompt_template with command="save"
 - Then search for documents related to a specific topic
-- Specify which template to use: prompt_template="scientific" or prompt_template="default"
+- Specify which template to use: prompt_template="scientific" or prompt_template="default_rag"
 - The tool will retrieve relevant documents and generate a response using the specified template
 - Templates must contain {context} and {query} placeholders for proper RAG functionality
 

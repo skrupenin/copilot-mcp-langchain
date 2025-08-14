@@ -8,7 +8,8 @@ mcp_server/logs/pipeline
 mcp_server/logs/multi_agent/*
 !mcp_server/logs/multi_agent/readme.md
 mcp_server/logs/webhook
-mcp_server/config/prompt
+mcp_server/config/prompt/*
+!mcp_server/config/prompt/default_rag.prompt
 mcp_server/config/hotkey
 mcp_server/config/webhook
 work
