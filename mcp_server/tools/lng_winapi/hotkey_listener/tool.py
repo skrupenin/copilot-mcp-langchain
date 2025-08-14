@@ -135,7 +135,7 @@ async def save_hotkeys_state():
         
         if result.get("success"):
             # Сохраняем в том же формате, что и daemon
-            status_file = Path(__file__).parent.parent.parent.parent / "hotkeys" / "hotkey_service_status.json"
+            status_file = Path(__file__).parent.parent.parent.parent / "config/hotkey" / "hotkey_service_status.json"
             status_file.parent.mkdir(exist_ok=True)
             
             status = {
@@ -158,7 +158,7 @@ async def save_hotkeys_state():
 async def restore_hotkeys_state():
     """Восстановление хоткеев из сохраненного состояния при запуске"""
     try:
-        status_file = Path(__file__).parent.parent.parent.parent / "hotkeys" / "hotkey_service_status.json"
+        status_file = Path(__file__).parent.parent.parent.parent / "config/hotkey" / "hotkey_service_status.json"
         
         if not status_file.exists():
             logger.info("No saved hotkeys state found")

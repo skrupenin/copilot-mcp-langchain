@@ -178,4 +178,4 @@ class FileStateManager:
 
 
 # Create a global instance for prompts
-prompts_manager = FileStateManager("mcp_server/prompts")
+prompts_manager = FileStateManager("mcp_server/config/prompt")
