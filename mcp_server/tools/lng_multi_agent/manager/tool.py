@@ -19,39 +19,108 @@ from importlib import import_module
 
 logger = logging.getLogger('mcp_server.tools.lng_multi_agent_manager')
 
+class ConversationLogger:
+    """Conversation logging for each sub-agent in a separate file"""
+    
+    def __init__(self, agent_id: str, agent_name: str):
+        self.agent_id = agent_id
+        self.agent_name = agent_name
+        self.log_dir = Path("mcp_server/logs/multiagent")
+        self.log_dir.mkdir(parents=True, exist_ok=True)
+        
+        # Create log file name based on agent ID and name
+        safe_name = "".join(c for c in agent_name if c.isalnum() or c in (' ', '-', '_')).rstrip()
+        safe_name = safe_name.replace(' ', '_')
+        self.log_file = self.log_dir / f"{safe_name}_{agent_id[:8]}.log"
+        
+        # Configure logger for this agent
+        self.logger = logging.getLogger(f'agent_{agent_id}')
+        self.logger.setLevel(logging.INFO)
+        
+        # Remove existing handlers to avoid duplication
+        self.logger.handlers.clear()
+        
+        # Create file handler
+        file_handler = logging.FileHandler(self.log_file, encoding='utf-8')
+        file_handler.setLevel(logging.INFO)
+        
+        # Create formatter
+        formatter = logging.Formatter(
+            '%(asctime)s - %(levelname)s - %(message)s',
+            datefmt='%Y-%m-%d %H:%M:%S'
+        )
+        file_handler.setFormatter(formatter)
+        
+        # Add handler to logger
+        self.logger.addHandler(file_handler)
+        
+        # Prevent propagation to parent logger
+        self.logger.propagate = False
+        
+        # Write initial entry
+        self.logger.info(f"=== Started conversation with agent {agent_name} (ID: {agent_id}) ===")
+    
+    def log_user_question(self, question: str):
+        """Log user question"""
+        self.logger.info(f"USER: {question}")
+    
+    def log_agent_response(self, response: str):
+        """Log agent response"""
+        self.logger.info(f"AGENT: {response}")
+    
+    def log_tool_usage(self, tool_name: str, parameters: dict, result: str):
+        """Log tool usage"""
+        self.logger.info(f"TOOL_USED: {tool_name}")
+        self.logger.info(f"TOOL_PARAMS: {json.dumps(parameters, ensure_ascii=False, indent=2)}")
+        self.logger.info(f"TOOL_RESULT: {result[:500]}{'...' if len(result) > 500 else ''}")
+    
+    def log_error(self, error_msg: str):
+        """Log error"""
+        self.logger.error(f"ERROR: {error_msg}")
+    
+    def log_session_end(self):
+        """Log session end"""
+        self.logger.info(f"=== Ended conversation with agent {self.agent_name} ===")
+
 class DirectToolWrapper(BaseTool):
-    """LangChain инструмент, который напрямую вызывает функции MCP инструментов"""
+    """LangChain tool that directly calls MCP tool functions"""
     
     name: str = Field(description="Tool name")
     description: str = Field(description="Tool description")  
     tool_module_path: str = Field(description="Path to tool module")
     tool_function_name: str = Field(description="Tool function name", default="run_tool")
+    conversation_logger: Optional[Any] = Field(default=None, description="Conversation logger instance")
     
-    def __init__(self, name: str, description: str, tool_module_path: str, **kwargs):
+    def __init__(self, name: str, description: str, tool_module_path: str, conversation_logger=None, **kwargs):
         super().__init__(
             name=name,
             description=description,
             tool_module_path=tool_module_path,
+            conversation_logger=conversation_logger,
             **kwargs
         )
     
     def _run(self, **kwargs) -> str:
-        """Синхронный запуск инструмента"""
+        """Synchronous tool execution"""
         try:
-            # Импортируем модуль инструмента
+            # Log tool usage
+            if self.conversation_logger:
+                self.conversation_logger.log_tool_usage(self.name, kwargs, "Executing...")
+            
+            # Import tool module
             tool_module = import_module(self.tool_module_path)
             
-            # Получаем функцию run_tool
+            # Get the tool function
             if hasattr(tool_module, self.tool_function_name):
                 tool_function = getattr(tool_module, self.tool_function_name)
                 
-                # Вызываем функцию напрямую
+                # Call the function directly                
                 if asyncio.iscoroutinefunction(tool_function):
-                    # Если асинхронная функция, выполняем в event loop
+                    # If async function, run in event loop
                     try:
                         loop = asyncio.get_event_loop()
                         if loop.is_running():
-                            # Если loop уже работает, создаем задачу
+                            # If loop is already running, create task
                             import concurrent.futures
                             import threading
                             
@@ -69,7 +138,7 @@ class DirectToolWrapper(BaseTool):
                         else:
                             result = loop.run_until_complete(tool_function(self.name, kwargs))
                     except RuntimeError:
-                        # Нет event loop, создаем новый
+                        # No event loop, create new one
                         loop = asyncio.new_event_loop()
                         asyncio.set_event_loop(loop)
                         try:
@@ -77,54 +146,84 @@ class DirectToolWrapper(BaseTool):
                         finally:
                             loop.close()
                 else:
-                    # Синхронная функция
+                    # Synchronous function
                     result = tool_function(self.name, kwargs)
                 
-                # Извлекаем текст из результата
+                # Extract text from result
+                result_text = ""
                 if isinstance(result, list) and len(result) > 0:
                     if hasattr(result[0], 'text'):
-                        return result[0].text
+                        result_text = result[0].text
                     else:
-                        return str(result[0])
+                        result_text = str(result[0])
                 else:
-                    return str(result)
+                    result_text = str(result)
+                
+                # Log result
+                if self.conversation_logger:
+                    self.conversation_logger.log_tool_usage(self.name, kwargs, result_text)
+                
+                return result_text
                     
             else:
-                return f"Error: Tool function {self.tool_function_name} not found in module {self.tool_module_path}"
+                error_msg = f"Error: Tool function {self.tool_function_name} not found in module {self.tool_module_path}"
+                if self.conversation_logger:
+                    self.conversation_logger.log_error(error_msg)
+                return error_msg
                 
         except Exception as e:
-            return f"Error executing {self.name}: {str(e)}"
+            error_msg = f"Error executing {self.name}: {str(e)}"
+            if self.conversation_logger:
+                self.conversation_logger.log_error(error_msg)
+            return error_msg
     
     async def _arun(self, **kwargs) -> str:
-        """Асинхронный запуск инструмента"""
+        """Asynchronous tool execution"""
         try:
-            # Импортируем модуль инструмента
+            # Log tool usage
+            if self.conversation_logger:
+                self.conversation_logger.log_tool_usage(self.name, kwargs, "Executing...")
+            
+            # Import tool module
             tool_module = import_module(self.tool_module_path)
             
-            # Получаем функцию run_tool
+            # Get the tool function
             if hasattr(tool_module, self.tool_function_name):
                 tool_function = getattr(tool_module, self.tool_function_name)
                 
-                # Вызываем функцию
+                # Call the function
                 if asyncio.iscoroutinefunction(tool_function):
                     result = await tool_function(self.name, kwargs)
                 else:
                     result = tool_function(self.name, kwargs)
                 
-                # Извлекаем текст из результата
+                # Extract text from result
+                result_text = ""
                 if isinstance(result, list) and len(result) > 0:
                     if hasattr(result[0], 'text'):
-                        return result[0].text
+                        result_text = result[0].text
                     else:
-                        return str(result[0])
+                        result_text = str(result[0])
                 else:
-                    return str(result)
+                    result_text = str(result)
+                
+                # Log result
+                if self.conversation_logger:
+                    self.conversation_logger.log_tool_usage(self.name, kwargs, result_text)
+                
+                return result_text
                     
             else:
-                return f"Error: Tool function {self.tool_function_name} not found in module {self.tool_module_path}"
+                error_msg = f"Error: Tool function {self.tool_function_name} not found in module {self.tool_module_path}"
+                if self.conversation_logger:
+                    self.conversation_logger.log_error(error_msg)
+                return error_msg
                 
         except Exception as e:
-            return f"Error executing {self.name}: {str(e)}"
+            error_msg = f"Error executing {self.name}: {str(e)}"
+            if self.conversation_logger:
+                self.conversation_logger.log_error(error_msg)
+            return error_msg
 
 @dataclass
 class SubAgentConfig:
@@ -208,6 +307,7 @@ class SubAgent:
     def __init__(self, config: SubAgentConfig):
         self.config = config
         self.memory = SubAgentMemory(config.agent_id)
+        self.conversation_logger = ConversationLogger(config.agent_id, config.name)
         self.tools = []
         self.agent = None
         
@@ -229,7 +329,7 @@ class SubAgent:
             
             for tool_name in self.config.available_tools:
                 try:
-                    # Находим инструмент в реестре
+                    # Find tool in registry
                     tool_info = None
                     for tool in tool_definitions:
                         if tool["name"] == tool_name:
@@ -237,11 +337,12 @@ class SubAgent:
                             break
                     
                     if tool_info:
-                        # Создаем DirectToolWrapper для каждого инструмента
+                        # Create DirectToolWrapper for each tool with logger
                         wrapper = DirectToolWrapper(
                             name=tool_info['name'],
                             description=f"Tool {tool_name} for agent {self.config.name}",
-                            tool_module_path=tool_info['module_path']
+                            tool_module_path=tool_info['module_path'],
+                            conversation_logger=self.conversation_logger
                         )
                         self.tools.append(wrapper)
                         logger.info(f"Agent {self.config.agent_id}: Added tool {tool_name}")
@@ -276,8 +377,13 @@ class SubAgent:
     async def process_query(self, question: str) -> str:
         """Process a query and return a summary response"""
         try:
+            # Log user question
+            self.conversation_logger.log_user_question(question)
+            
             if not self.agent:
-                return f"Agent {self.config.name} failed to initialize properly."
+                error_msg = f"Agent {self.config.name} failed to initialize properly."
+                self.conversation_logger.log_error(error_msg)
+                return error_msg
             
             # Create system prompt with context about the module
             system_context = f"""You are a specialized agent responsible for module: {self.config.module_path}
@@ -311,6 +417,9 @@ Important: Always provide a clear summary of your analysis. Focus on answering t
             # Create summary (this is already a summary since we ask agent to summarize)
             summary = self._create_summary(question, response)
             
+            # Log agent response
+            self.conversation_logger.log_agent_response(summary)
+            
             # Store in memory
             self.memory.add_interaction(question, summary)
             
@@ -322,6 +431,7 @@ Important: Always provide a clear summary of your analysis. Focus on answering t
         except Exception as e:
             error_msg = f"Error processing query: {str(e)}"
             logger.error(f"Agent {self.config.agent_id}: {error_msg}")
+            self.conversation_logger.log_error(error_msg)
             return error_msg
     
     def _create_summary(self, question: str, response: str) -> str:
@@ -341,6 +451,15 @@ Important: Always provide a clear summary of your analysis. Focus on answering t
             "last_active": self.config.last_active.isoformat(),
             "tools_count": len(self.tools)
         }
+    
+    def __del__(self):
+        """Destructor to log session end when agent is destroyed"""
+        try:
+            if hasattr(self, 'conversation_logger'):
+                self.conversation_logger.log_session_end()
+        except Exception:
+            # Ignore errors in destructor
+            pass
 
 class MultiAgentManager:
     """Manager for multiple sub-agents"""
@@ -407,6 +526,8 @@ class MultiAgentManager:
         """Remove a sub-agent"""
         if agent_id in self.agents:
             agent_name = self.agents[agent_id].config.name
+            # Log session end before removing agent
+            self.agents[agent_id].conversation_logger.log_session_end()
             del self.agents[agent_id]
             self._save_configs()
             logger.info(f"Removed sub-agent {agent_name} with ID {agent_id}")
