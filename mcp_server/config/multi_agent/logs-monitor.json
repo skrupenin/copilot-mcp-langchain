@@ -8,6 +8,7 @@
     "lng_file_list"
   ],
   "description": "Agent for monitoring and analyzing system logs. Tracks log files, analyzes their content and provides reports on system operation.",
+  "system_prompt_template": "multi_agent_default",
   "created_at": "2025-08-14T15:52:46.917975",
   "last_active": "2025-08-14T15:52:46.917980"
 }

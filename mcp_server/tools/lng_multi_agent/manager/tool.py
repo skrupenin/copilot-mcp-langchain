@@ -17,6 +17,7 @@ from pydantic import BaseModel, Field
 from mcp_server.llm import llm
 from importlib import import_module
 from mcp_server.pipeline.expressions import evaluate_expression
+from mcp_server.file_state_manager import prompts_manager
 
 logger = logging.getLogger('mcp_server.tools.lng_multi_agent_manager')
 
@@ -274,6 +275,7 @@ class SubAgentConfig:
     module_path: str
     available_tools: List[str]
     description: str
+    system_prompt_template: str
     created_at: datetime
     last_active: datetime
     
@@ -284,6 +286,7 @@ class SubAgentConfig:
             "module_path": self.module_path,
             "available_tools": self.available_tools,
             "description": self.description,
+            "system_prompt_template": self.system_prompt_template,
             "created_at": self.created_at.isoformat(),
             "last_active": self.last_active.isoformat()
         }
@@ -296,6 +299,7 @@ class SubAgentConfig:
             module_path=data["module_path"],
             available_tools=data["available_tools"],
             description=data["description"],
+            system_prompt_template=data.get("system_prompt_template", "multi_agent_default"),
             created_at=datetime.fromisoformat(data["created_at"]),
             last_active=datetime.fromisoformat(data["last_active"])
         )
@@ -447,24 +451,19 @@ class SubAgent:
                 self.conversation_logger.log_error(error_msg)
                 return error_msg
             
-            # Create base prompt template with expression support
-            base_prompt_template = """You are a specialized agent responsible for module: {! config.module_path !}
+            # Load system prompt template from file
+            base_prompt_template = prompts_manager.get(self.config.system_prompt_template, extension=".prompt")
+            if base_prompt_template is None:
+                logger.warning(f"System prompt template '{self.config.system_prompt_template}' not found, using fallback")
+                # Fallback to basic template
+                base_prompt_template = """You are a specialized agent responsible for module: {! config.module_path !}
 
-Your role is to:
-1. Analyze and understand code in your assigned module
-2. Answer questions about the module's functionality, structure, and implementation  
-3. Provide clear, concise summaries of your findings
-4. Use available tools to read and analyze files when needed
+Your role is to analyze and understand code in your assigned module and answer questions about it.
 
 Module Description: {! config.description !}
-
 Available Tools: {! config.available_tools_list !}
 
-⚠️ **Need help with tools?** Use `lng_get_tools_info` with specific tool names:
-- Example: `lng_get_tools_info(tools="lng_file_list,lng_file_read")`
-- This will show you parameter requirements and usage examples
-
-Important: Always provide a clear summary of your analysis. Focus on answering the specific question asked."""
+Use lng_get_tools_info for help with tools when needed."""
 
             # Create context for template evaluation
             all_available_tools = ['lng_get_tools_info'] + self.config.available_tools
@@ -631,7 +630,7 @@ class MultiAgentManager:
         except Exception as e:
             logger.error(f"Error removing agent config file for {config.name}: {e}")
     
-    def create_agent(self, name: str, module_path: str, available_tools: List[str], description: str = "") -> str:
+    def create_agent(self, name: str, module_path: str, available_tools: List[str], description: str = "", system_prompt_template: str = "multi_agent_default") -> str:
         """Create a new sub-agent"""
         agent_id = str(uuid.uuid4())
         
@@ -641,6 +640,7 @@ class MultiAgentManager:
             module_path=module_path,
             available_tools=available_tools,
             description=description,
+            system_prompt_template=system_prompt_template,
             created_at=datetime.now(),
             last_active=datetime.now()
         )

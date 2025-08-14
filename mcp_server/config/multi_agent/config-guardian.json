@@ -8,6 +8,7 @@
     "lng_file_list"
   ],
   "description": "Agent for managing system configurations. Analyzes configuration files, their structure and system settings parameters.",
+  "system_prompt_template": "multi_agent_default",
   "created_at": "2025-08-14T15:53:04.957573",
-  "last_active": "2025-08-14T15:53:04.957576"
+  "last_active": "2025-08-14T20:01:00.568486"
 }
