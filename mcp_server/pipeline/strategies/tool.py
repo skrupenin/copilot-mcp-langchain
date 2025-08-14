@@ -151,7 +151,7 @@ class ToolStrategy(ExecutionStrategy):
         # Create debug logs directory if it doesn't exist
         import mcp_server
         project_root = os.path.dirname(os.path.dirname(mcp_server.__file__))
-        debug_dir = os.path.join(project_root, "mcp_server", "logs", "pipeline_debug")
+        debug_dir = os.path.join(project_root, "mcp_server", "logs", "pipeline")
         os.makedirs(debug_dir, exist_ok=True)
         
         # Generate timestamped filename

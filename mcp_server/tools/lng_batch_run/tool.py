@@ -141,7 +141,7 @@ Returns error details with failed tool name and variable context when any step f
                             },
                             "output_log": {
                                 "type": "string", 
-                                "description": "Optional log name to save output data as timestamped file in mcp_server/logs/pipeline_debug/"
+                                "description": "Optional log name to save output data as timestamped file in mcp_server/logs/pipeline/"
                             },
                             "condition": {
                                 "type": "string",

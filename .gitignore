@@ -4,7 +4,7 @@ mcp_server/logs/mcp_runner.log
 mcp_server/logs/mcp_hotkey_listener.log
 mcp_server/logs/hotkey_service.log
 mcp_server/logs/hotkey_core.log
-mcp_server/logs/pipeline_debug
+mcp_server/logs/pipeline
 mcp_server/prompts
 mcp_server/hotkeys
 mcp_server/webhooks
