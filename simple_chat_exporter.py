@@ -115,7 +115,7 @@ class SimpleChatExporter:
                             before = self.escape_html(line_content[:start_col])
                             selected = self.escape_html(line_content[start_col:end_col])
                             after = self.escape_html(line_content[end_col:])
-                            line_content = f"{before}<mark class='highlight'>{selected}</mark>{after}"
+                            line_content = f"{before}<mark class='highlight' title='This text was selected in the original file'>{selected}</mark>{after}"
                         else:
                             # Escape HTML for context lines
                             line_content = self.escape_html(line_content)
