@@ -450,11 +450,11 @@ class SimpleChatExporter:
                             </div>
                         </div>
                         <div class="attachment-details" id="{attachment_id}">
-                            <strong>📄 File Content:</strong>
-                            <pre>{file_content}</pre>
-                            
-                            <strong>🔧 Raw Metadata:</strong>
-                            <pre>{metadata_json_html}</pre>
+<strong>📄 File Content:</strong>
+<pre>{file_content}</pre>
+
+<strong>🔧 Raw Metadata:</strong>
+<pre>{metadata_json_html}</pre>
                         </div>
 '''
                         html += '''
