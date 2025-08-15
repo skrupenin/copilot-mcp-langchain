@@ -182,18 +182,7 @@ class SimpleChatExporter:
         # Create unique ID for this tool call
         tool_html_id = f"tool_{tool_call_id.replace('-', '_')}"
         
-        return f'''
-<div class="tool-call">
-    <div class="tool-header" onclick="toggleAttachment('{tool_html_id}')">
-        <span class="tool-icon">🔧</span>
-        <span class="tool-name">{self.escape_html(tool_id)}</span>
-        <span class="tool-status">{'✅' if tool_item.get('isComplete') else '⏳'}</span>
-    </div>
-    <div class="attachment-details" id="{tool_html_id}">
-        <strong>📋 Tool Invocation:</strong>
-        <pre>{self.escape_html(invocation_msg)}{command_info}</pre>
-    </div>
-</div>'''
+        return f'''<div class="tool-call"><div class="tool-header" onclick="toggleAttachment('{tool_html_id}')"><span class="tool-icon">🔧</span><span class="tool-name">{self.escape_html(tool_id)}</span><span class="tool-status">{'✅' if tool_item.get('isComplete') else '⏳'}</span></div><div class="attachment-details" id="{tool_html_id}"><strong>📋 Tool Invocation:</strong><pre>{self.escape_html(invocation_msg)}{command_info}</pre></div></div>'''
     
     def create_html(self, session_data):
         session_id = session_data.get('_file', 'unknown').replace('.json', '')
