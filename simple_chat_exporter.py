@@ -298,7 +298,7 @@ class SimpleChatExporter:
                     
                     blocks.append(f'''<div style="margin: 4px 0; padding: 0 6px; background: #161b22; border: 1px solid #30363d; border-radius: 4px;">
 <div style="font-size: 11px; color: #7d8590; margin-bottom: 3px;"><strong>Block {i+1} ({item_type}) {status_icon}:</strong></div>
-<div style="font-family: 'Courier New', monospace; font-size: 11px; color: #e6edf3; line-height: 1.3;">{formatted_value}</div>
+<div style="font-size: 11px; color: #e6edf3; line-height: 1.3;">{formatted_value}</div>
 </div>''')
             return ''.join(blocks)
         else:
@@ -380,17 +380,7 @@ class SimpleChatExporter:
                 # Format output with multiple blocks support
                 output_formatted = self.format_output_blocks(output_data) if output_data else "No output data"
                 
-                input_output_html = f'''
-<div style="/*! margin: 6px 0; */">
-<strong style="font-size: 12px;">📥 Input:</strong>
-<div style="margin: 4px 0; padding: 6px; background: #161b22; border: 1px solid #30363d; border-radius: 4px; font-family: 'Courier New', monospace; font-size: 11px; color: #e6edf3; line-height: 1.3;">
-{input_formatted}
-</div></div><div style="margin: 6px 0;"><strong style="font-size: 12px;">📤 Output:</strong>
-<div style="margin: 4px 0;">
-{output_formatted}
-</div>
-</div>
-'''
+                input_output_html = f'''<div style="margin: 6px 0;"><strong style="font-size: 12px;">📥 Input:</strong><div style="margin: 4px 0; padding: 6px; background: #161b22; border: 1px solid #30363d; border-radius: 4px; font-size: 11px; color: #e6edf3; line-height: 1.3;">{input_formatted}</div></div><div style="margin: 6px 0;"><strong style="font-size: 12px;">📤 Output:</strong><div style="margin: 4px 0;">{output_formatted}</div></div>'''
         
         # Create combined JSON metadata as array (like in original)
         combined_metadata = [prepare_item, serialized_item]
@@ -485,17 +475,7 @@ class SimpleChatExporter:
                 # Format output with multiple blocks support
                 output_formatted = self.format_output_blocks(output_data) if output_data else "No output data"
                 
-                input_output_html = f'''
-<div style="/*! margin: 6px 0; */">
-<strong style="font-size: 12px;">📥 Input:</strong>
-<div style="margin: 4px 0; padding: 6px; background: #161b22; border: 1px solid #30363d; border-radius: 4px; font-family: 'Courier New', monospace; font-size: 11px; color: #e6edf3; line-height: 1.3;">
-{input_formatted}
-</div></div><div style="margin: 6px 0;"><strong style="font-size: 12px;">📤 Output:</strong>
-<div style="margin: 4px 0;">
-{output_formatted}
-</div>
-</div>
-'''
+                input_output_html = f'''<div style="margin: 6px 0;"><strong style="font-size: 12px;">📥 Input:</strong><div style="margin: 4px 0; padding: 6px; background: #161b22; border: 1px solid #30363d; border-radius: 4px; font-size: 11px; color: #e6edf3; line-height: 1.3;">{input_formatted}</div></div><div style="margin: 6px 0;"><strong style="font-size: 12px;">📤 Output:</strong><div style="margin: 4px 0;">{output_formatted}</div></div>'''
         
         # Create JSON metadata for display
         metadata_json = json.dumps(tool_item, indent=2)
@@ -534,12 +514,13 @@ class SimpleChatExporter:
     <title>Copilot Chat - {session_id[:8]}</title>
     <style>
         body {{
-            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;
+            font-family: system-ui;
             background: #1e1e1e;
             color: #cccccc;
             margin: 0;
             padding: 0;
             line-height: 1.5;
+            text-rendering: optimizeLegibility;
         }}
         
         .chat-container {{
@@ -667,7 +648,6 @@ class SimpleChatExporter:
             background: #0d1117;
             border: 1px solid #404040;
             border-radius: 4px;
-            font-family: 'Consolas', 'Liberation Mono', monospace;
             font-size: 11px;
             white-space: pre-wrap;
             max-height: 400px;
@@ -692,6 +672,7 @@ class SimpleChatExporter:
             overflow-x: auto;
             max-width: 100%;
             box-sizing: border-box;
+            font-size: 11px;
         }}
         
         .highlight {{
@@ -706,6 +687,11 @@ class SimpleChatExporter:
             border: 1px solid #404040;
             border-radius: 4px;
             background: #1e1e1e;
+            font-size: 0; /* Eliminate whitespace between child elements */
+        }}
+        
+        .tool-call > * {{
+            font-size: 14px; /* Reset font size for child elements */
         }}
         
         .tool-header {{
@@ -716,6 +702,7 @@ class SimpleChatExporter:
             display: flex;
             align-items: center;
             gap: 8px;
+            font-size: 14px; /* Explicit font size */
         }}
         
         .tool-header:hover {{
@@ -739,7 +726,6 @@ class SimpleChatExporter:
             padding: 8px 12px;
             background: #0d1117;
             border-top: 1px solid #404040;
-            font-family: 'Consolas', 'Monaco', monospace;
             font-size: 13px;
             color: #f0f6fc;
         }}
@@ -748,6 +734,29 @@ class SimpleChatExporter:
             background: transparent;
             color: #7dd3fc;
             padding: 0;
+            font-size: 13px;
+        }}
+        
+        /* Compact layout for tool call content */
+        .tool-call-content {{
+            font-size: 0; /* Remove whitespace between elements */
+        }}
+        
+        .tool-call-content > * {{
+            font-size: 13px; /* Reset font size for content */
+            display: inline-block;
+            vertical-align: top;
+        }}
+        
+        /* Ultra-compact message layout */
+        .message-body {{
+            background: #2d2d30;
+            padding: 12px 16px;
+            border-radius: 8px;
+            border: 1px solid #3c3c3c;
+            white-space: pre-wrap;
+            word-break: break-word;
+            font-size: 14px; /* Normal font size for text content */
         }}
         
         .attachment-icon {{
@@ -795,6 +804,48 @@ class SimpleChatExporter:
             font-size: 12px;
             color: #8c8c8c;
             text-align: center;
+        }}
+        
+        /* Global whitespace control - eliminate all unwanted spacing */
+        .tool-call {{
+            font-size: 0;
+        }}
+        
+        /* Specific font size resets for tool call elements (but not attachment-details) */
+        .tool-call > .tool-header,
+        .tool-call > .tool-preview {{
+            font-size: 14px;
+        }}
+        
+        /* Ensure attachment-details keeps its own styling */
+        .attachment-details {{
+            font-size: 11px !important;
+        }}
+        
+        .attachment-details * {{
+            font-size: 11px !important;
+        }}
+        
+        /* Specific resets for tool header elements */
+        .tool-call div.tool-header, .tool-call span, .tool-call code {{
+            line-height: 1.4;
+        }}
+        
+        /* Ensure flexbox elements work correctly */
+        .tool-header {{
+            font-size: 14px;
+        }}
+        
+        .tool-header .tool-icon, .tool-header .tool-name, .tool-header .tool-status {{
+            font-size: 14px;
+        }}
+        
+        .tool-preview {{
+            font-size: 13px;
+        }}
+        
+        .tool-preview code {{
+            font-size: 13px;
         }}
     </style>
 </head>
@@ -876,12 +927,7 @@ class SimpleChatExporter:
                                 <div class="attachment-desc">{self.escape_html(attachment['description'])}</div>
                             </div>
                         </div>
-                        <div class="attachment-details" id="{attachment_id}">
-<strong>📄 File Content:</strong>
-<pre>{file_content}</pre>
-
-<strong>🔧 Raw Metadata:</strong>
-<pre>{metadata_json_html}</pre>
+                        <div class="attachment-details" id="{attachment_id}"><strong>📄 File Content:</strong><pre>{file_content}</pre><strong>🔧 Raw Metadata:</strong><pre>{metadata_json_html}</pre>
                         </div>
 '''
                         html += '''
