@@ -200,6 +200,23 @@ class SimpleChatExporter:
         # Remove <br> right after </div></div> (end of tool-call block)
         html = re.sub(r'</div></div>\s*<br>', '</div></div>', html)
         
+        # Fix escaped <br> tags inside tool-call blocks for Markdown rendering
+        # Find all tool-call blocks and replace &lt;br&gt; with <br> inside them
+        def fix_br_tags_in_toolcalls(match):
+            tool_call_content = match.group(0)
+            # Replace escaped <br> tags with actual <br> tags within tool-call content
+            # Handle both single and double escaping
+            fixed_content = tool_call_content.replace('&amp;lt;br&amp;gt;', '<br>')
+            fixed_content = fixed_content.replace('&lt;br&gt;', '<br>')
+            return fixed_content
+        
+        # Apply the fix to all tool-call blocks
+        html = re.sub(r'<div class="tool-call">.*?</div></div>', fix_br_tags_in_toolcalls, html, flags=re.DOTALL)
+        
+        # Also fix any remaining escaped <br> tags in the entire content
+        html = html.replace('&amp;lt;br&amp;gt;', '<br>')
+        html = html.replace('&lt;br&gt;', '<br>')
+        
         return html
     
     def format_attachment(self, variable):
