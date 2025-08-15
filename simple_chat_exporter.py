@@ -146,17 +146,83 @@ class SimpleChatExporter:
     def process_response_with_tools(self, response_list):
         """Process response array integrating tool calls with text"""
         html_parts = []
+        i = 0
         
-        for item in response_list:
+        while i < len(response_list):
+            item = response_list[i]
+            
             if 'value' in item:
                 # Regular text response
                 html_parts.append(self.escape_html(str(item['value'])))
+                i += 1
+            elif item.get('kind') == 'prepareToolInvocation':
+                # Find the corresponding toolInvocationSerialized
+                prepare_item = item
+                serialized_item = None
+                
+                # Look for the next toolInvocationSerialized with same toolName
+                tool_name = prepare_item.get('toolName')
+                j = i + 1
+                while j < len(response_list) and serialized_item is None:
+                    next_item = response_list[j]
+                    if (next_item.get('kind') == 'toolInvocationSerialized' and 
+                        next_item.get('toolId') == tool_name):
+                        serialized_item = next_item
+                        break
+                    j += 1
+                
+                # Format combined tool call
+                if serialized_item:
+                    tool_html = self.format_tool_call_combined(prepare_item, serialized_item)
+                    html_parts.append(tool_html)
+                    i = j + 1  # Skip both prepare and serialized items
+                else:
+                    # If no serialized found, just show prepare
+                    tool_html = self.format_tool_call(prepare_item)
+                    html_parts.append(tool_html)
+                    i += 1
+                    
             elif item.get('kind') == 'toolInvocationSerialized':
-                # Tool call
+                # Check if this wasn't already processed with a prepare item
+                # (this handles orphaned toolInvocationSerialized)
                 tool_html = self.format_tool_call(item)
                 html_parts.append(tool_html)
+                i += 1
+            else:
+                i += 1
         
         return ''.join(html_parts)
+    
+    def format_tool_call_combined(self, prepare_item, serialized_item):
+        """Format combined tool call from prepare and serialized items"""
+        tool_id = serialized_item.get('toolId', prepare_item.get('toolName', 'unknown'))
+        tool_call_id = serialized_item.get('toolCallId', 'unknown')
+        
+        # Get invocation message from serialized item
+        invocation_msg = ""
+        if 'invocationMessage' in serialized_item:
+            if isinstance(serialized_item['invocationMessage'], dict):
+                invocation_msg = serialized_item['invocationMessage'].get('value', '')
+            else:
+                invocation_msg = str(serialized_item['invocationMessage'])
+        
+        # Get command details for terminal tools
+        command_info = ""
+        if 'toolSpecificData' in serialized_item and serialized_item['toolSpecificData'].get('kind') == 'terminal':
+            command_data = serialized_item['toolSpecificData']
+            if 'commandLine' in command_data:
+                command = command_data['commandLine'].get('original', '')
+                command_info = f"<br><strong>Command:</strong> <code>{self.escape_html(command)}</code>"
+        
+        # Create combined JSON metadata as array (like in original)
+        combined_metadata = [prepare_item, serialized_item]
+        metadata_json = json.dumps(combined_metadata, indent=2)
+        metadata_json_html = self.escape_html(metadata_json).replace('\n', '<br>')
+        
+        # Create unique ID for this tool call
+        tool_html_id = f"tool_{tool_call_id.replace('-', '_')}"
+        
+        return f'''<div class="tool-call"><div class="tool-header" onclick="toggleAttachment('{tool_html_id}')"><span class="tool-icon">🔧</span><span class="tool-name">{self.escape_html(tool_id)}</span><span class="tool-status">{'✅' if serialized_item.get('isComplete') else '⏳'}</span></div><div class="attachment-details" id="{tool_html_id}"><strong>📋 Tool Invocation:</strong><pre>{self.escape_html(invocation_msg)}{command_info}</pre><strong>🔧 Raw Metadata:</strong><pre>{metadata_json_html}</pre></div></div>'''
     
     def format_tool_call(self, tool_item):
         """Format a tool call as expandable HTML block"""
