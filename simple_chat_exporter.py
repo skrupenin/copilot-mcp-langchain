@@ -180,9 +180,25 @@ class SimpleChatExporter:
         # Convert line breaks
         html = html.replace('\n', '<br>')
         
-        # Restore tool calls from placeholders
+        # Restore tool calls from placeholders and clean up spacing
         for placeholder, tool_html in tool_calls.items():
-            html = html.replace(placeholder, tool_html)
+            # When restoring tool calls, clean up any <br> tags right before them
+            # and add a single space for better visual separation
+            placeholder_with_br = '<br>' + placeholder
+            if placeholder_with_br in html:
+                html = html.replace(placeholder_with_br, ' ' + tool_html)
+            else:
+                html = html.replace(placeholder, ' ' + tool_html)
+        
+        # Clean up extra <br> tags before tool call indicators (emoji patterns) AFTER restoring tool calls
+        # Remove <br> before tool call emojis like 🔧[MCP] 
+        html = re.sub(r'<br>\s*🔧', '🔧', html)
+        # Remove <br> before other tool indicators like 📋
+        html = re.sub(r'<br>\s*📋', '📋', html)
+        
+        # Clean up extra <br> tags after tool-call blocks
+        # Remove <br> right after </div></div> (end of tool-call block)
+        html = re.sub(r'</div></div>\s*<br>', '</div></div>', html)
         
         return html
     
@@ -819,7 +835,7 @@ class SimpleChatExporter:
         }}
         
         .tool-call {{
-            margin: 8px 0;
+            margin: 12px 0 8px 0;
             border: 1px solid #404040;
             border-radius: 4px;
             background: #1e1e1e;
