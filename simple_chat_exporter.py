@@ -111,11 +111,14 @@ class SimpleChatExporter:
                         line_num = i + 1
                         line_content = lines[i].rstrip()
                         if i == start_line:
-                            # Highlight the selected part
-                            before = line_content[:start_col]
-                            selected = line_content[start_col:end_col]
-                            after = line_content[end_col:]
-                            line_content = f"{before}>>> {selected} <<<{after}"
+                            # Highlight the selected part with yellow background
+                            before = self.escape_html(line_content[:start_col])
+                            selected = self.escape_html(line_content[start_col:end_col])
+                            after = self.escape_html(line_content[end_col:])
+                            line_content = f"{before}<mark class='highlight'>{selected}</mark>{after}"
+                        else:
+                            # Escape HTML for context lines
+                            line_content = self.escape_html(line_content)
                         context_lines.append(f"{line_num:4d}: {line_content}")
                     
                     return "<br>".join(context_lines)
@@ -125,14 +128,14 @@ class SimpleChatExporter:
                     result = []
                     for i, line in enumerate(selected_lines):
                         line_num = start_line + i + 1
-                        result.append(f"{line_num:4d}: {line.rstrip()}")
+                        result.append(f"{line_num:4d}: {self.escape_html(line.rstrip())}")
                     return "<br>".join(result)
             else:
                 # Return first 20 lines for prompt files
                 preview_lines = lines[:20]
                 result = []
                 for i, line in enumerate(preview_lines):
-                    result.append(f"{i+1:4d}: {line.rstrip()}")
+                    result.append(f"{i+1:4d}: {self.escape_html(line.rstrip())}")
                 if len(lines) > 20:
                     result.append("... (truncated)")
                 return "<br>".join(result)
@@ -313,6 +316,13 @@ class SimpleChatExporter:
             box-sizing: border-box;
         }}
         
+        .highlight {{
+            background-color: #ffeb3b;
+            color: #000;
+            padding: 2px 4px;
+            border-radius: 2px;
+        }}
+        
         .attachment-icon {{
             width: 16px;
             height: 16px;
@@ -428,6 +438,8 @@ class SimpleChatExporter:
                             
                             # Create JSON metadata for display
                             metadata_json = json.dumps(var, indent=2)
+                            # Convert \n to <br> for proper HTML display
+                            metadata_json_html = self.escape_html(metadata_json).replace('\n', '<br>')
                             
                             html += f'''
                         <div class="attachment" onclick="toggleAttachment('{attachment_id}')">
@@ -442,7 +454,7 @@ class SimpleChatExporter:
                             <pre>{file_content}</pre>
                             
                             <strong>🔧 Raw Metadata:</strong>
-                            <pre>{self.escape_html(metadata_json)}</pre>
+                            <pre>{metadata_json_html}</pre>
                         </div>
 '''
                         html += '''
