@@ -204,6 +204,117 @@ class SimpleChatExporter:
                 return f"[MCP] {server_name}: lng_{tool_name}"
         return tool_id
     
+    def format_json_string_content(self, content):
+        """Format JSON string content with proper line breaks"""
+        if isinstance(content, str):
+            # Handle different types of JSON string encoding
+            
+            # Case 1: String that contains literal newlines and is wrapped in quotes
+            if content.startswith('"') and content.endswith('"'):
+                try:
+                    # Remove outer quotes first
+                    inner_content = content[1:-1]
+                    
+                    # Try to parse it directly as JSON (it might already be valid)
+                    try:
+                        inner_json = json.loads(inner_content)
+                        if isinstance(inner_json, (dict, list)):
+                            formatted_json = json.dumps(inner_json, indent=2)
+                            return self.escape_html(formatted_json).replace('\n', '<br>')
+                    except json.JSONDecodeError:
+                        # If direct parsing failed, try to fix literal newlines
+                        fixed_content = inner_content.replace('\n', '\\n').replace('\t', '\\t').replace('\r', '\\r')
+                        try:
+                            inner_json = json.loads(fixed_content)
+                            if isinstance(inner_json, (dict, list)):
+                                formatted_json = json.dumps(inner_json, indent=2)
+                                return self.escape_html(formatted_json).replace('\n', '<br>')
+                        except json.JSONDecodeError:
+                            pass
+                
+                except json.JSONDecodeError:
+                    pass
+                
+                # If we can't parse it as JSON, just format it nicely
+                inner_content = content[1:-1]
+                # Unescape common JSON escapes
+                inner_content = inner_content.replace('\\"', '"')
+                inner_content = inner_content.replace('\\\\', '\\')
+                inner_content = inner_content.replace('\\n', '\n')
+                inner_content = inner_content.replace('\\t', '\t')
+                return self.escape_html(inner_content).replace('\n', '<br>')
+            
+            # Case 2: Direct JSON string content (without outer quotes)
+            try:
+                inner_json = json.loads(content)
+                if isinstance(inner_json, (dict, list)):
+                    formatted_json = json.dumps(inner_json, indent=2)
+                    return self.escape_html(formatted_json).replace('\n', '<br>')
+            except json.JSONDecodeError:
+                pass
+            
+            # Case 3: Regular string with \n sequences - convert them to actual line breaks
+            if '\\n' in content:
+                formatted = content.replace('\\n', '<br>')
+                return self.escape_html(formatted)
+        
+        # For non-string content, format as JSON with proper indentation
+        if content is not None:
+            try:
+                json_str = json.dumps(content, indent=2)
+                return self.escape_html(json_str).replace('\n', '<br>')
+            except:
+                return self.escape_html(str(content))
+        
+        return "No data"
+    
+    def format_output_blocks(self, output_data):
+        """Format output data as multiple blocks"""
+        if not output_data:
+            return "No output data"
+        
+        if isinstance(output_data, list):
+            blocks = []
+            for i, item in enumerate(output_data):
+                if isinstance(item, dict):
+                    item_type = item.get('type', 'unknown')
+                    is_text = item.get('isText', False)
+                    has_error = item.get('error', False)
+                    value = item.get('value', '')
+                    
+                    # Format status icon
+                    status_icon = "❌" if has_error else "✅"
+                    
+                    # Format value content
+                    if is_text and isinstance(value, str):
+                        formatted_value = self.format_json_string_content(value)
+                    else:
+                        formatted_value = self.format_json_string_content(value)
+                    
+                    blocks.append(f'''<div style="margin: 8px 0; padding: 8px; background: #161b22; border: 1px solid #30363d; border-radius: 4px;">
+<strong>Block {i+1} ({item_type}) {status_icon}:</strong><br>
+{formatted_value}
+</div>''')
+            return ''.join(blocks)
+        else:
+            # Single output
+            return self.format_json_string_content(output_data)
+    
+    def get_tool_status_icon(self, tool_item):
+        """Get status icon for tool based on completion and errors"""
+        is_complete = tool_item.get('isComplete', False)
+        
+        # Check for errors in resultDetails output
+        if 'resultDetails' in tool_item and 'output' in tool_item['resultDetails']:
+            output_data = tool_item['resultDetails']['output']
+            if isinstance(output_data, list):
+                # Check if any output block has error
+                for item in output_data:
+                    if isinstance(item, dict) and item.get('error', False):
+                        return '❌'
+        
+        return '✅' if is_complete else '⏳'
+    
     def format_tool_call_combined(self, prepare_item, serialized_item):
         """Format combined tool call from prepare and serialized items"""
         tool_id = serialized_item.get('toolId', prepare_item.get('toolName', 'unknown'))
@@ -258,15 +369,22 @@ class SimpleChatExporter:
                 input_data = result_details.get('input', '')
                 output_data = result_details.get('output', '')
                 
-                input_json = json.dumps(input_data, indent=2) if input_data else "No input data"
-                output_json = json.dumps(output_data, indent=2) if output_data else "No output data"
+                # Format input
+                input_formatted = self.format_json_string_content(input_data) if input_data else "No input data"
+                
+                # Format output with multiple blocks support
+                output_formatted = self.format_output_blocks(output_data) if output_data else "No output data"
                 
                 input_output_html = f'''
 <strong>📥 Input:</strong>
-<pre>{self.escape_html(input_json).replace(chr(10), '<br>')}</pre>
+<div style="margin: 8px 0; padding: 8px; background: #161b22; border: 1px solid #30363d; border-radius: 4px;">
+{input_formatted}
+</div>
 
 <strong>📤 Output:</strong>
-<pre>{self.escape_html(output_json).replace(chr(10), '<br>')}</pre>
+<div style="margin: 8px 0;">
+{output_formatted}
+</div>
 '''
         
         # Create combined JSON metadata as array (like in original)
@@ -280,6 +398,9 @@ class SimpleChatExporter:
         # Create unique ID for this tool call
         tool_html_id = f"tool_{tool_call_id.replace('-', '_')}"
         
+        # Get status icon (with error checking)
+        status_icon = self.get_tool_status_icon(serialized_item)
+        
         # Build the details content based on tool type
         if input_output_html:
             # MCP tools with Input/Output
@@ -290,12 +411,12 @@ class SimpleChatExporter:
         
         # For terminal tools, show command preview outside the expandable block
         if is_terminal_tool and command_info:
-            return f'''<div class="tool-call"><div class="tool-header" onclick="toggleAttachment('{tool_html_id}')"><span class="tool-icon">🔧</span><span class="tool-name">{self.escape_html(display_tool_name)}</span><span class="tool-status">{'✅' if serialized_item.get('isComplete') else '⏳'}</span></div><div class="tool-preview"><code>{self.escape_html(command_data['commandLine'].get('original', ''))}</code></div><div class="attachment-details" id="{tool_html_id}">{details_content}</div></div>'''
+            return f'''<div class="tool-call"><div class="tool-header" onclick="toggleAttachment('{tool_html_id}')"><span class="tool-icon">🔧</span><span class="tool-name">{self.escape_html(display_tool_name)}</span><span class="tool-status">{status_icon}</span></div><div class="tool-preview"><code>{self.escape_html(command_data['commandLine'].get('original', ''))}</code></div><div class="attachment-details" id="{tool_html_id}">{details_content}</div></div>'''
         # For file operations, show preview as well  
         elif preview_html:
-            return f'''<div class="tool-call"><div class="tool-header" onclick="toggleAttachment('{tool_html_id}')"><span class="tool-icon">🔧</span><span class="tool-name">{self.escape_html(display_tool_name)}</span><span class="tool-status">{'✅' if serialized_item.get('isComplete') else '⏳'}</span></div>{preview_html}<div class="attachment-details" id="{tool_html_id}">{details_content}</div></div>'''
+            return f'''<div class="tool-call"><div class="tool-header" onclick="toggleAttachment('{tool_html_id}')"><span class="tool-icon">🔧</span><span class="tool-name">{self.escape_html(display_tool_name)}</span><span class="tool-status">{status_icon}</span></div>{preview_html}<div class="attachment-details" id="{tool_html_id}">{details_content}</div></div>'''
         else:
-            return f'''<div class="tool-call"><div class="tool-header" onclick="toggleAttachment('{tool_html_id}')"><span class="tool-icon">🔧</span><span class="tool-name">{self.escape_html(display_tool_name)}</span><span class="tool-status">{'✅' if serialized_item.get('isComplete') else '⏳'}</span></div><div class="attachment-details" id="{tool_html_id}">{details_content}</div></div>'''
+            return f'''<div class="tool-call"><div class="tool-header" onclick="toggleAttachment('{tool_html_id}')"><span class="tool-icon">🔧</span><span class="tool-name">{self.escape_html(display_tool_name)}</span><span class="tool-status">{status_icon}</span></div><div class="attachment-details" id="{tool_html_id}">{details_content}</div></div>'''
     
     def format_tool_call(self, tool_item):
         """Format a tool call as expandable HTML block"""
@@ -353,15 +474,22 @@ class SimpleChatExporter:
                 input_data = result_details.get('input', '')
                 output_data = result_details.get('output', '')
                 
-                input_json = json.dumps(input_data, indent=2) if input_data else "No input data"
-                output_json = json.dumps(output_data, indent=2) if output_data else "No output data"
+                # Format input
+                input_formatted = self.format_json_string_content(input_data) if input_data else "No input data"
+                
+                # Format output with multiple blocks support
+                output_formatted = self.format_output_blocks(output_data) if output_data else "No output data"
                 
                 input_output_html = f'''
 <strong>📥 Input:</strong>
-<pre>{self.escape_html(input_json).replace(chr(10), '<br>')}</pre>
+<div style="margin: 8px 0; padding: 8px; background: #161b22; border: 1px solid #30363d; border-radius: 4px;">
+{input_formatted}
+</div>
 
 <strong>📤 Output:</strong>
-<pre>{self.escape_html(output_json).replace(chr(10), '<br>')}</pre>
+<div style="margin: 8px 0;">
+{output_formatted}
+</div>
 '''
         
         # Create JSON metadata for display
@@ -375,6 +503,9 @@ class SimpleChatExporter:
         # Create unique ID for this tool call
         tool_html_id = f"tool_{tool_call_id.replace('-', '_')}"
         
+        # Get status icon (with error checking)
+        status_icon = self.get_tool_status_icon(tool_item)
+        
         # Build the details content based on tool type
         if input_output_html:
             # MCP tools with Input/Output
@@ -383,7 +514,7 @@ class SimpleChatExporter:
             # Regular tools
             details_content = f'''<strong>📋 Tool Invocation:</strong><pre>{tool_invocation_content}</pre><strong>🔧 Raw Metadata:</strong><pre>{metadata_json_html}</pre>'''
         
-        return f'''<div class="tool-call"><div class="tool-header" onclick="toggleAttachment('{tool_html_id}')"><span class="tool-icon">🔧</span><span class="tool-name">{self.escape_html(display_tool_name)}</span><span class="tool-status">{'✅' if tool_item.get('isComplete') else '⏳'}</span></div>{preview_html}<div class="attachment-details" id="{tool_html_id}">{details_content}</div></div>'''
+        return f'''<div class="tool-call"><div class="tool-header" onclick="toggleAttachment('{tool_html_id}')"><span class="tool-icon">🔧</span><span class="tool-name">{self.escape_html(display_tool_name)}</span><span class="tool-status">{status_icon}</span></div>{preview_html}<div class="attachment-details" id="{tool_html_id}">{details_content}</div></div>'''
     
     def create_html(self, session_data):
         session_id = session_data.get('_file', 'unknown').replace('.json', '')
