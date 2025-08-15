@@ -392,9 +392,9 @@ class SimpleChatExporter:
                         html += '''
                     <div class="attachments">
 '''
-                        for var in variables:
+                        for j, var in enumerate(variables):
                             attachment = self.format_attachment(var)
-                            attachment_id = f"attachment_{hash(str(var))}"
+                            attachment_id = f"attachment_{i}_{j}_{hash(str(var))}"
                             
                             # Get file content if available
                             file_content = ""
