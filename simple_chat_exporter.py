@@ -296,7 +296,7 @@ class SimpleChatExporter:
                     else:
                         formatted_value = self.format_json_string_content(value)
                     
-                    blocks.append(f'''<div style="margin: 4px 0; padding: 6px; background: #161b22; border: 1px solid #30363d; border-radius: 4px;">
+                    blocks.append(f'''<div style="margin: 4px 0; padding: 0 6px; background: #161b22; border: 1px solid #30363d; border-radius: 4px;">
 <div style="font-size: 11px; color: #7d8590; margin-bottom: 3px;"><strong>Block {i+1} ({item_type}) {status_icon}:</strong></div>
 <div style="font-family: 'Courier New', monospace; font-size: 11px; color: #e6edf3; line-height: 1.3;">{formatted_value}</div>
 </div>''')
@@ -381,15 +381,11 @@ class SimpleChatExporter:
                 output_formatted = self.format_output_blocks(output_data) if output_data else "No output data"
                 
                 input_output_html = f'''
-<div style="margin: 6px 0;">
+<div style="/*! margin: 6px 0; */">
 <strong style="font-size: 12px;">📥 Input:</strong>
 <div style="margin: 4px 0; padding: 6px; background: #161b22; border: 1px solid #30363d; border-radius: 4px; font-family: 'Courier New', monospace; font-size: 11px; color: #e6edf3; line-height: 1.3;">
 {input_formatted}
-</div>
-</div>
-
-<div style="margin: 6px 0;">
-<strong style="font-size: 12px;">📤 Output:</strong>
+</div></div><div style="margin: 6px 0;"><strong style="font-size: 12px;">📤 Output:</strong>
 <div style="margin: 4px 0;">
 {output_formatted}
 </div>
@@ -490,15 +486,11 @@ class SimpleChatExporter:
                 output_formatted = self.format_output_blocks(output_data) if output_data else "No output data"
                 
                 input_output_html = f'''
-<div style="margin: 6px 0;">
+<div style="/*! margin: 6px 0; */">
 <strong style="font-size: 12px;">📥 Input:</strong>
 <div style="margin: 4px 0; padding: 6px; background: #161b22; border: 1px solid #30363d; border-radius: 4px; font-family: 'Courier New', monospace; font-size: 11px; color: #e6edf3; line-height: 1.3;">
 {input_formatted}
-</div>
-</div>
-
-<div style="margin: 6px 0;">
-<strong style="font-size: 12px;">📤 Output:</strong>
+</div></div><div style="margin: 6px 0;"><strong style="font-size: 12px;">📤 Output:</strong>
 <div style="margin: 4px 0;">
 {output_formatted}
 </div>
