@@ -142,6 +142,58 @@ class SimpleChatExporter:
                 
         except Exception as e:
             return f"Error reading file: {e}"
+
+    def process_response_with_tools(self, response_list):
+        """Process response array integrating tool calls with text"""
+        html_parts = []
+        
+        for item in response_list:
+            if 'value' in item:
+                # Regular text response
+                html_parts.append(self.escape_html(str(item['value'])))
+            elif item.get('kind') == 'toolInvocationSerialized':
+                # Tool call
+                tool_html = self.format_tool_call(item)
+                html_parts.append(tool_html)
+        
+        return ''.join(html_parts)
+    
+    def format_tool_call(self, tool_item):
+        """Format a tool call as expandable HTML block"""
+        tool_id = tool_item.get('toolId', 'unknown')
+        tool_call_id = tool_item.get('toolCallId', 'unknown')
+        
+        # Get invocation message
+        invocation_msg = ""
+        if 'invocationMessage' in tool_item:
+            if isinstance(tool_item['invocationMessage'], dict):
+                invocation_msg = tool_item['invocationMessage'].get('value', '')
+            else:
+                invocation_msg = str(tool_item['invocationMessage'])
+        
+        # Get command details for terminal tools
+        command_info = ""
+        if 'toolSpecificData' in tool_item and tool_item['toolSpecificData'].get('kind') == 'terminal':
+            command_data = tool_item['toolSpecificData']
+            if 'commandLine' in command_data:
+                command = command_data['commandLine'].get('original', '')
+                command_info = f"<br><strong>Command:</strong> <code>{self.escape_html(command)}</code>"
+        
+        # Create unique ID for this tool call
+        tool_html_id = f"tool_{tool_call_id.replace('-', '_')}"
+        
+        return f'''
+<div class="tool-call">
+    <div class="tool-header" onclick="toggleAttachment('{tool_html_id}')">
+        <span class="tool-icon">🔧</span>
+        <span class="tool-name">{self.escape_html(tool_id)}</span>
+        <span class="tool-status">{'✅' if tool_item.get('isComplete') else '⏳'}</span>
+    </div>
+    <div class="attachment-details" id="{tool_html_id}">
+        <strong>📋 Tool Invocation:</strong>
+        <pre>{self.escape_html(invocation_msg)}{command_info}</pre>
+    </div>
+</div>'''
     
     def create_html(self, session_data):
         session_id = session_data.get('_file', 'unknown').replace('.json', '')
@@ -323,6 +375,40 @@ class SimpleChatExporter:
             border-radius: 2px;
         }}
         
+        .tool-call {{
+            margin: 8px 0;
+            border: 1px solid #404040;
+            border-radius: 4px;
+            background: #1e1e1e;
+        }}
+        
+        .tool-header {{
+            padding: 8px 12px;
+            background: #252526;
+            border-radius: 4px 4px 0 0;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }}
+        
+        .tool-header:hover {{
+            background: #2d2d30;
+        }}
+        
+        .tool-icon {{
+            font-size: 14px;
+        }}
+        
+        .tool-name {{
+            flex: 1;
+            font-weight: 500;
+        }}
+        
+        .tool-status {{
+            font-size: 12px;
+        }}
+        
         .attachment-icon {{
             width: 16px;
             height: 16px;
@@ -466,16 +552,14 @@ class SimpleChatExporter:
             </div>
 '''
                 
-                # Assistant response
-                assistant_text = ""
+                # Assistant response with tool calls integration
+                assistant_html = ""
                 if 'response' in request:
                     response = request['response']
                     if isinstance(response, list):
-                        for resp_part in response:
-                            if 'value' in resp_part:
-                                assistant_text += str(resp_part['value'])
+                        assistant_html = self.process_response_with_tools(response)
                     elif isinstance(response, dict) and 'value' in response:
-                        assistant_text = str(response['value'])
+                        assistant_html = self.escape_html(str(response['value']))
                 
                 html += f'''
             <div class="message assistant">
@@ -484,7 +568,7 @@ class SimpleChatExporter:
                     <div class="message-header">
                         <span class="author">GitHub Copilot</span>
                     </div>
-                    <div class="message-body">{self.escape_html(assistant_text)}</div>
+                    <div class="message-body">{assistant_html}</div>
                 </div>
             </div>
 '''
