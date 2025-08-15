@@ -118,7 +118,7 @@ class SimpleChatExporter:
                             line_content = f"{before}>>> {selected} <<<{after}"
                         context_lines.append(f"{line_num:4d}: {line_content}")
                     
-                    return "\\n".join(context_lines)
+                    return "<br>".join(context_lines)
                 else:
                     # Multi-line selection
                     selected_lines = lines[start_line:end_line + 1]
@@ -126,7 +126,7 @@ class SimpleChatExporter:
                     for i, line in enumerate(selected_lines):
                         line_num = start_line + i + 1
                         result.append(f"{line_num:4d}: {line.rstrip()}")
-                    return "\\n".join(result)
+                    return "<br>".join(result)
             else:
                 # Return first 20 lines for prompt files
                 preview_lines = lines[:20]
@@ -135,7 +135,7 @@ class SimpleChatExporter:
                     result.append(f"{i+1:4d}: {line.rstrip()}")
                 if len(lines) > 20:
                     result.append("... (truncated)")
-                return "\\n".join(result)
+                return "<br>".join(result)
                 
         except Exception as e:
             return f"Error reading file: {e}"
@@ -424,7 +424,7 @@ class SimpleChatExporter:
                         </div>
                         <div class="attachment-details" id="{attachment_id}">
                             <strong>📄 File Content:</strong>
-                            <pre>{self.escape_html(file_content)}</pre>
+                            <pre>{file_content}</pre>
                             
                             <strong>🔧 Raw Metadata:</strong>
                             <pre>{self.escape_html(metadata_json)}</pre>
