@@ -4,6 +4,8 @@ import logging
 import os
 import asyncio
 import uuid
+import sys
+import warnings
 from datetime import datetime
 from typing import Dict, List, Optional, Any
 from pathlib import Path
@@ -18,8 +20,45 @@ from mcp_server.llm import llm
 from importlib import import_module
 from mcp_server.pipeline.expressions import evaluate_expression
 from mcp_server.file_state_manager import prompts_manager
+from mcp_server.logging_config import setup_logging
 
-logger = logging.getLogger('mcp_server.tools.lng_multi_agent_manager')
+# Setup unified logging to mcp_server.log for all multi-agent output
+logger = setup_logging("mcp_server", logging.DEBUG)
+
+# Suppress specific LangChain warnings to prevent stderr pollution
+warnings.filterwarnings("ignore", category=DeprecationWarning, module="langchain.*")
+warnings.filterwarnings("ignore", message=".*migration guide.*")
+warnings.filterwarnings("ignore", message=".*LangChainDeprecationWarning.*")
+
+# Redirect warnings to our logger instead of stderr
+class LoggerWriter:
+    """Custom writer to redirect stderr to our logger"""
+    def __init__(self, logger, level):
+        self.logger = logger
+        self.level = level
+        self.buffer = ""
+    
+    def write(self, message):
+        if message and message.strip():
+            self.buffer += message
+            if message.endswith('\n'):
+                self.logger.log(self.level, f"[STDERR] {self.buffer.strip()}")
+                self.buffer = ""
+    
+    def flush(self):
+        if self.buffer:
+            self.logger.log(self.level, f"[STDERR] {self.buffer.strip()}")
+            self.buffer = ""
+
+# Redirect stderr to our unified logger
+original_stderr = sys.stderr
+sys.stderr = LoggerWriter(logger, logging.WARNING)
+
+# Redirect warnings to logger
+def warning_handler(message, category, filename, lineno, file=None, line=None):
+    logger.warning(f"[LANGCHAIN_WARNING] {category.__name__}: {message} (in {filename}:{lineno})")
+
+warnings.showwarning = warning_handler
 
 class AgentCallbackHandler(BaseCallbackHandler):
     """Callback handler to log agent's intermediate thoughts and reasoning"""
@@ -100,19 +139,69 @@ class ConversationLogger:
         """Log agent response"""
         self.logger.info(f"AGENT: {response}")
     
-    def log_tool_usage(self, tool_name: str, parameters: dict, result: str):
-        """Log tool usage"""
-        self.logger.info(f"TOOL_USED: {tool_name}")
-        self.logger.info(f"TOOL_PARAMS: {json.dumps(parameters, ensure_ascii=False, indent=2)}")
+    def log_tool_usage(self, tool_name: str, parameters: dict, result: str, log_params: bool = None):
+        """Log tool usage - automatically determine if should log params based on result content"""
+        # Auto-detect if this is the first call (with "Executing...") or second call (with actual result)
+        is_start = result == "Executing..."
+        
+        # Log parameters only at start, not on result logging
+        if log_params is None:
+            should_log_params = is_start
+        else:
+            should_log_params = log_params
+            
+        if should_log_params:
+            self.logger.info(f"TOOL_PARAMS: {json.dumps(parameters, ensure_ascii=False, indent=2)}")
         self.logger.info(f"TOOL_RESULT: {result[:500]}{'...' if len(result) > 500 else ''}")
+    
+    def log_session_start(self, session_id: str, question: str):
+        """Log session start with unique ID"""
+        self.logger.info(f"=== SESSION_START {session_id} ===")
+        self.logger.info(f"USER: {question}")
+        
+        # Get current line number by counting lines in log file
+        try:
+            with open(self.log_file, 'r', encoding='utf-8') as f:
+                lines = f.readlines()
+                start_line = len(lines) - 1  # Line number where session started (0-indexed)
+                
+                # Also log to main mcp_server.log with file reference
+                logger.info(f"🚀 SESSION_START [{self.agent_name}] {session_id} - Details: {self.log_file}:{start_line + 1}")
+                
+                return start_line
+        except:
+            return 0
+    
+    def log_session_end(self, session_id: str, summary: str):
+        """Log session end with unique ID"""
+        self.logger.info(f"AGENT_SUMMARY: {summary}")
+        self.logger.info(f"=== SESSION_END {session_id} ===")
+        
+        # Get current line number by counting lines in log file
+        try:
+            with open(self.log_file, 'r', encoding='utf-8') as f:
+                lines = f.readlines()
+                end_line = len(lines) - 1  # Line number where session ended (0-indexed)
+                
+                # Find the start line for this session by searching backwards
+                start_line = 0
+                for i in range(len(lines) - 1, -1, -1):
+                    if f"SESSION_START {session_id}" in lines[i]:
+                        start_line = i
+                        break
+                
+                # Also log to main mcp_server.log with file reference and line range
+                logger.info(f"🏁 SESSION_END [{self.agent_name}] {session_id} - Full dialog: {self.log_file}:{start_line + 1}-{end_line + 1}")
+                
+                return end_line
+        except:
+            return 0
     
     def log_error(self, error_msg: str):
         """Log error"""
         self.logger.error(f"ERROR: {error_msg}")
     
-    def log_session_end(self):
-        """Log session end"""
-        self.logger.info(f"=== Ended conversation with agent {self.agent_name} ===")
+
 
 class DirectToolWrapper(BaseTool):
     """LangChain tool that directly calls MCP tool functions"""
@@ -135,7 +224,7 @@ class DirectToolWrapper(BaseTool):
     def _run(self, **kwargs) -> str:
         """Synchronous tool execution"""
         try:
-            # Log tool usage
+            # Log tool usage - log parameters only at start
             if self.conversation_logger:
                 self.conversation_logger.log_tool_usage(self.name, kwargs, "Executing...")
             
@@ -208,7 +297,7 @@ class DirectToolWrapper(BaseTool):
             
             # Add helpful hint about getting tool information
             if "parameter" in str(e).lower() or "argument" in str(e).lower() or "missing" in str(e).lower():
-                error_msg += f"\n\n💡 **Hint**: Use `lng_get_tools_info(tools=\"{self.name}\")` to see required parameters and usage examples."
+                error_msg += f"\n\nHint: Use `lng_get_tools_info(tools=\"{self.name}\")` to see required parameters and usage examples."
             
             if self.conversation_logger:
                 self.conversation_logger.log_error(error_msg)
@@ -217,7 +306,7 @@ class DirectToolWrapper(BaseTool):
     async def _arun(self, **kwargs) -> str:
         """Asynchronous tool execution"""
         try:
-            # Log tool usage
+            # Log tool usage - log parameters only at start
             if self.conversation_logger:
                 self.conversation_logger.log_tool_usage(self.name, kwargs, "Executing...")
             
@@ -261,7 +350,7 @@ class DirectToolWrapper(BaseTool):
             
             # Add helpful hint about getting tool information
             if "parameter" in str(e).lower() or "argument" in str(e).lower() or "missing" in str(e).lower():
-                error_msg += f"\n\n💡 **Hint**: Use `lng_get_tools_info(tools=\"{self.name}\")` to see required parameters and usage examples."
+                error_msg += f"\n\nHint: Use `lng_get_tools_info(tools=\"{self.name}\")` to see required parameters and usage examples."
             
             if self.conversation_logger:
                 self.conversation_logger.log_error(error_msg)
@@ -280,6 +369,7 @@ class SubAgentConfig:
     max_execution_time: int
     created_at: datetime
     last_active: datetime
+    config_path: str
     
     def to_dict(self):
         return {
@@ -291,12 +381,12 @@ class SubAgentConfig:
             "system_prompt_template": self.system_prompt_template,
             "max_iterations": self.max_iterations,
             "max_execution_time": self.max_execution_time,
-            "created_at": self.created_at.isoformat(),
-            "last_active": self.last_active.isoformat()
+            "created_at": self.created_at.isoformat()
+            # last_active исключено - оно хранится только в памяти
         }
     
     @classmethod
-    def from_dict(cls, data):
+    def from_dict(cls, data, config_path: str = ""):
         return cls(
             agent_id=data["agent_id"],
             name=data["name"],
@@ -307,7 +397,9 @@ class SubAgentConfig:
             max_iterations=data.get("max_iterations", 20),
             max_execution_time=data.get("max_execution_time", 120),
             created_at=datetime.fromisoformat(data["created_at"]),
-            last_active=datetime.fromisoformat(data["last_active"])
+            # last_active берем из файла, если есть, иначе используем created_at
+            last_active=datetime.fromisoformat(data.get("last_active", data["created_at"])),
+            config_path=config_path
         )
 
 class SubAgentMemory:
@@ -316,10 +408,13 @@ class SubAgentMemory:
         self.agent_id = agent_id
         self.llm = llm()
         # Use simpler window memory to avoid deprecation warnings
-        self.memory = ConversationBufferWindowMemory(
-            k=10,  # Keep last 10 interactions
-            return_messages=True
-        )
+        with warnings.catch_warnings():
+            warnings.simplefilter("ignore", DeprecationWarning)
+            warnings.filterwarnings("ignore", message=".*migration guide.*")
+            self.memory = ConversationBufferWindowMemory(
+                k=10,  # Keep last 10 interactions
+                return_messages=True
+            )
         
     def add_interaction(self, question: str, answer: str):
         """Add a question-answer pair to memory"""
@@ -365,8 +460,8 @@ class SubAgent:
         # Create callback handler for detailed logging
         self.callback_handler = AgentCallbackHandler(self.conversation_logger)
         
-        # Create LLM instance with callback
-        self.llm = llm(callbacks=[self.callback_handler], verbose=True)
+        # Create LLM instance WITHOUT callbacks to avoid verbose output
+        self.llm = llm(verbose=False)
         
         # Initialize tools directly
         self._initialize_tools()
@@ -427,37 +522,79 @@ class SubAgent:
             logger.error(f"Agent {self.config.agent_id}: Error importing tool_registry: {e}")
     
     def _initialize_agent(self):
-        """Initialize LangChain agent"""
+        """Initialize LangChain agent with more aggressive limits"""
         try:
             if self.tools:
-                self.agent = initialize_agent(
-                    tools=self.tools,
+                # Use AgentExecutor directly for better control
+                from langchain.agents import AgentExecutor
+                from langchain.agents.structured_chat.base import StructuredChatAgent
+                
+                # Create agent with strict prompt - NO VERBOSE
+                agent = StructuredChatAgent.from_llm_and_tools(
                     llm=self.llm,
-                    agent=AgentType.STRUCTURED_CHAT_ZERO_SHOT_REACT_DESCRIPTION,
-                    verbose=True,
-                    memory=self.memory.memory,
-                    callbacks=[self.callback_handler],
-                    max_iterations=self.config.max_iterations,
-                    max_execution_time=self.config.max_execution_time
+                    tools=self.tools,
+                    verbose=False,  # ОТКЛЮЧАЕМ verbose вывод
+                    handle_parsing_errors=True
                 )
-                logger.info(f"Agent {self.config.agent_id}: Initialized with {len(self.tools)} tools, max_iterations={self.config.max_iterations}, max_execution_time={self.config.max_execution_time}")
+                
+                # Create executor without callbacks to prevent MCP pollution
+                self.agent = AgentExecutor(
+                    agent=agent,
+                    tools=self.tools,
+                    memory=self.memory.memory,
+                    # callbacks=[self.callback_handler],  # УБИРАЕМ callbacks
+                    max_iterations=self.config.max_iterations,
+                    max_execution_time=self.config.max_execution_time,
+                    handle_parsing_errors=True,
+                    early_stopping_method="force",  # Force stop if needed
+                    return_intermediate_steps=False,  # Don't return extra info
+                    trim_intermediate_steps=0,  # Don't keep intermediate steps
+                    verbose=False  # ОТКЛЮЧАЕМ verbose вывод полностью
+                )
+                logger.info(f"Agent {self.config.agent_id}: Initialized AgentExecutor with strict limits: max_iterations={self.config.max_iterations}, max_execution_time={self.config.max_execution_time}")
             else:
                 logger.warning(f"Agent {self.config.agent_id}: No tools available")
                 self.agent = None
         except Exception as e:
             logger.error(f"Agent {self.config.agent_id}: Error initializing agent: {e}")
+            logger.exception("Full error details:")
             self.agent = None
 
-    async def process_query(self, question: str) -> str:
-        """Process a query and return a summary response"""
+    def _create_analysis_block(self, session_id: str, start_line: int, end_line: int, status: str, **extra_fields) -> dict:
+        """Create standardized analysis block with consistent structure"""
+        analysis = {
+            "session_id": session_id,
+            "log_file": str(self.conversation_logger.log_file),
+            "log_start_line": start_line - 1,  # Adjust to point to conversation start
+            "log_end_line": end_line + 1,      # Adjust to point to session end
+            "status": status,
+            "agent_id": self.config.agent_id,
+            "agent_name": self.config.name,
+            "config_path": self.config.config_path
+        }
+        
+        # Add any extra fields
+        analysis.update(extra_fields)
+        return analysis
+
+    async def process_query(self, question: str) -> dict:
+        """Process a query and return a structured response with session tracking"""
+        # Generate unique session ID
+        session_id = str(uuid.uuid4())
+        
         try:
-            # Log user question
-            self.conversation_logger.log_user_question(question)
+            # Log session start and get line number
+            start_line = self.conversation_logger.log_session_start(session_id, question)
             
             if not self.agent:
                 error_msg = f"Agent {self.config.name} failed to initialize properly."
                 self.conversation_logger.log_error(error_msg)
-                return error_msg
+                end_line = self.conversation_logger.log_session_end(session_id, error_msg)
+                
+                return {
+                    "response": error_msg,
+                    "analysis": self._create_analysis_block(session_id, start_line, end_line, "error")
+                }
             
             # Load system prompt template from file
             base_prompt_template = prompts_manager.get(self.config.system_prompt_template, extension=".prompt")
@@ -489,36 +626,30 @@ Use lng_get_tools_info for help with tools when needed."""
                 system_context = evaluate_expression(base_prompt_template, template_context)
             except Exception as e:
                 logger.warning(f"Template evaluation failed, using fallback: {e}")
-                # Fallback to simple string formatting
+                # Fallback to simple, direct prompt to reduce iterations
                 all_tools_fallback = ['lng_get_tools_info'] + self.config.available_tools
-                system_context = f"""You are a specialized agent responsible for module: {self.config.module_path}
+                system_context = f"""Answer questions about module: {self.config.module_path}
 
-Your role is to:
-1. Analyze and understand code in your assigned module
-2. Answer questions about the module's functionality, structure, and implementation  
-3. Provide clear, concise summaries of your findings
-4. Use available tools to read and analyze files when needed
+Description: {self.config.description}
+Tools: {', '.join(all_tools_fallback)}
 
-Module Description: {self.config.description}
-
-Available Tools: {', '.join(all_tools_fallback)}
-
-⚠️ **Need help with tools?** Use `lng_get_tools_info` with specific tool names:
-- Example: `lng_get_tools_info(tools="lng_file_list,lng_file_read")`
-- This will show you parameter requirements and usage examples
-
-Important: Always provide a clear summary of your analysis. Focus on answering the specific question asked."""
+IMPORTANT: Keep responses short and direct. Use tools only when necessary."""
             
             # Combine system context with the question
             full_input = f"{system_context}\n\nQuestion: {question}"
             
-            # Process with agent - add timeout wrapper
+            # Process with agent - add aggressive timeout wrapper
+            execution_start = datetime.now()
             try:
+                # Reduce timeout buffer to make it more aggressive
+                timeout_seconds = self.config.max_execution_time
+                logger.info(f"Agent {self.config.agent_id}: Starting execution with {timeout_seconds}s timeout")
+                
                 if hasattr(self.agent, 'ainvoke'):
                     # Use async version with timeout
                     result = await asyncio.wait_for(
                         self.agent.ainvoke({"input": full_input}), 
-                        timeout=self.config.max_execution_time + 5  # Add 5 seconds buffer
+                        timeout=timeout_seconds
                     )
                 else:
                     # Fallback to sync version with timeout
@@ -527,34 +658,75 @@ Important: Always provide a clear summary of your analysis. Focus on answering t
                             None, 
                             lambda: self.agent.invoke({"input": full_input})
                         ), 
-                        timeout=self.config.max_execution_time + 5
+                        timeout=timeout_seconds
                     )
-            except asyncio.TimeoutError:
-                # Handle timeout separately from other limits
-                timeout_msg = f"❌ TIMEOUT ERROR: Agent execution exceeded {self.config.max_execution_time + 5} seconds.\n\n"
-                timeout_msg += f"📝 Current limits: {self.config.max_iterations} iterations, {self.config.max_execution_time} seconds\n"
-                timeout_msg += f"💡 To increase limits, update the agent config file with higher max_execution_time value."
                 
-                logger.warning(f"Agent {self.config.agent_id}: Execution timeout after {self.config.max_execution_time + 5} seconds")
+                execution_time = (datetime.now() - execution_start).total_seconds()
+                logger.info(f"Agent {self.config.agent_id}: Execution completed in {execution_time:.2f}s")
+                
+            except asyncio.TimeoutError:
+                execution_time = (datetime.now() - execution_start).total_seconds()
+                # Handle timeout with detailed info
+                timeout_msg = f"TIMEOUT: Agent execution exceeded {self.config.max_execution_time}s (actual: {execution_time:.2f}s)"
+                
+                logger.warning(f"Agent {self.config.agent_id}: {timeout_msg}")
                 self.conversation_logger.log_error(timeout_msg)
-                return timeout_msg
+                end_line = self.conversation_logger.log_session_end(session_id, timeout_msg)
+                
+                return {
+                    "response": "Agent stopped due to time limit.",
+                    "analysis": self._create_analysis_block(
+                        session_id, start_line, end_line, "timeout",
+                        max_execution_time=self.config.max_execution_time,
+                        actual_execution_time=execution_time,
+                        max_iterations=self.config.max_iterations,
+                        error="Time limit exceeded"
+                    )
+                }
             
             # Extract the response
             response = result.get("output", "No response generated")
+            logger.debug(f"Agent {self.config.agent_id}: Extracted response from result")
+            
+            # Check if agent stopped due to iteration limit (LangChain doesn't throw exception for this)
+            if "stopped due to iteration limit" in response.lower() or "iteration limit" in response.lower():
+                limit_msg = f"EXECUTION LIMIT REACHED: Agent exceeded {self.config.max_iterations} iterations limit."
+                
+                logger.warning(f"Agent {self.config.agent_id}: Iteration limit reached")
+                # Don't log error here to avoid duplication - limit_msg will be logged in session_end
+                end_line = self.conversation_logger.log_session_end(session_id, limit_msg)
+                
+                return {
+                    "response": limit_msg,
+                    "analysis": self._create_analysis_block(
+                        session_id, start_line, end_line, "limit_exceeded",
+                        max_execution_time=self.config.max_execution_time,
+                        max_iterations=self.config.max_iterations,
+                        error="Iteration limit exceeded"
+                    )
+                }
             
             # Create summary (this is already a summary since we ask agent to summarize)
             summary = self._create_summary(question, response)
+            logger.debug(f"Agent {self.config.agent_id}: Created summary")
             
-            # Log agent response
-            self.conversation_logger.log_agent_response(summary)
+            # Log session end and get line number
+            end_line = self.conversation_logger.log_session_end(session_id, summary)
+            logger.debug(f"Agent {self.config.agent_id}: Logged session end at line {end_line}")
             
             # Store in memory
             self.memory.add_interaction(question, summary)
+            logger.debug(f"Agent {self.config.agent_id}: Stored interaction in memory")
             
             # Update last active time
             self.config.last_active = datetime.now()
+            logger.debug(f"Agent {self.config.agent_id}: Updated last active time")
             
-            return summary
+            logger.debug(f"Agent {self.config.agent_id}: About to return result")
+            return {
+                "response": summary,
+                "analysis": self._create_analysis_block(session_id, start_line, end_line, "success")
+            }
             
         except Exception as e:
             # Check if it's a limit-related error
@@ -564,19 +736,44 @@ Important: Always provide a clear summary of your analysis. Focus on answering t
             ])
             
             if is_limit_error:
-                limit_msg = f"❌ EXECUTION LIMIT REACHED: Agent exceeded configured limits.\n\n"
-                limit_msg += f"📝 Current limits: {self.config.max_iterations} iterations, {self.config.max_execution_time} seconds\n"
-                limit_msg += f"💡 To increase limits, update the agent config file with higher max_iterations or max_execution_time values."
+                limit_msg = f"EXECUTION LIMIT REACHED: Agent exceeded configured limits.\n\n"
+                limit_msg += f"Current limits: {self.config.max_iterations} iterations, {self.config.max_execution_time} seconds\n"
+                limit_msg += f"To increase limits, update the agent config file with higher max_iterations or max_execution_time values."
                 
                 logger.warning(f"Agent {self.config.agent_id}: Execution limit reached - {str(e)}")
-                self.conversation_logger.log_error(limit_msg)
-                return limit_msg
+                # Don't log error here to avoid duplication - limit_msg will be logged in session_end
+                end_line = self.conversation_logger.log_session_end(session_id, limit_msg)
+                
+                return {
+                    "response": limit_msg,
+                    "analysis": self._create_analysis_block(
+                        session_id, start_line, end_line, "limit_exceeded",
+                        max_execution_time=self.config.max_execution_time,
+                        max_iterations=self.config.max_iterations,
+                        error=str(e)
+                    )
+                }
             else:
                 # Handle other errors
                 error_msg = f"Error processing query: {str(e)}"
-                logger.error(f"Agent {self.config.agent_id}: {error_msg}")
+                
+                # Check for specific parsing errors and add helpful information
+                if "output parsing error" in str(e).lower() or "could not parse llm output" in str(e).lower():
+                    error_msg += "\n\nPARSING ERROR: The AI agent had trouble formatting its response. This is usually resolved automatically with handle_parsing_errors=True."
+                    logger.warning(f"Agent {self.config.agent_id}: Output parsing error detected - {str(e)[:200]}...")
+                else:
+                    logger.error(f"Agent {self.config.agent_id}: {error_msg}")
+                    
                 self.conversation_logger.log_error(error_msg)
-                return error_msg
+                end_line = self.conversation_logger.log_session_end(session_id, error_msg)
+                
+                return {
+                    "response": error_msg,
+                    "analysis": self._create_analysis_block(
+                        session_id, start_line, end_line, "error",
+                        error=str(e)
+                    )
+                }
     
     def _create_summary(self, question: str, response: str) -> str:
         """Create a summary of the interaction"""
@@ -586,21 +783,31 @@ Important: Always provide a clear summary of your analysis. Focus on answering t
     
     def get_status(self) -> dict:
         """Get agent status"""
-        return {
-            "agent_id": self.config.agent_id,
-            "name": self.config.name,
-            "module_path": self.config.module_path,
-            "available_tools": self.config.available_tools,
-            "memory_summary": self.memory.get_memory_summary(),
-            "last_active": self.config.last_active.isoformat(),
-            "tools_count": len(self.tools)
-        }
+        # Start with all config fields
+        status = {}
+        
+        # Add all fields from config
+        for field_name in dir(self.config):
+            if not field_name.startswith('_'):  # Skip private fields
+                field_value = getattr(self.config, field_name)
+                # Convert datetime to string
+                if hasattr(field_value, 'isoformat'):
+                    status[field_name] = field_value.isoformat()
+                # Skip methods/functions
+                elif not callable(field_value):
+                    status[field_name] = field_value
+        
+        # Add additional computed fields
+        status["memory_summary"] = self.memory.get_memory_summary()
+        status["tools_count"] = len(self.tools)
+        
+        return status
     
     def __del__(self):
         """Destructor to log session end when agent is destroyed"""
         try:
             if hasattr(self, 'conversation_logger'):
-                self.conversation_logger.log_session_end()
+                self.conversation_logger.log_session_end("destructor", "Agent destroyed")
         except Exception:
             # Ignore errors in destructor
             pass
@@ -633,7 +840,7 @@ class MultiAgentManager:
                 with open(json_file, 'r', encoding='utf-8') as f:
                     agent_data = json.load(f)
                 
-                config = SubAgentConfig.from_dict(agent_data)
+                config = SubAgentConfig.from_dict(agent_data, str(json_file))
                 agent = SubAgent(config)
                 self.agents[config.agent_id] = agent
                 logger.info(f"Loaded agent {config.name} from {json_file.name}")
@@ -643,23 +850,46 @@ class MultiAgentManager:
         
         logger.info(f"Loaded {len(self.agents)} sub-agents total")
     
+    def _create_manager_analysis_block(self, agent_id: str, status: str, **extra_fields) -> dict:
+        """Create standardized analysis block for manager-level operations"""
+        analysis = {
+            "status": status,
+            "agent_id": agent_id,
+        }
+        
+        # Add agent info if available
+        if agent_id in self.agents:
+            analysis["agent_name"] = self.agents[agent_id].config.name
+            analysis["config_path"] = self.agents[agent_id].config.config_path
+        else:
+            analysis["agent_name"] = "Unknown"
+            analysis["config_path"] = ""
+        
+        # Add any extra fields
+        analysis.update(extra_fields)
+        return analysis
+
     def _save_agent_config(self, config: SubAgentConfig):
-        """Save individual agent configuration to file"""
+        """Save individual agent configuration to file (synchronous version)"""
         try:
+            logger.debug(f"Saving config for agent {config.name}")
             # Ensure directory exists
             self.config_dir.mkdir(parents=True, exist_ok=True)
+            logger.debug(f"Config directory ensured: {self.config_dir}")
             
             filename = self._name_to_filename(config.name)
             file_path = self.config_dir / filename
+            logger.debug(f"Config file path: {file_path}")
             
             with open(file_path, 'w', encoding='utf-8') as f:
                 json.dump(config.to_dict(), f, indent=2, ensure_ascii=False)
+            logger.debug(f"Config written to file for agent {config.name}")
                 
             logger.info(f"Saved agent {config.name} to {filename}")
                 
         except Exception as e:
             logger.error(f"Error saving agent config for {config.name}: {e}")
-    
+
     def _remove_agent_config(self, config: SubAgentConfig):
         """Remove individual agent configuration file"""
         try:
@@ -677,6 +907,10 @@ class MultiAgentManager:
         """Create a new sub-agent"""
         agent_id = str(uuid.uuid4())
         
+        # Generate config file path
+        filename = self._name_to_filename(name)
+        config_path = str(self.config_dir / filename)
+        
         config = SubAgentConfig(
             agent_id=agent_id,
             name=name,
@@ -687,7 +921,8 @@ class MultiAgentManager:
             max_iterations=max_iterations,
             max_execution_time=max_execution_time,
             created_at=datetime.now(),
-            last_active=datetime.now()
+            last_active=datetime.now(),
+            config_path=config_path
         )
         
         agent = SubAgent(config)
@@ -706,7 +941,7 @@ class MultiAgentManager:
             agent_name = agent.config.name
             
             # Log session end before removing agent
-            agent.conversation_logger.log_session_end()
+            agent.conversation_logger.log_session_end("remove_agent", f"Agent {agent_name} removed from manager")
             
             # Remove config file
             self._remove_agent_config(agent.config)
@@ -718,18 +953,40 @@ class MultiAgentManager:
             return True
         return False
     
-    async def query_agent(self, agent_id: str, question: str) -> str:
+    async def query_agent(self, agent_id: str, question: str) -> dict:
         """Send a query to a specific sub-agent"""
+        logger.debug(f"MultiAgentManager.query_agent: Starting query for agent {agent_id}")
+        
         if agent_id not in self.agents:
-            return f"Agent with ID {agent_id} not found"
-        
-        result = await self.agents[agent_id].process_query(question)
-        
-        # Update last active time and save config
-        self.agents[agent_id].config.last_active = datetime.now()
-        self._save_agent_config(self.agents[agent_id].config)
-        
-        return result
+            logger.debug(f"MultiAgentManager.query_agent: Agent {agent_id} not found")
+            return {
+                "response": f"Agent with ID {agent_id} not found",
+                "analysis": self._create_manager_analysis_block(agent_id, "error", error="Agent not found")
+            }
+
+        try:
+            logger.debug(f"MultiAgentManager.query_agent: About to call process_query for agent {agent_id}")
+            result = await self.agents[agent_id].process_query(question)
+            logger.debug(f"MultiAgentManager.query_agent: process_query completed, result type: {type(result)}")
+            logger.debug(f"MultiAgentManager.query_agent: result keys: {list(result.keys()) if isinstance(result, dict) else 'not dict'}")
+            
+            # Update last active time in memory only (no file save)
+            logger.debug(f"MultiAgentManager.query_agent: Updating last_active time in memory")
+            self.agents[agent_id].config.last_active = datetime.now()
+            logger.debug(f"MultiAgentManager.query_agent: last_active updated in memory only")
+            
+            logger.debug(f"MultiAgentManager.query_agent: About to return result")
+            return result
+            
+        except Exception as e:
+            logger.error(f"Multi-agent manager: query_agent error: {e}")
+            return {
+                "response": f"QUERY ERROR: {str(e)}",
+                "analysis": self._create_manager_analysis_block(
+                    agent_id, "error",
+                    error=str(e)
+                )
+            }
     
     def list_agents(self) -> List[dict]:
         """List all sub-agents"""
@@ -740,17 +997,28 @@ class MultiAgentManager:
                 result.append(status)
             except Exception as e:
                 logger.error(f"Error getting status for agent {agent.config.agent_id}: {e}")
-                # Add minimal info if status fails
-                result.append({
-                    "agent_id": agent.config.agent_id,
-                    "name": agent.config.name,
-                    "module_path": agent.config.module_path,
-                    "available_tools": agent.config.available_tools,
-                    "memory_summary": "Error getting memory summary",
-                    "last_active": agent.config.last_active.isoformat(),
-                    "tools_count": len(agent.tools),
-                    "error": str(e)
-                })
+                # Add all config fields even if status fails
+                fallback_status = {"error": str(e)}
+                
+                # Add all fields from config
+                for field_name in dir(agent.config):
+                    if not field_name.startswith('_'):  # Skip private fields
+                        try:
+                            field_value = getattr(agent.config, field_name)
+                            # Convert datetime to string
+                            if hasattr(field_value, 'isoformat'):
+                                fallback_status[field_name] = field_value.isoformat()
+                            # Skip methods/functions
+                            elif not callable(field_value):
+                                fallback_status[field_name] = field_value
+                        except Exception:
+                            pass  # Skip fields that can't be accessed
+                
+                # Add additional computed fields
+                fallback_status["memory_summary"] = "Error getting memory summary"
+                fallback_status["tools_count"] = len(agent.tools) if hasattr(agent, 'tools') else 0
+                
+                result.append(fallback_status)
         return result
     
     def get_agent_by_module(self, module_path: str) -> Optional[str]:
@@ -759,6 +1027,15 @@ class MultiAgentManager:
             if agent.config.module_path == module_path:
                 return agent_id
         return None
+    
+    def __del__(self):
+        """Restore stderr on cleanup"""
+        try:
+            if 'original_stderr' in globals():
+                sys.stderr = original_stderr
+                logger.info("Restored original stderr")
+        except Exception as e:
+            pass  # Ignore errors in destructor
 
 # Global manager instance
 manager = MultiAgentManager()
@@ -844,8 +1121,10 @@ This tool manages a system of sub-agents, each responsible for monitoring and an
 
 async def run_tool(name: str, parameters: dict) -> list[types.Content]:
     """Runs the multi-agent manager tool."""
+    logger.debug(f"MCP Tool: run_tool called with operation: {parameters.get('operation', 'UNKNOWN')}")
     try:
         operation = parameters.get("operation", "")
+        logger.debug(f"MCP Tool: Processing operation: {operation}")
         
         if not operation:
             return [types.TextContent(type="text", text=json.dumps({"error": "operation parameter is required"}, ensure_ascii=False))]
@@ -888,25 +1167,64 @@ async def run_tool(name: str, parameters: dict) -> list[types.Content]:
                     "error": "agent_id and question are required for query_agent operation"
                 }, ensure_ascii=False))]
             
-            response = await manager.query_agent(agent_id, question)
+            logger.debug(f"MCP Tool: About to call manager.query_agent({agent_id}, '{question[:50]}...')")
+            response_data = await manager.query_agent(agent_id, question)
+            logger.debug(f"MCP Tool: query_agent returned, response_data type: {type(response_data)}")
+            logger.debug(f"MCP Tool: response_data content: {str(response_data)[:200]}...")
+            logger.debug(f"MCP Tool: query_agent completed for {agent_id}")
             
-            # Check if response indicates an error (contains error indicators)
-            is_error = any(error_indicator in response for error_indicator in [
-                "❌", "Error processing query", "EXECUTION LIMIT REACHED", "failed to initialize"
-            ])
-            
-            result = {
-                "operation": "query_agent",
-                "success": not is_error,
-                "agent_id": agent_id,
-                "question": question,
-                "response": response
-            }
-            
-            # Add error fields if it's an error
-            if is_error:
-                result["error"] = "Agent execution failed due to limits or other error"
-                result["error_type"] = "execution_limit" if "LIMIT REACHED" in response else "agent_error"
+            # Extract response text and analysis from structured response
+            if isinstance(response_data, dict) and "response" in response_data:
+                logger.debug(f"Multi-agent manager: processing structured response")
+                response_text = response_data["response"]
+                analysis = response_data.get("analysis", {})
+                
+                # Check if response indicates an error
+                is_error = analysis.get("status") in ["error", "timeout", "limit_exceeded"]
+                
+                # Create minimal result - different for success vs error
+                if is_error:
+                    result = {
+                        "operation": "query_agent", 
+                        "success": False,
+                        "agent_id": agent_id,
+                        "message": analysis.get("message", "Query processing failed"),
+                        "status": analysis.get("status", "error"),
+                        "error": "Agent execution failed",
+                        "error_type": analysis.get("status", "unknown_error"),
+                        "analysis": analysis
+                    }
+                    if "error" in analysis:
+                        result["error_details"] = analysis["error"]
+                else:
+                    # Success response with analysis block
+                    result = {
+                        "operation": "query_agent",
+                        "success": True,
+                        "agent_id": agent_id,
+                        "message": "Query completed successfully",
+                        "response": response_text,
+                        "analysis": analysis
+                    }
+            else:
+                # Fallback for old format (string response)
+                response_text = str(response_data)
+                is_error = any(error_indicator in response_text for error_indicator in [
+                    "Error processing query", "EXECUTION LIMIT REACHED", "failed to initialize"
+                ])
+                
+                result = {
+                    "operation": "query_agent",
+                    "success": not is_error,
+                    "agent_id": agent_id,
+                    "question": question,
+                    "response": response_text
+                }
+                
+                # Add error fields if it's an error
+                if is_error:
+                    result["error"] = "Agent execution failed due to limits or other error"
+                    result["error_type"] = "execution_limit" if "LIMIT REACHED" in response_text else "agent_error"
             
         elif operation == "list_agents":
             agents = manager.list_agents()
@@ -955,8 +1273,13 @@ async def run_tool(name: str, parameters: dict) -> list[types.Content]:
                 "error": f"Unknown operation: {operation}"
             }, ensure_ascii=False))]
         
+        logger.debug(f"MCP Tool: About to return result for operation: {operation}")
+        logger.debug(f"MCP Tool: Result keys: {list(result.keys()) if isinstance(result, dict) else 'not dict'}")
         return [types.TextContent(type="text", text=json.dumps(result, indent=2, ensure_ascii=False))]
         
     except Exception as e:
         logger.error(f"Error in multi-agent manager: {e}")
+        logger.debug(f"Multi-agent manager: returning error response")
         return [types.TextContent(type="text", text=json.dumps({"error": str(e)}, ensure_ascii=False))]
+
+
