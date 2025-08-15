@@ -230,7 +230,11 @@ class SimpleChatExporter:
         # Create unique ID for this tool call
         tool_html_id = f"tool_{tool_call_id.replace('-', '_')}"
         
-        return f'''<div class="tool-call"><div class="tool-header" onclick="toggleAttachment('{tool_html_id}')"><span class="tool-icon">🔧</span><span class="tool-name">{self.escape_html(tool_id)}</span><span class="tool-status">{'✅' if serialized_item.get('isComplete') else '⏳'}</span></div><div class="attachment-details" id="{tool_html_id}"><strong>📋 Tool Invocation:</strong><pre>{tool_invocation_content}</pre><strong>🔧 Raw Metadata:</strong><pre>{metadata_json_html}</pre></div></div>'''
+        # For terminal tools, show command preview outside the expandable block
+        if is_terminal_tool and command_info:
+            return f'''<div class="tool-call"><div class="tool-header" onclick="toggleAttachment('{tool_html_id}')"><span class="tool-icon">🔧</span><span class="tool-name">{self.escape_html(tool_id)}</span><span class="tool-status">{'✅' if serialized_item.get('isComplete') else '⏳'}</span></div><div class="tool-preview"><code>{self.escape_html(command_data['commandLine'].get('original', ''))}</code></div><div class="attachment-details" id="{tool_html_id}"><strong>📋 Tool Invocation:</strong><pre>{tool_invocation_content}</pre><strong>🔧 Raw Metadata:</strong><pre>{metadata_json_html}</pre></div></div>'''
+        else:
+            return f'''<div class="tool-call"><div class="tool-header" onclick="toggleAttachment('{tool_html_id}')"><span class="tool-icon">🔧</span><span class="tool-name">{self.escape_html(tool_id)}</span><span class="tool-status">{'✅' if serialized_item.get('isComplete') else '⏳'}</span></div><div class="attachment-details" id="{tool_html_id}"><strong>📋 Tool Invocation:</strong><pre>{tool_invocation_content}</pre><strong>🔧 Raw Metadata:</strong><pre>{metadata_json_html}</pre></div></div>'''
     
     def format_tool_call(self, tool_item):
         """Format a tool call as expandable HTML block"""
@@ -248,12 +252,15 @@ class SimpleChatExporter:
         # Get command details for terminal tools
         command_info = ""
         is_terminal_tool = False
+        command_preview_html = ""
         if 'toolSpecificData' in tool_item and tool_item['toolSpecificData'].get('kind') == 'terminal':
             is_terminal_tool = True
             command_data = tool_item['toolSpecificData']
             if 'commandLine' in command_data:
                 command = command_data['commandLine'].get('original', '')
                 command_info = f"<strong>Command:</strong> <code>{self.escape_html(command)}</code>"
+                # Create preview for outside expandable block
+                command_preview_html = f'''<div class="tool-preview"><code>{self.escape_html(command)}</code></div>'''
         
         # For terminal tools, show only command, not the generic invocation message
         if is_terminal_tool and command_info:
@@ -269,7 +276,7 @@ class SimpleChatExporter:
         # Create unique ID for this tool call
         tool_html_id = f"tool_{tool_call_id.replace('-', '_')}"
         
-        return f'''<div class="tool-call"><div class="tool-header" onclick="toggleAttachment('{tool_html_id}')"><span class="tool-icon">🔧</span><span class="tool-name">{self.escape_html(tool_id)}</span><span class="tool-status">{'✅' if tool_item.get('isComplete') else '⏳'}</span></div><div class="attachment-details" id="{tool_html_id}"><strong>📋 Tool Invocation:</strong><pre>{tool_invocation_content}</pre><strong>🔧 Raw Metadata:</strong><pre>{metadata_json_html}</pre></div></div>'''
+        return f'''<div class="tool-call"><div class="tool-header" onclick="toggleAttachment('{tool_html_id}')"><span class="tool-icon">🔧</span><span class="tool-name">{self.escape_html(tool_id)}</span><span class="tool-status">{'✅' if tool_item.get('isComplete') else '⏳'}</span></div>{command_preview_html}<div class="attachment-details" id="{tool_html_id}"><strong>📋 Tool Invocation:</strong><pre>{tool_invocation_content}</pre><strong>🔧 Raw Metadata:</strong><pre>{metadata_json_html}</pre></div></div>'''
     
     def create_html(self, session_data):
         session_id = session_data.get('_file', 'unknown').replace('.json', '')
@@ -483,6 +490,21 @@ class SimpleChatExporter:
         
         .tool-status {{
             font-size: 12px;
+        }}
+        
+        .tool-preview {{
+            padding: 8px 12px;
+            background: #0d1117;
+            border-top: 1px solid #404040;
+            font-family: 'Consolas', 'Monaco', monospace;
+            font-size: 13px;
+            color: #f0f6fc;
+        }}
+        
+        .tool-preview code {{
+            background: transparent;
+            color: #7dd3fc;
+            padding: 0;
         }}
         
         .attachment-icon {{
