@@ -208,11 +208,19 @@ class SimpleChatExporter:
         
         # Get command details for terminal tools
         command_info = ""
+        is_terminal_tool = False
         if 'toolSpecificData' in serialized_item and serialized_item['toolSpecificData'].get('kind') == 'terminal':
+            is_terminal_tool = True
             command_data = serialized_item['toolSpecificData']
             if 'commandLine' in command_data:
                 command = command_data['commandLine'].get('original', '')
-                command_info = f"<br><strong>Command:</strong> <code>{self.escape_html(command)}</code>"
+                command_info = f"<strong>Command:</strong> <code>{self.escape_html(command)}</code>"
+        
+        # For terminal tools, show only command, not the generic invocation message
+        if is_terminal_tool and command_info:
+            tool_invocation_content = command_info
+        else:
+            tool_invocation_content = self.escape_html(invocation_msg) + command_info
         
         # Create combined JSON metadata as array (like in original)
         combined_metadata = [prepare_item, serialized_item]
@@ -222,7 +230,7 @@ class SimpleChatExporter:
         # Create unique ID for this tool call
         tool_html_id = f"tool_{tool_call_id.replace('-', '_')}"
         
-        return f'''<div class="tool-call"><div class="tool-header" onclick="toggleAttachment('{tool_html_id}')"><span class="tool-icon">🔧</span><span class="tool-name">{self.escape_html(tool_id)}</span><span class="tool-status">{'✅' if serialized_item.get('isComplete') else '⏳'}</span></div><div class="attachment-details" id="{tool_html_id}"><strong>📋 Tool Invocation:</strong><pre>{self.escape_html(invocation_msg)}{command_info}</pre><strong>🔧 Raw Metadata:</strong><pre>{metadata_json_html}</pre></div></div>'''
+        return f'''<div class="tool-call"><div class="tool-header" onclick="toggleAttachment('{tool_html_id}')"><span class="tool-icon">🔧</span><span class="tool-name">{self.escape_html(tool_id)}</span><span class="tool-status">{'✅' if serialized_item.get('isComplete') else '⏳'}</span></div><div class="attachment-details" id="{tool_html_id}"><strong>📋 Tool Invocation:</strong><pre>{tool_invocation_content}</pre><strong>🔧 Raw Metadata:</strong><pre>{metadata_json_html}</pre></div></div>'''
     
     def format_tool_call(self, tool_item):
         """Format a tool call as expandable HTML block"""
@@ -239,11 +247,19 @@ class SimpleChatExporter:
         
         # Get command details for terminal tools
         command_info = ""
+        is_terminal_tool = False
         if 'toolSpecificData' in tool_item and tool_item['toolSpecificData'].get('kind') == 'terminal':
+            is_terminal_tool = True
             command_data = tool_item['toolSpecificData']
             if 'commandLine' in command_data:
                 command = command_data['commandLine'].get('original', '')
-                command_info = f"<br><strong>Command:</strong> <code>{self.escape_html(command)}</code>"
+                command_info = f"<strong>Command:</strong> <code>{self.escape_html(command)}</code>"
+        
+        # For terminal tools, show only command, not the generic invocation message
+        if is_terminal_tool and command_info:
+            tool_invocation_content = command_info
+        else:
+            tool_invocation_content = self.escape_html(invocation_msg) + command_info
         
         # Create JSON metadata for display
         metadata_json = json.dumps(tool_item, indent=2)
@@ -253,7 +269,7 @@ class SimpleChatExporter:
         # Create unique ID for this tool call
         tool_html_id = f"tool_{tool_call_id.replace('-', '_')}"
         
-        return f'''<div class="tool-call"><div class="tool-header" onclick="toggleAttachment('{tool_html_id}')"><span class="tool-icon">🔧</span><span class="tool-name">{self.escape_html(tool_id)}</span><span class="tool-status">{'✅' if tool_item.get('isComplete') else '⏳'}</span></div><div class="attachment-details" id="{tool_html_id}"><strong>📋 Tool Invocation:</strong><pre>{self.escape_html(invocation_msg)}{command_info}</pre><strong>🔧 Raw Metadata:</strong><pre>{metadata_json_html}</pre></div></div>'''
+        return f'''<div class="tool-call"><div class="tool-header" onclick="toggleAttachment('{tool_html_id}')"><span class="tool-icon">🔧</span><span class="tool-name">{self.escape_html(tool_id)}</span><span class="tool-status">{'✅' if tool_item.get('isComplete') else '⏳'}</span></div><div class="attachment-details" id="{tool_html_id}"><strong>📋 Tool Invocation:</strong><pre>{tool_invocation_content}</pre><strong>🔧 Raw Metadata:</strong><pre>{metadata_json_html}</pre></div></div>'''
     
     def create_html(self, session_data):
         session_id = session_data.get('_file', 'unknown').replace('.json', '')
