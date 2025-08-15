@@ -9,6 +9,7 @@ import os
 from pathlib import Path
 from datetime import datetime
 import logging
+import re
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -49,6 +50,141 @@ class SimpleChatExporter:
                    .replace('<', '&lt;')
                    .replace('>', '&gt;')
                    .replace('"', '&quot;'))
+    
+    def extract_text_from_response(self, response):
+        """Extract text and tool calls from response for Markdown rendering"""
+        if isinstance(response, list):
+            parts = []
+            i = 0
+            
+            while i < len(response):
+                item = response[i]
+                
+                if 'value' in item:
+                    parts.append(str(item['value']))
+                    i += 1
+                elif item.get('kind') == 'prepareToolInvocation':
+                    # Look for corresponding toolInvocationSerialized
+                    tool_name = item.get('toolName')
+                    serialized_item = None
+                    j = i + 1
+                    
+                    while j < len(response):
+                        next_item = response[j]
+                        if (next_item.get('kind') == 'toolInvocationSerialized' and 
+                            next_item.get('toolId') == tool_name):
+                            serialized_item = next_item
+                            break
+                        j += 1
+                    
+                    # Format combined tool call
+                    if serialized_item:
+                        tool_html = self.format_tool_call_combined(item, serialized_item)
+                        parts.append(tool_html)
+                        i = j + 1  # Skip both prepare and serialized items
+                    else:
+                        # If no serialized found, just show prepare
+                        tool_html = self.format_tool_call(item)
+                        parts.append(tool_html)
+                        i += 1
+                        
+                elif item.get('kind') == 'toolInvocationSerialized':
+                    # Check if this wasn't already processed with a prepare item
+                    tool_html = self.format_tool_call(item)
+                    parts.append(tool_html)
+                    i += 1
+                else:
+                    i += 1
+            
+            return '\n'.join(parts)
+        elif isinstance(response, dict) and 'value' in response:
+            return str(response['value'])
+        return ""
+    
+    def simple_markdown_to_html(self, text):
+        """Convert basic Markdown to HTML with simple patterns, preserving HTML tool calls"""
+        if not text:
+            return ""
+        
+        # First find and extract HTML tool calls (they start with <div class="tool-call">)
+        tool_calls = {}
+        tool_placeholder_counter = 0
+        
+        # Find all tool calls and replace them with placeholders
+        def replace_tool_call(match):
+            nonlocal tool_placeholder_counter
+            tool_html = match.group(0)
+            placeholder = f"__TOOL_CALL_{tool_placeholder_counter}__"
+            tool_calls[placeholder] = tool_html
+            tool_placeholder_counter += 1
+            return placeholder
+        
+        # Extract tool calls (they are complete HTML blocks)
+        # Use a more flexible regex to find tool-call divs with their content
+        text_with_placeholders = text
+        
+        # Find all <div class="tool-call">...</div> blocks and replace with placeholders
+        start_tag = '<div class="tool-call">'
+        end_tag = '</div>'
+        
+        while start_tag in text_with_placeholders:
+            start_pos = text_with_placeholders.find(start_tag)
+            if start_pos == -1:
+                break
+                
+            # Find the matching end tag by counting nested divs
+            current_pos = start_pos + len(start_tag)
+            div_count = 1
+            while div_count > 0 and current_pos < len(text_with_placeholders):
+                next_div_start = text_with_placeholders.find('<div', current_pos)
+                next_div_end = text_with_placeholders.find('</div>', current_pos)
+                
+                if next_div_end == -1:
+                    break
+                    
+                if next_div_start != -1 and next_div_start < next_div_end:
+                    div_count += 1
+                    current_pos = next_div_start + 4
+                else:
+                    div_count -= 1
+                    current_pos = next_div_end + 6
+            
+            if div_count == 0:
+                # Found complete tool-call block
+                tool_html = text_with_placeholders[start_pos:current_pos]
+                placeholder = f"__TOOL_CALL_{tool_placeholder_counter}__"
+                tool_calls[placeholder] = tool_html
+                text_with_placeholders = text_with_placeholders[:start_pos] + placeholder + text_with_placeholders[current_pos:]
+                tool_placeholder_counter += 1
+            else:
+                break
+        
+        # Now escape HTML for the remaining text
+        html = self.escape_html(text_with_placeholders)
+        
+        # Convert code blocks (```code```)
+        html = re.sub(r'```([^`]*?)```', r'<pre style="background: #161b22; padding: 8px; border-radius: 4px; border: 1px solid #30363d;"><code>\1</code></pre>', html, flags=re.DOTALL)
+        
+        # Convert inline code (`code`)
+        html = re.sub(r'`([^`]+?)`', r'<code style="background: #161b22; padding: 2px 4px; border-radius: 3px; font-size: 0.9em;">\1</code>', html)
+        
+        # Convert bold (**text**)
+        html = re.sub(r'\*\*([^*]+?)\*\*', r'<strong>\1</strong>', html)
+        
+        # Convert italic (*text*)
+        html = re.sub(r'\*([^*]+?)\*', r'<em>\1</em>', html)
+        
+        # Convert links [text](url)
+        html = re.sub(r'\[([^\]]+?)\]\(([^)]+?)\)', r'<a href="\2" style="color: #58a6ff;" target="_blank">\1</a>', html)
+        
+        # Convert line breaks
+        html = html.replace('\n', '<br>')
+        
+        # Restore tool calls from placeholders
+        for placeholder, tool_html in tool_calls.items():
+            html = html.replace(placeholder, tool_html)
+        
+        return html
     
     def format_attachment(self, variable):
         """Format attachment/variable for display"""
@@ -878,14 +1014,20 @@ class SimpleChatExporter:
                             if 'text' in part:
                                 user_text += part['text']
                 
+                user_message_id = f"user_msg_{i}_{hash(user_text)}"
+                user_markdown_html = self.simple_markdown_to_html(user_text)
+                user_raw_html = self.escape_html(user_text).replace('\n', '<br>')
+                
                 html += f'''
             <div class="message user">
                 <div class="avatar user-avatar">U</div>
                 <div class="message-content">
                     <div class="message-header">
                         <span class="author">You</span>
+                        <button onclick="toggleMessageView('{user_message_id}')" style="background: #404040; border: 1px solid #666; color: #ccc; padding: 2px 8px; border-radius: 3px; font-size: 11px; cursor: pointer; margin-left: 8px;">Raw</button>
                     </div>
-                    <div class="message-body">{self.escape_html(user_text)}</div>
+                    <div class="message-body" id="{user_message_id}_rendered">{user_markdown_html}</div>
+                    <div class="message-body" id="{user_message_id}_raw" style="display: none;">{user_raw_html}</div>
 '''
                 
                 # Add attachments/variables
@@ -941,12 +1083,20 @@ class SimpleChatExporter:
                 
                 # Assistant response with tool calls integration
                 assistant_html = ""
+                assistant_text = ""
                 if 'response' in request:
                     response = request['response']
                     if isinstance(response, list):
                         assistant_html = self.process_response_with_tools(response)
+                        assistant_text = self.extract_text_from_response(response)
                     elif isinstance(response, dict) and 'value' in response:
-                        assistant_html = self.escape_html(str(response['value']))
+                        assistant_text = str(response['value'])
+                        assistant_html = self.escape_html(assistant_text)
+                
+                # Create unique ID for message
+                assistant_message_id = f"assistant_msg_{i}_{hash(assistant_text)}"
+                assistant_markdown_html = self.simple_markdown_to_html(assistant_text) if assistant_text else assistant_html
+                assistant_raw_html = assistant_html  # Keep original complex HTML as raw
                 
                 html += f'''
             <div class="message assistant">
@@ -954,8 +1104,10 @@ class SimpleChatExporter:
                 <div class="message-content">
                     <div class="message-header">
                         <span class="author">GitHub Copilot</span>
+                        <button onclick="toggleMessageView('{assistant_message_id}')" style="background: #404040; border: 1px solid #666; color: #ccc; padding: 2px 8px; border-radius: 3px; font-size: 11px; cursor: pointer; margin-left: 8px;">Raw</button>
                     </div>
-                    <div class="message-body">{assistant_html}</div>
+                    <div class="message-body" id="{assistant_message_id}_rendered">{assistant_markdown_html}</div>
+                    <div class="message-body" id="{assistant_message_id}_raw" style="display: none;">{assistant_raw_html}</div>
                 </div>
             </div>
 '''
@@ -979,6 +1131,24 @@ class SimpleChatExporter:
             }} else {{
                 element.style.display = 'block';
                 attachment.classList.add('expanded');
+            }}
+        }}
+        
+        function toggleMessageView(messageId) {{
+            const renderedElement = document.getElementById(messageId + '_rendered');
+            const rawElement = document.getElementById(messageId + '_raw');
+            const button = event.target;
+            
+            if (renderedElement.style.display === 'none') {{
+                // Currently showing raw, switch to rendered
+                renderedElement.style.display = 'block';
+                rawElement.style.display = 'none';
+                button.textContent = 'Raw';
+            }} else {{
+                // Currently showing rendered, switch to raw
+                renderedElement.style.display = 'none';
+                rawElement.style.display = 'block';
+                button.textContent = 'Markdown';
             }}
         }}
     </script>
