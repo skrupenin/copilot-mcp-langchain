@@ -77,8 +77,68 @@ class SimpleChatExporter:
             'icon': icon,
             'name': name,
             'description': model_desc,
-            'kind': kind
+            'kind': kind,
+            'raw_data': variable  # Добавляем сырые данные для детального просмотра
         }
+    
+    def read_file_content(self, file_path, range_info=None):
+        """Read file content, optionally limited to a specific range"""
+        try:
+            # Convert path format if needed
+            if file_path.startswith('/c:'):
+                file_path = file_path.replace('/c:', 'C:').replace('/', '\\')
+            
+            file_path = Path(file_path)
+            if not file_path.exists():
+                return f"File not found: {file_path}"
+            
+            with open(file_path, 'r', encoding='utf-8', errors='ignore') as f:
+                lines = f.readlines()
+            
+            if range_info:
+                start_line = range_info.get('startLineNumber', 1) - 1  # Convert to 0-based
+                end_line = range_info.get('endLineNumber', len(lines)) - 1
+                start_col = range_info.get('startColumn', 1) - 1
+                end_col = range_info.get('endColumn', len(lines[end_line]) if end_line < len(lines) else 0) - 1
+                
+                if start_line == end_line and start_line < len(lines):
+                    # Single line selection - include context
+                    context_start = max(0, start_line - 2)
+                    context_end = min(len(lines), end_line + 3)
+                    context_lines = []
+                    
+                    for i in range(context_start, context_end):
+                        line_num = i + 1
+                        line_content = lines[i].rstrip()
+                        if i == start_line:
+                            # Highlight the selected part
+                            before = line_content[:start_col]
+                            selected = line_content[start_col:end_col]
+                            after = line_content[end_col:]
+                            line_content = f"{before}>>> {selected} <<<{after}"
+                        context_lines.append(f"{line_num:4d}: {line_content}")
+                    
+                    return "\\n".join(context_lines)
+                else:
+                    # Multi-line selection
+                    selected_lines = lines[start_line:end_line + 1]
+                    result = []
+                    for i, line in enumerate(selected_lines):
+                        line_num = start_line + i + 1
+                        result.append(f"{line_num:4d}: {line.rstrip()}")
+                    return "\\n".join(result)
+            else:
+                # Return first 20 lines for prompt files
+                preview_lines = lines[:20]
+                result = []
+                for i, line in enumerate(preview_lines):
+                    result.append(f"{i+1:4d}: {line.rstrip()}")
+                if len(lines) > 20:
+                    result.append("... (truncated)")
+                return "\\n".join(result)
+                
+        except Exception as e:
+            return f"Error reading file: {e}"
     
     def create_html(self, session_data):
         session_id = session_data.get('_file', 'unknown').replace('.json', '')
@@ -208,6 +268,34 @@ class SimpleChatExporter:
             border-radius: 4px;
             font-size: 12px;
             color: #9cdcfe;
+            cursor: pointer;
+            transition: background-color 0.2s;
+        }}
+        
+        .attachment:hover {{
+            background: #2a2a2a;
+        }}
+        
+        .attachment.expanded {{
+            border-color: #569cd6;
+        }}
+        
+        .attachment-details {{
+            margin-top: 8px;
+            padding: 12px;
+            background: #0d1117;
+            border: 1px solid #404040;
+            border-radius: 4px;
+            font-family: 'Consolas', 'Liberation Mono', monospace;
+            font-size: 11px;
+            white-space: pre-wrap;
+            max-height: 300px;
+            overflow-y: auto;
+            display: none;
+        }}
+        
+        .attachment.expanded .attachment-details {{
+            display: block;
         }}
         
         .attachment-icon {{
@@ -306,13 +394,40 @@ class SimpleChatExporter:
 '''
                         for var in variables:
                             attachment = self.format_attachment(var)
+                            attachment_id = f"attachment_{hash(str(var))}"
+                            
+                            # Get file content if available
+                            file_content = ""
+                            metadata_json = ""
+                            
+                            if attachment['kind'] == 'file' and 'value' in var:
+                                if 'uri' in var['value']:
+                                    uri = var['value']['uri']
+                                    file_path = uri.get('path', uri.get('fsPath', ''))
+                                    range_info = var['value'].get('range')
+                                    file_content = self.read_file_content(file_path, range_info)
+                                    
+                            elif attachment['kind'] == 'promptFile' and 'value' in var:
+                                file_path = var['value'].get('path', '')
+                                file_content = self.read_file_content(file_path)
+                            
+                            # Create JSON metadata for display
+                            metadata_json = json.dumps(var, indent=2)
+                            
                             html += f'''
-                        <div class="attachment">
+                        <div class="attachment" onclick="toggleAttachment('{attachment_id}')">
                             <div class="attachment-icon">{attachment['icon']}</div>
                             <div class="attachment-info">
                                 <div class="attachment-name">{self.escape_html(attachment['name'])}</div>
                                 <div class="attachment-desc">{self.escape_html(attachment['description'])}</div>
                             </div>
+                        </div>
+                        <div class="attachment-details" id="{attachment_id}">
+                            <strong>📄 File Content:</strong>
+                            <pre>{self.escape_html(file_content)}</pre>
+                            
+                            <strong>🔧 Raw Metadata:</strong>
+                            <pre>{self.escape_html(metadata_json)}</pre>
                         </div>
 '''
                         html += '''
@@ -354,6 +469,21 @@ class SimpleChatExporter:
             Session: {session_id} • Workspace: {workspace_info} • Exported: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}
         </div>
     </div>
+    
+    <script>
+        function toggleAttachment(id) {{
+            const element = document.getElementById(id);
+            const attachment = element.previousElementSibling;
+            
+            if (element.style.display === 'block') {{
+                element.style.display = 'none';
+                attachment.classList.remove('expanded');
+            }} else {{
+                element.style.display = 'block';
+                attachment.classList.add('expanded');
+            }}
+        }}
+    </script>
 </body>
 </html>'''
         
