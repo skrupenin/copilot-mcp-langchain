@@ -206,15 +206,32 @@ class SimpleChatExporter:
             else:
                 invocation_msg = str(serialized_item['invocationMessage'])
         
-        # Get command details for terminal tools
+        # Get command details for terminal tools and file operations
         command_info = ""
         is_terminal_tool = False
+        preview_html = ""
+        
         if 'toolSpecificData' in serialized_item and serialized_item['toolSpecificData'].get('kind') == 'terminal':
             is_terminal_tool = True
             command_data = serialized_item['toolSpecificData']
             if 'commandLine' in command_data:
                 command = command_data['commandLine'].get('original', '')
                 command_info = f"<strong>Command:</strong> <code>{self.escape_html(command)}</code>"
+        
+        # Check for file operations (readFile, listDirectory)
+        elif tool_id in ['copilot_readFile', 'copilot_listDirectory']:
+            # Extract path from serialized_item uris
+            if 'invocationMessage' in serialized_item and 'uris' in serialized_item['invocationMessage']:
+                uris = serialized_item['invocationMessage']['uris']
+                # Get first URI path
+                for uri_key, uri_data in uris.items():
+                    if 'path' in uri_data:
+                        file_path = uri_data['path']
+                        if tool_id == 'copilot_readFile':
+                            preview_html = f'''<div class="tool-preview">📄 <code>{self.escape_html(file_path)}</code></div>'''
+                        elif tool_id == 'copilot_listDirectory':
+                            preview_html = f'''<div class="tool-preview">📁 <code>{self.escape_html(file_path)}</code></div>'''
+                        break
         
         # For terminal tools, show only command, not the generic invocation message
         if is_terminal_tool and command_info:
@@ -233,6 +250,9 @@ class SimpleChatExporter:
         # For terminal tools, show command preview outside the expandable block
         if is_terminal_tool and command_info:
             return f'''<div class="tool-call"><div class="tool-header" onclick="toggleAttachment('{tool_html_id}')"><span class="tool-icon">🔧</span><span class="tool-name">{self.escape_html(tool_id)}</span><span class="tool-status">{'✅' if serialized_item.get('isComplete') else '⏳'}</span></div><div class="tool-preview"><code>{self.escape_html(command_data['commandLine'].get('original', ''))}</code></div><div class="attachment-details" id="{tool_html_id}"><strong>📋 Tool Invocation:</strong><pre>{tool_invocation_content}</pre><strong>🔧 Raw Metadata:</strong><pre>{metadata_json_html}</pre></div></div>'''
+        # For file operations, show preview as well  
+        elif preview_html:
+            return f'''<div class="tool-call"><div class="tool-header" onclick="toggleAttachment('{tool_html_id}')"><span class="tool-icon">🔧</span><span class="tool-name">{self.escape_html(tool_id)}</span><span class="tool-status">{'✅' if serialized_item.get('isComplete') else '⏳'}</span></div>{preview_html}<div class="attachment-details" id="{tool_html_id}"><strong>📋 Tool Invocation:</strong><pre>{tool_invocation_content}</pre><strong>🔧 Raw Metadata:</strong><pre>{metadata_json_html}</pre></div></div>'''
         else:
             return f'''<div class="tool-call"><div class="tool-header" onclick="toggleAttachment('{tool_html_id}')"><span class="tool-icon">🔧</span><span class="tool-name">{self.escape_html(tool_id)}</span><span class="tool-status">{'✅' if serialized_item.get('isComplete') else '⏳'}</span></div><div class="attachment-details" id="{tool_html_id}"><strong>📋 Tool Invocation:</strong><pre>{tool_invocation_content}</pre><strong>🔧 Raw Metadata:</strong><pre>{metadata_json_html}</pre></div></div>'''
     
@@ -249,10 +269,11 @@ class SimpleChatExporter:
             else:
                 invocation_msg = str(tool_item['invocationMessage'])
         
-        # Get command details for terminal tools
+        # Get command details for terminal tools and file operations
         command_info = ""
         is_terminal_tool = False
-        command_preview_html = ""
+        preview_html = ""
+        
         if 'toolSpecificData' in tool_item and tool_item['toolSpecificData'].get('kind') == 'terminal':
             is_terminal_tool = True
             command_data = tool_item['toolSpecificData']
@@ -260,7 +281,22 @@ class SimpleChatExporter:
                 command = command_data['commandLine'].get('original', '')
                 command_info = f"<strong>Command:</strong> <code>{self.escape_html(command)}</code>"
                 # Create preview for outside expandable block
-                command_preview_html = f'''<div class="tool-preview"><code>{self.escape_html(command)}</code></div>'''
+                preview_html = f'''<div class="tool-preview"><code>{self.escape_html(command)}</code></div>'''
+        
+        # Check for file operations (readFile, listDirectory) 
+        elif tool_id in ['copilot_readFile', 'copilot_listDirectory']:
+            # Extract path from tool_item uris
+            if 'invocationMessage' in tool_item and 'uris' in tool_item['invocationMessage']:
+                uris = tool_item['invocationMessage']['uris']
+                # Get first URI path
+                for uri_key, uri_data in uris.items():
+                    if 'path' in uri_data:
+                        file_path = uri_data['path']
+                        if tool_id == 'copilot_readFile':
+                            preview_html = f'''<div class="tool-preview">📄 <code>{self.escape_html(file_path)}</code></div>'''
+                        elif tool_id == 'copilot_listDirectory':
+                            preview_html = f'''<div class="tool-preview">📁 <code>{self.escape_html(file_path)}</code></div>'''
+                        break
         
         # For terminal tools, show only command, not the generic invocation message
         if is_terminal_tool and command_info:
@@ -276,7 +312,7 @@ class SimpleChatExporter:
         # Create unique ID for this tool call
         tool_html_id = f"tool_{tool_call_id.replace('-', '_')}"
         
-        return f'''<div class="tool-call"><div class="tool-header" onclick="toggleAttachment('{tool_html_id}')"><span class="tool-icon">🔧</span><span class="tool-name">{self.escape_html(tool_id)}</span><span class="tool-status">{'✅' if tool_item.get('isComplete') else '⏳'}</span></div>{command_preview_html}<div class="attachment-details" id="{tool_html_id}"><strong>📋 Tool Invocation:</strong><pre>{tool_invocation_content}</pre><strong>🔧 Raw Metadata:</strong><pre>{metadata_json_html}</pre></div></div>'''
+        return f'''<div class="tool-call"><div class="tool-header" onclick="toggleAttachment('{tool_html_id}')"><span class="tool-icon">🔧</span><span class="tool-name">{self.escape_html(tool_id)}</span><span class="tool-status">{'✅' if tool_item.get('isComplete') else '⏳'}</span></div>{preview_html}<div class="attachment-details" id="{tool_html_id}"><strong>📋 Tool Invocation:</strong><pre>{tool_invocation_content}</pre><strong>🔧 Raw Metadata:</strong><pre>{metadata_json_html}</pre></div></div>'''
     
     def create_html(self, session_data):
         session_id = session_data.get('_file', 'unknown').replace('.json', '')
