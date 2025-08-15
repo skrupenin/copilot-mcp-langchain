@@ -289,13 +289,28 @@ class SimpleChatExporter:
             font-family: 'Consolas', 'Liberation Mono', monospace;
             font-size: 11px;
             white-space: pre-wrap;
-            max-height: 300px;
-            overflow-y: auto;
+            max-height: 400px;
+            max-width: 100%;
+            overflow: auto;
             display: none;
+            box-sizing: border-box;
         }}
         
         .attachment.expanded .attachment-details {{
             display: block;
+        }}
+        
+        .attachment-details pre {{
+            white-space: pre-wrap;
+            word-wrap: break-word;
+            margin: 0;
+            padding: 8px;
+            background: #161b22;
+            border: 1px solid #30363d;
+            border-radius: 3px;
+            overflow-x: auto;
+            max-width: 100%;
+            box-sizing: border-box;
         }}
         
         .attachment-icon {{
