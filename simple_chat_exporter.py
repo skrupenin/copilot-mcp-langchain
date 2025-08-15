@@ -193,6 +193,17 @@ class SimpleChatExporter:
         
         return ''.join(html_parts)
     
+    def format_tool_name(self, tool_id):
+        """Format tool name for display"""
+        if tool_id.startswith('mcp_') and '-mcp_lng_' in tool_id:
+            # Parse MCP tool name: mcp_langchain-mcp_lng_file_list -> [MCP] mcp_langchain: lng_file_list
+            parts = tool_id.split('-mcp_lng_')
+            if len(parts) == 2:
+                server_name = parts[0]  # mcp_langchain
+                tool_name = parts[1]    # file_list
+                return f"[MCP] {server_name}: lng_{tool_name}"
+        return tool_id
+    
     def format_tool_call_combined(self, prepare_item, serialized_item):
         """Format combined tool call from prepare and serialized items"""
         tool_id = serialized_item.get('toolId', prepare_item.get('toolName', 'unknown'))
@@ -239,22 +250,52 @@ class SimpleChatExporter:
         else:
             tool_invocation_content = self.escape_html(invocation_msg) + command_info
         
+        # Check if it's an MCP tool and extract Input/Output
+        input_output_html = ""
+        if 'resultDetails' in serialized_item:
+            result_details = serialized_item['resultDetails']
+            if 'input' in result_details or 'output' in result_details:
+                input_data = result_details.get('input', '')
+                output_data = result_details.get('output', '')
+                
+                input_json = json.dumps(input_data, indent=2) if input_data else "No input data"
+                output_json = json.dumps(output_data, indent=2) if output_data else "No output data"
+                
+                input_output_html = f'''
+<strong>📥 Input:</strong>
+<pre>{self.escape_html(input_json).replace(chr(10), '<br>')}</pre>
+
+<strong>📤 Output:</strong>
+<pre>{self.escape_html(output_json).replace(chr(10), '<br>')}</pre>
+'''
+        
         # Create combined JSON metadata as array (like in original)
         combined_metadata = [prepare_item, serialized_item]
         metadata_json = json.dumps(combined_metadata, indent=2)
         metadata_json_html = self.escape_html(metadata_json).replace('\n', '<br>')
         
+        # Format tool name for display
+        display_tool_name = self.format_tool_name(tool_id)
+        
         # Create unique ID for this tool call
         tool_html_id = f"tool_{tool_call_id.replace('-', '_')}"
         
+        # Build the details content based on tool type
+        if input_output_html:
+            # MCP tools with Input/Output
+            details_content = f'''<strong>📋 Tool Invocation:</strong><pre>{tool_invocation_content}</pre>{input_output_html}<strong>🔧 Raw Metadata:</strong><pre>{metadata_json_html}</pre>'''
+        else:
+            # Regular tools
+            details_content = f'''<strong>📋 Tool Invocation:</strong><pre>{tool_invocation_content}</pre><strong>🔧 Raw Metadata:</strong><pre>{metadata_json_html}</pre>'''
+        
         # For terminal tools, show command preview outside the expandable block
         if is_terminal_tool and command_info:
-            return f'''<div class="tool-call"><div class="tool-header" onclick="toggleAttachment('{tool_html_id}')"><span class="tool-icon">🔧</span><span class="tool-name">{self.escape_html(tool_id)}</span><span class="tool-status">{'✅' if serialized_item.get('isComplete') else '⏳'}</span></div><div class="tool-preview"><code>{self.escape_html(command_data['commandLine'].get('original', ''))}</code></div><div class="attachment-details" id="{tool_html_id}"><strong>📋 Tool Invocation:</strong><pre>{tool_invocation_content}</pre><strong>🔧 Raw Metadata:</strong><pre>{metadata_json_html}</pre></div></div>'''
+            return f'''<div class="tool-call"><div class="tool-header" onclick="toggleAttachment('{tool_html_id}')"><span class="tool-icon">🔧</span><span class="tool-name">{self.escape_html(display_tool_name)}</span><span class="tool-status">{'✅' if serialized_item.get('isComplete') else '⏳'}</span></div><div class="tool-preview"><code>{self.escape_html(command_data['commandLine'].get('original', ''))}</code></div><div class="attachment-details" id="{tool_html_id}">{details_content}</div></div>'''
         # For file operations, show preview as well  
         elif preview_html:
-            return f'''<div class="tool-call"><div class="tool-header" onclick="toggleAttachment('{tool_html_id}')"><span class="tool-icon">🔧</span><span class="tool-name">{self.escape_html(tool_id)}</span><span class="tool-status">{'✅' if serialized_item.get('isComplete') else '⏳'}</span></div>{preview_html}<div class="attachment-details" id="{tool_html_id}"><strong>📋 Tool Invocation:</strong><pre>{tool_invocation_content}</pre><strong>🔧 Raw Metadata:</strong><pre>{metadata_json_html}</pre></div></div>'''
+            return f'''<div class="tool-call"><div class="tool-header" onclick="toggleAttachment('{tool_html_id}')"><span class="tool-icon">🔧</span><span class="tool-name">{self.escape_html(display_tool_name)}</span><span class="tool-status">{'✅' if serialized_item.get('isComplete') else '⏳'}</span></div>{preview_html}<div class="attachment-details" id="{tool_html_id}">{details_content}</div></div>'''
         else:
-            return f'''<div class="tool-call"><div class="tool-header" onclick="toggleAttachment('{tool_html_id}')"><span class="tool-icon">🔧</span><span class="tool-name">{self.escape_html(tool_id)}</span><span class="tool-status">{'✅' if serialized_item.get('isComplete') else '⏳'}</span></div><div class="attachment-details" id="{tool_html_id}"><strong>📋 Tool Invocation:</strong><pre>{tool_invocation_content}</pre><strong>🔧 Raw Metadata:</strong><pre>{metadata_json_html}</pre></div></div>'''
+            return f'''<div class="tool-call"><div class="tool-header" onclick="toggleAttachment('{tool_html_id}')"><span class="tool-icon">🔧</span><span class="tool-name">{self.escape_html(display_tool_name)}</span><span class="tool-status">{'✅' if serialized_item.get('isComplete') else '⏳'}</span></div><div class="attachment-details" id="{tool_html_id}">{details_content}</div></div>'''
     
     def format_tool_call(self, tool_item):
         """Format a tool call as expandable HTML block"""
@@ -304,15 +345,45 @@ class SimpleChatExporter:
         else:
             tool_invocation_content = self.escape_html(invocation_msg) + command_info
         
+        # Check if it's an MCP tool and extract Input/Output
+        input_output_html = ""
+        if 'resultDetails' in tool_item:
+            result_details = tool_item['resultDetails']
+            if 'input' in result_details or 'output' in result_details:
+                input_data = result_details.get('input', '')
+                output_data = result_details.get('output', '')
+                
+                input_json = json.dumps(input_data, indent=2) if input_data else "No input data"
+                output_json = json.dumps(output_data, indent=2) if output_data else "No output data"
+                
+                input_output_html = f'''
+<strong>📥 Input:</strong>
+<pre>{self.escape_html(input_json).replace(chr(10), '<br>')}</pre>
+
+<strong>📤 Output:</strong>
+<pre>{self.escape_html(output_json).replace(chr(10), '<br>')}</pre>
+'''
+        
         # Create JSON metadata for display
         metadata_json = json.dumps(tool_item, indent=2)
         # Convert \n to <br> for proper HTML display
         metadata_json_html = self.escape_html(metadata_json).replace('\n', '<br>')
         
+        # Format tool name for display
+        display_tool_name = self.format_tool_name(tool_id)
+        
         # Create unique ID for this tool call
         tool_html_id = f"tool_{tool_call_id.replace('-', '_')}"
         
-        return f'''<div class="tool-call"><div class="tool-header" onclick="toggleAttachment('{tool_html_id}')"><span class="tool-icon">🔧</span><span class="tool-name">{self.escape_html(tool_id)}</span><span class="tool-status">{'✅' if tool_item.get('isComplete') else '⏳'}</span></div>{preview_html}<div class="attachment-details" id="{tool_html_id}"><strong>📋 Tool Invocation:</strong><pre>{tool_invocation_content}</pre><strong>🔧 Raw Metadata:</strong><pre>{metadata_json_html}</pre></div></div>'''
+        # Build the details content based on tool type
+        if input_output_html:
+            # MCP tools with Input/Output
+            details_content = f'''<strong>📋 Tool Invocation:</strong><pre>{tool_invocation_content}</pre>{input_output_html}<strong>🔧 Raw Metadata:</strong><pre>{metadata_json_html}</pre>'''
+        else:
+            # Regular tools
+            details_content = f'''<strong>📋 Tool Invocation:</strong><pre>{tool_invocation_content}</pre><strong>🔧 Raw Metadata:</strong><pre>{metadata_json_html}</pre>'''
+        
+        return f'''<div class="tool-call"><div class="tool-header" onclick="toggleAttachment('{tool_html_id}')"><span class="tool-icon">🔧</span><span class="tool-name">{self.escape_html(display_tool_name)}</span><span class="tool-status">{'✅' if tool_item.get('isComplete') else '⏳'}</span></div>{preview_html}<div class="attachment-details" id="{tool_html_id}">{details_content}</div></div>'''
     
     def create_html(self, session_data):
         session_id = session_data.get('_file', 'unknown').replace('.json', '')
