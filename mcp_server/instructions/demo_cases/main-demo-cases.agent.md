@@ -1,0 +1,4 @@
+- Follow `./jira-pdf-processing.agent.md` when processing Jira tickets that contain PDF attachments - extract images from PDFs and attach them back to the original ticket.
+- Follow `./working-with-chrome.agent.md` when you need to interact with the Chrome browser.
+- Follow `./working-with-teams.agent.md` when you need to interact with Microsoft Teams.
+- Read all cases in the `./cases.md` when you asked to show all demo cases.
