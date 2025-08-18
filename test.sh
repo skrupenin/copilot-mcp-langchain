@@ -548,6 +548,55 @@ python -m mcp_server.run run lng_file_list '{\"pattern\":\"*.txt\"}'
 rm -rf test_list_dir
 
 ########################
+### lng_pdf_extract_images ###
+########################
+color "Testing lng_pdf_extract_images tool" $yellow
+
+# Create a test PDF with an image for demonstration
+python -c "
+import fitz
+from PIL import Image
+import os
+
+# Create test directory
+os.makedirs('test_pdf_dir', exist_ok=True)
+
+# Create a simple test image
+test_img = Image.new('RGB', (200, 100), color='green')
+test_img.save('test_pdf_dir/test_image.png')
+
+# Create a PDF with the image
+doc = fitz.open()
+page = doc.new_page(width=612, height=792)
+
+# Insert the image
+img_rect = fitz.Rect(50, 50, 250, 150)
+page.insert_image(img_rect, filename='test_pdf_dir/test_image.png')
+
+# Add some text
+text_point = fitz.Point(50, 200)
+page.insert_text(text_point, 'Sample PDF Document with Image', fontsize=14)
+
+# Save the PDF
+doc.save('test_pdf_dir/sample_document.pdf')
+doc.close()
+
+print('Test PDF created successfully!')
+"
+
+# Extract images from the test PDF
+python -m mcp_server.run run lng_pdf_extract_images '{\"pdf_path\":\"test_pdf_dir/sample_document.pdf\"}'
+
+# Test error handling - non-existent PDF file
+python -m mcp_server.run run lng_pdf_extract_images '{\"pdf_path\":\"nonexistent.pdf\"}'
+
+# Test error handling - missing pdf_path parameter
+python -m mcp_server.run run lng_pdf_extract_images '{}'
+
+# Clean up test PDF directory
+rm -rf test_pdf_dir
+
+########################
 ### clean all caches ###
 ########################
 Get-ChildItem -Path . -Include __pycache__ -Recurse -Force | Remove-Item -Recurse -Force
