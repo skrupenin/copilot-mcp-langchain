@@ -63,6 +63,17 @@ class SimpleChatExporter:
                 if 'value' in item:
                     parts.append(str(item['value']))
                     i += 1
+                elif item.get('kind') == 'inlineReference':
+                    # Process inlineReference objects
+                    fs_path = item.get('inlineReference', {}).get('fsPath', '')
+                    if fs_path:
+                        import os
+                        folder_name = os.path.basename(fs_path) or os.path.basename(os.path.dirname(fs_path))
+                        # Create a clickable file link with VS Code-style appearance
+                        ref_link = f'📁<a href="file:///{fs_path.replace(chr(92), "/")}" style="color: #58a6ff; text-decoration: none; margin-left: 4px;" title="{fs_path}">{folder_name}</a>'
+                        parts.append(ref_link)
+                        logger.info(f"Processing inlineReference: {fs_path} -> {folder_name}")
+                    i += 1
                 elif item.get('kind') == 'prepareToolInvocation':
                     # Look for corresponding toolInvocationSerialized
                     tool_name = item.get('toolName')
@@ -106,23 +117,42 @@ class SimpleChatExporter:
         if not text:
             return ""
         
-        # First find and extract HTML tool calls (they start with <div class="tool-call">)
-        tool_calls = {}
-        tool_placeholder_counter = 0
+        # Process inline references first (before any HTML escaping)
+        text = self.process_inline_references(text)
+        
+        # First find and extract HTML tool calls AND inlineReference links
+        protected_html = {}
+        placeholder_counter = 0
         
         # Find all tool calls and replace them with placeholders
-        def replace_tool_call(match):
-            nonlocal tool_placeholder_counter
-            tool_html = match.group(0)
-            placeholder = f"__TOOL_CALL_{tool_placeholder_counter}__"
-            tool_calls[placeholder] = tool_html
-            tool_placeholder_counter += 1
+        def replace_html_content(match):
+            nonlocal placeholder_counter
+            html_content = match.group(0)
+            placeholder = f"__PROTECTED_HTML_{placeholder_counter}__"
+            protected_html[placeholder] = html_content
+            placeholder_counter += 1
             return placeholder
         
         # Extract tool calls (they are complete HTML blocks)
         # Use a more flexible regex to find tool-call divs with their content
         text_with_placeholders = text
         
+        # First protect inlineReference links (📁<a href="...">...</a>)
+        # Pattern to match our inlineReference links - more flexible pattern
+        inline_ref_pattern = r'📁<a href="[^"]*"[^>]*>.*?</a>'
+        
+        # Count matches first for debugging
+        matches = re.findall(inline_ref_pattern, text_with_placeholders, flags=re.DOTALL)
+        if matches:
+            logger.info(f"Found {len(matches)} inlineReference links to protect")
+            for i, match in enumerate(matches):
+                logger.info(f"  Link {i+1}: {match[:100]}...")
+        else:
+            logger.info("No inlineReference links found to protect in simple_markdown_to_html")
+        
+        text_with_placeholders = re.sub(inline_ref_pattern, replace_html_content, text_with_placeholders, flags=re.DOTALL)
+        
+        # Then protect tool-call divs
         # Find all <div class="tool-call">...</div> blocks and replace with placeholders
         start_tag = '<div class="tool-call">'
         end_tag = '</div>'
@@ -152,10 +182,10 @@ class SimpleChatExporter:
             if div_count == 0:
                 # Found complete tool-call block
                 tool_html = text_with_placeholders[start_pos:current_pos]
-                placeholder = f"__TOOL_CALL_{tool_placeholder_counter}__"
-                tool_calls[placeholder] = tool_html
+                placeholder = f"__PROTECTED_HTML_{placeholder_counter}__"
+                protected_html[placeholder] = tool_html
                 text_with_placeholders = text_with_placeholders[:start_pos] + placeholder + text_with_placeholders[current_pos:]
-                tool_placeholder_counter += 1
+                placeholder_counter += 1
             else:
                 break
         
@@ -167,6 +197,11 @@ class SimpleChatExporter:
         
         # Convert inline code (`code`)
         html = re.sub(r'`([^`]+?)`', r'<code style="background: #161b22; padding: 2px 4px; border-radius: 3px; font-size: 0.9em;">\1</code>', html)
+        
+        # Convert headers (## header)
+        html = re.sub(r'^### ([^\n]+)', r'<h3 style="color: #f0f6fc; margin: 16px 0 8px 0; font-size: 1.25em; font-weight: 600;">\1</h3>', html, flags=re.MULTILINE)
+        html = re.sub(r'^## ([^\n]+)', r'<h2 style="color: #f0f6fc; margin: 20px 0 10px 0; font-size: 1.5em; font-weight: 600; border-bottom: 1px solid #30363d; padding-bottom: 8px;">\1</h2>', html, flags=re.MULTILINE)
+        html = re.sub(r'^# ([^\n]+)', r'<h1 style="color: #f0f6fc; margin: 24px 0 16px 0; font-size: 2em; font-weight: 600; border-bottom: 1px solid #30363d; padding-bottom: 10px;">\1</h1>', html, flags=re.MULTILINE)
         
         # Convert bold (**text**)
         html = re.sub(r'\*\*([^*]+?)\*\*', r'<strong>\1</strong>', html)
@@ -180,21 +215,54 @@ class SimpleChatExporter:
         # Convert line breaks
         html = html.replace('\n', '<br>')
         
-        # Restore tool calls from placeholders and clean up spacing
-        for placeholder, tool_html in tool_calls.items():
-            # When restoring tool calls, clean up any <br> tags right before them
-            # and add a single space for better visual separation
+        # Clean up extra <br> tags around headers (before tool call restoration)
+        html = re.sub(r'<br>\s*(<h[123][^>]*>)', r'\1', html)
+        html = re.sub(r'(</h[123]>)\s*<br>', r'\1', html)
+        
+        # Restore protected HTML (tool calls and inlineReference links) from placeholders and clean up spacing
+        for placeholder, protected_html_content in protected_html.items():
+            # When restoring protected HTML, clean up any <br> tags right before them
+            # For inlineReference links, don't add extra space
+            # For tool calls, add a single space for better visual separation
+            
+            # Check if this is an inlineReference link
+            is_inline_reference = protected_html_content.startswith('📁<a href=')
+            
             placeholder_with_br = '<br>' + placeholder
             if placeholder_with_br in html:
-                html = html.replace(placeholder_with_br, ' ' + tool_html)
+                if is_inline_reference:
+                    # For inline references, just replace without extra space
+                    html = html.replace(placeholder_with_br, '<br>' + protected_html_content)
+                else:
+                    # For tool calls, add space for separation
+                    html = html.replace(placeholder_with_br, ' ' + protected_html_content)
             else:
-                html = html.replace(placeholder, ' ' + tool_html)
+                if is_inline_reference:
+                    # For inline references, just replace without extra space
+                    html = html.replace(placeholder, protected_html_content)
+                else:
+                    # For tool calls, add space for separation
+                    html = html.replace(placeholder, ' ' + protected_html_content)
+
+        # Additional cleanup after protected HTML restoration
+        # Remove multiple consecutive <br> tags and excessive spacing around headers
+        html = re.sub(r'<br>\s*<br>\s*(<h[123][^>]*>)', r'<br>\1', html)
+        html = re.sub(r'(</h[123]>)\s*<br>\s*<br>', r'\1<br>', html)
+        html = re.sub(r'<br>\s*(<h[123][^>]*>)', r'\1', html)
+        html = re.sub(r'(</h[123]>)\s*<br>', r'\1', html)
         
         # Clean up extra <br> tags before tool call indicators (emoji patterns) AFTER restoring tool calls
         # Remove <br> before tool call emojis like 🔧[MCP] 
         html = re.sub(r'<br>\s*🔧', '🔧', html)
         # Remove <br> before other tool indicators like 📋
         html = re.sub(r'<br>\s*📋', '📋', html)
+        # For inlineReference links: remove <br> before 📁 but ensure proper line breaks  
+        # Replace pattern: <br>📁<a...>text</a> with: 📁<a...>text</a><br>
+        # This moves the line break from before the link to after the link
+        html = re.sub(r'<br>\s*📁(<a[^>]*>[^<]*</a>)', r'📁\1<br>', html)
+        
+        # Clean up potential double <br> after inlineReference links
+        html = re.sub(r'📁(<a[^>]*>[^<]*</a>)<br>\s*<br>', r'📁\1<br>', html)
         
         # Clean up extra <br> tags after tool-call blocks
         # Remove <br> right after </div></div> (end of tool-call block)
@@ -218,6 +286,60 @@ class SimpleChatExporter:
         html = html.replace('&lt;br&gt;', '<br>')
         
         return html
+    
+    def process_inline_references(self, content):
+        """Process JSON inline references and convert them to file links"""
+        import json
+        import re
+        import os
+        
+        # Pattern to match the actual inlineReference structure:
+        # {
+        #   "kind": "inlineReference",
+        #   "inlineReference": {
+        #     "fsPath": "path...",
+        #     ...
+        #   }
+        # }
+        pattern = r'\{\s*"kind":\s*"inlineReference",\s*"inlineReference":\s*\{[^}]*"fsPath":\s*"([^"]+)"[^}]*\}[^}]*\}'
+        
+        def replace_reference(match):
+            try:
+                # Extract the full JSON object
+                json_text = match.group(0)
+                
+                # Parse the JSON to extract fsPath
+                json_obj = json.loads(json_text)
+                fs_path = json_obj.get('inlineReference', {}).get('fsPath', '')
+                
+                if fs_path:
+                    # Convert to a file link with folder icon like in VS Code
+                    # Extract just the filename from the path for display
+                    folder_name = os.path.basename(fs_path) or os.path.basename(os.path.dirname(fs_path))
+                    
+                    logger.info(f"Converting inlineReference: {fs_path} -> {folder_name}")
+                    
+                    # Create a clickable file link with VS Code-style appearance
+                    return f'📁<a href="file:///{fs_path.replace(chr(92), "/")}" style="color: #58a6ff; text-decoration: none; margin-left: 4px;" title="{fs_path}">{folder_name}</a>'
+                
+            except (json.JSONDecodeError, KeyError, AttributeError) as e:
+                # Log the error for debugging
+                logger.warning(f"Failed to parse inlineReference: {e}")
+                logger.warning(f"JSON text: {json_text[:200]}...")
+            
+            # If parsing fails, return original text
+            return match.group(0)
+        
+        # Debug logging
+        matches = re.findall(pattern, content)
+        if matches:
+            logger.info(f"Found {len(matches)} inlineReference objects")
+            for match in matches:
+                logger.info(f"Found fsPath: {match}")
+        else:
+            logger.info("No inlineReference objects found with current pattern")
+        
+        return re.sub(pattern, replace_reference, content)
     
     def format_attachment(self, variable):
         """Format attachment/variable for display"""
@@ -323,6 +445,17 @@ class SimpleChatExporter:
             if 'value' in item:
                 # Regular text response
                 html_parts.append(self.escape_html(str(item['value'])))
+                i += 1
+            elif item.get('kind') == 'inlineReference':
+                # Process inlineReference objects
+                fs_path = item.get('inlineReference', {}).get('fsPath', '')
+                if fs_path:
+                    import os
+                    folder_name = os.path.basename(fs_path) or os.path.basename(os.path.dirname(fs_path))
+                    # Create a clickable file link with VS Code-style appearance
+                    ref_link = f'📁<a href="file:///{fs_path.replace(chr(92), "/")}" style="color: #58a6ff; text-decoration: none; margin-left: 4px;" title="{fs_path}">{folder_name}</a>'
+                    html_parts.append(ref_link)
+                    logger.info(f"Processing inlineReference in raw HTML: {fs_path} -> {folder_name}")
                 i += 1
             elif item.get('kind') == 'prepareToolInvocation':
                 # Find the corresponding toolInvocationSerialized
