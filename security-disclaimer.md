@@ -15,6 +15,8 @@ The third data leak may occur when connecting Python libraries if you create a t
 
 Each tool (or group of tools) has a `settings.yaml` file that describes which `pip` libraries are used in it. If not acceptable, set `enabled: false` in the file and the tool will not be available. Alternatively, ask Copilot to change the library and tool implementation to a more secure one.
 
+**Note**: There is a library selection guide (`mcp_server/instructions/choose-library.agent.md`) that should be used during development to ensure secure library choices.
+
 ### 4. Data Leak #4: Generated Code
 `GitHub Copilot` / `Cursor` in agent mode generates solutions in `Python` and (less frequently) `JavaScript` code. Leaks are possible somewhere here. I haven't observed the LLM (I use `Claude Sonnet 4`) intentionally leaving `backdoors`, but everything depends on your request - you need to understand and accept the risk since you're generating code that you cannot (or will not) read and understand. In this case, reducing leak risks can be achieved by requesting the LLM to audit the solution after its generation.
 
