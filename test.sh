@@ -17,15 +17,16 @@ else
     source ./.virtualenv/bin/activate
 fi
 
-############################################################
-### to check connection to the OpenAI/Azure LLM provider ###
-############################################################
+####################################################
+### to check connection to the Open LLM provider ###
+####################################################
+
 python mcp_server/simple/query_openai.py 
 python mcp_server/simple/query_azure.py 
 
-############################################
+#########################################
 ### to test simple LangChain examples ###
-############################################
+#########################################
 python mcp_server/simple/rag.py
 python mcp_server/simple/agent.py
 python mcp_server/simple/structured_output.py
@@ -595,6 +596,49 @@ python -m mcp_server.run run lng_pdf_extract_images '{}'
 
 # Clean up test PDF directory
 rm -rf test_pdf_dir
+
+# Clean up test PDF directory
+rm -rf test_pdf_dir
+
+#####################################
+### lng_copilot_chat_export tools ###
+#####################################
+# NOTE: Replace the vscode_path with your actual VS Code settings directory
+# Windows: "C:/Users/YourName/AppData/Roaming/Code"
+# macOS: "~/Library/Application Support/Code"  
+# Linux: "~/.config/Code"
+
+# Step 1: List all workspaces with chat sessions
+echo "=== Listing VS Code workspaces with chat sessions ==="
+python -m mcp_server.run run lng_copilot_chat_export_list_workspaces '{\"vscode_path\":\"C:/Users/YourName/AppData/Roaming/Code\"}'
+
+# Step 2: List sessions in specific workspace (replace workspace_id with actual ID from step 1)
+echo "=== Listing chat sessions in workspace ==="
+python -m mcp_server.run run lng_copilot_chat_export_list_sessions '{\"vscode_path\":\"C:/Users/YourName/AppData/Roaming/Code\",\"workspace_id\":\"YOUR_WORKSPACE_ID\"}'
+
+# Step 3: Export specific session (replace session_id with actual ID from step 2)
+echo "=== Exporting specific chat session ==="
+python -m mcp_server.run run lng_copilot_chat_export_export_sessions '{\"vscode_path\":\"C:/Users/YourName/AppData/Roaming/Code\",\"workspace_id\":\"YOUR_WORKSPACE_ID\",\"sessions\":\"YOUR_SESSION_ID\"}'
+
+# Export multiple sessions
+echo "=== Exporting multiple chat sessions ==="
+python -m mcp_server.run run lng_copilot_chat_export_export_sessions '{\"vscode_path\":\"C:/Users/YourName/AppData/Roaming/Code\",\"workspace_id\":\"YOUR_WORKSPACE_ID\",\"sessions\":\"session1,session2\"}'
+
+# Export ALL sessions in workspace
+echo "=== Exporting ALL chat sessions in workspace ==="
+python -m mcp_server.run run lng_copilot_chat_export_export_sessions '{\"vscode_path\":\"C:/Users/YourName/AppData/Roaming/Code\",\"workspace_id\":\"YOUR_WORKSPACE_ID\",\"sessions\":\"*\"}'
+
+# Export to custom directory
+echo "=== Exporting to custom directory ==="
+python -m mcp_server.run run lng_copilot_chat_export_export_sessions '{\"vscode_path\":\"C:/Users/YourName/AppData/Roaming/Code\",\"workspace_id\":\"YOUR_WORKSPACE_ID\",\"sessions\":\"*\",\"output_dir\":\"custom_export\"}'
+
+# Test error handling - non-existent VS Code path
+echo "=== Testing error handling - invalid path ==="
+python -m mcp_server.run run lng_copilot_chat_export_list_workspaces '{\"vscode_path\":\"/nonexistent/path\"}'
+
+# Test error handling - missing parameters
+echo "=== Testing error handling - missing parameters ==="
+python -m mcp_server.run run lng_copilot_chat_export_list_workspaces '{}'
 
 ########################
 ### clean all caches ###
