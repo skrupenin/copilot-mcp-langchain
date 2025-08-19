@@ -8,6 +8,13 @@ Show me demo:
 Create a simple calculator webhook that accepts math expressions via GET/POST requests and returns JSON results.
 ```
 
+## 🤖 AI Instructions
+1. List webhooks → stop `calculator-webhook` if exists
+2. Create: `lng_webhook_server` → port 8089, path `/calculate`, pipeline with `lng_math_calculator`
+3. Test: GET `?expression=2%2B3*4` → `14`, POST `{"expression":"sqrt(16)+2^3"}` → `12`
+
+**Key**: Use `{! webhook.body.expression || webhook.query.expression !}` for input, encode `+` as `%2B` in GET
+
 ## Important
 - Webhook runs on port 8089 at http://localhost:8089/calculate
 - Supports both GET query parameters and POST body
