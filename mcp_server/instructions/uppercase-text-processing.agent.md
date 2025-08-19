@@ -1,7 +1,6 @@
-- When user asks for UPPERCASE conversion, use PowerShell script to perform the conversion
-- Run the `uppercase.ps1` script located in the scripts folder using `run_in_terminal` tool
-- Command format: `powershell -ExecutionPolicy Bypass -File ".\scripts\uppercase.ps1" "text_to_convert"`
-- Wrap the input text in double quotes to handle spaces and special characters
-- After getting the result from terminal, present it wrapped in a markdown code block (```text) for easy copying
-- Do not perform text conversion manually - always use the PowerShell script
-- Example workflow: User asks for "мама мыла раму" → Run script → Present result in code block
+- When user asks for UPPERCASE conversion, use the lng_text_uppercase MCP tool
+- Call the tool with the text to be converted: lng_text_uppercase with parameter input_text
+- Extract the `output_text` field from the JSON result
+- Present the result wrapped in a markdown code block (```text) for easy copying
+- Do not perform text conversion manually - always use the lng_text_uppercase tool
+- Example workflow: User asks for `мама мыла раму` → Call `lng_text_uppercase` → Extract `output_text` → Present in code block
