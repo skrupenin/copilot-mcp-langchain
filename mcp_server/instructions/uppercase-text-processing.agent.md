@@ -1,7 +1,7 @@
-- When user asks for UPPERCASE conversion, simply convert the text and respond with the result only
-- Do not use external tools or methods - perform conversion directly in your response
-- Do not explain how the conversion was done - just provide the uppercase text
-- Example: User: "Make this UPPERCASE: мама мыла раму" → Response: "МАМА МЫЛА РАМУ"
-- Russian Cyrillic characters convert properly with standard methods
-- Preserve spacing and punctuation during conversion
-- Always wrap the uppercase result in a markdown code block (```text) so the user can easily copy it from the chat.
+- When user asks for UPPERCASE conversion, use PowerShell script to perform the conversion
+- Run the `uppercase.ps1` script located in the scripts folder using `run_in_terminal` tool
+- Command format: `powershell -ExecutionPolicy Bypass -File ".\scripts\uppercase.ps1" "text_to_convert"`
+- Wrap the input text in double quotes to handle spaces and special characters
+- After getting the result from terminal, present it wrapped in a markdown code block (```text) for easy copying
+- Do not perform text conversion manually - always use the PowerShell script
+- Example workflow: User asks for "мама мыла раму" → Run script → Present result in code block
