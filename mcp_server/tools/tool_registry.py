@@ -4,8 +4,9 @@ import traceback
 import yaml
 from importlib import import_module
 from pathlib import Path
+from mcp_server.logging_config import setup_logging
 
-logger = logging.getLogger('mcp_server.tools')
+logger = setup_logging('mcp_server', logging.DEBUG)
 
 tool_definitions = []
 
