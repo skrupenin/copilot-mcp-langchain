@@ -22,6 +22,20 @@ This project demonstrates a solution through:
 
 With this setup, `GitHub Copilot` gains access to new, well-documented tools that it can see as part of your project. When you ask Copilot to "create a tool that does X", it can generate a solution very close to what you need. You simply accept its changes and restart MCP to get a new deterministic tool for your specific logic.
 
+## Data Security
+
+Куда могут утекать данные при работе с этим инструментом?
+
+1) Утечка 1: Решение работает под управлением GithubCopilot (или Cursor) с той LLM которая выбрана в нем. В обоих случаях можо заменит LLM на ту, которая используется у вас в периметре проекта.
+
+2) Утечка 2: Если используются тулы на базе langchain (`lng_llm_*`) то под капотом используется другая LLM (ключик к кооторой прописан в `.env` файле) так что можно его тоже настроить на доступную в проекте LLM. Сейчас есть две опции `azure` и `personal openani`.
+
+3) Утечка 3: И третья утечка данных может быть в месте поджключения python библиотек, если ты создаешь tool какой-то для орбработки чего-то. 
+
+В каждом туле (или группе тулов) есть файл `settings.yaml` и в нем описано какие `pip` библиотеки используются в нем. Если не ок, прописываем в файле `enabled: false` и tool не будет доступна. Либо просим Copilot поменять library и реализацию tool на более безопасную.
+
+4) Утечка 4: `GithubCopilot` / `Cursor` в режиме агента генерирует решения в виде `python` и (реже) `javascript` кода. Где-то тут возможны утечки. Я не наблюдал чтобы LLM (я использую  `Claude Sonnet 4`) намеренно оставляла `backdoors`, но все заивисит от вашего запроса - нужно понимать и принимать риск, т.к. вы генерируете код, прочитать и понять который не можете (или не будете). В данном случае снизить риски утечек может запрос к LLM об аудите решения, после его генерации. 
+
 ## Key Components
 
 - **Simple Examples** (`mcp_server/simple/`): Demonstrates integration with different LLM providers and key LangChain concepts
