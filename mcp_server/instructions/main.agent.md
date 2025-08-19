@@ -6,7 +6,7 @@
 - Always follow `./activate-virtualenv.agent.md` in any case activate the virtual environment before starting any python stuff in terminal.
 - Important! Use MCP calls to demonstrate the operation of tools whenever possible, unless otherwise specified or if the tool is being debugged prior to its final demonstration.
 - Follow `./check-mcp-enabled.agent.md` if there is no MCP enabled or you need to check if MCP is enabled.
-- Follow `./reastart-mcp-server.agent.md` if you need to restart MCP server after some changes.
+- Follow `./restart-mcp-server.agent.md` if you need to restart MCP server after some changes.
 - Follow `./choose-library.agent.md` when you need to choose a library for Python.
 - Follow `./update-install.agent.md` if you suggest any `pip install xxxx`.
 - Follow `./git-repo.agent.md` if you need to work with git repository.
@@ -16,3 +16,4 @@
 - Follow `./running-unit-tests.agent.md` when you need to run/write unit tests for the tool.
 - Follow `./creating-instructions.agent.md` when you need to create new instruction files for the project.
 - Follow demo instructions with a pattern `*.demo.agent.md` to find all cases around tools (`./mcp_server/tools/` folder) when you are asked to show a demonstration (with wording: `demo`, `демо`, `демка` and so on) of existing cases. **Important** Don't look for other files to search for demo cases.
+- Use `lng_email_client` tool for all email-related tasks including SMTP, API services (SendGrid, Mailgun), templates, batch sending, and email validation.
