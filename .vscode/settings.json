@@ -1,4 +1,11 @@
 {
     "chat.mcp.enabled": true,
-    "github.copilot.chat.codeGeneration.useInstructionFiles": true
+    "github.copilot.chat.codeGeneration.useInstructionFiles": true,
+    "chat.agent.maxRequests": 250,
+    // "chat.tools.terminal.autoApprove": {
+    //     "git": false,
+    //     "/.*/": true
+    // },
+    "files.autoSave": "afterDelay",
+    "files.autoSaveDelay": 100,
 }
