@@ -57,6 +57,13 @@ python -m mcp_server.run run lng_get_tools_info '{\"tools\":\"lng_count_words\"}
 # sample of how to run python function
 python -m mcp_server.run run lng_count_words '{\"input_text\":\"Hello pirate!\"}'
 
+###########################
+### lng_text_uppercase ###
+###########################
+# converts text to uppercase format
+python -m mcp_server.run run lng_text_uppercase '{\"input_text\":\"Hello World\"}'
+python -m mcp_server.run run lng_text_uppercase '{\"input_text\":\"мама мыла раму\"}'
+
 ###############################
 ### lng_multi_agent_manager ###
 ###############################
