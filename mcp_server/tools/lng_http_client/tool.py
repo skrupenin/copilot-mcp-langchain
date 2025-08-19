@@ -25,7 +25,7 @@ from jsonpath_ng.ext import parse as jsonpath_ext_parse
 
 # Add the parent directory to the path
 sys.path.append(os.path.join(os.path.dirname(__file__), '..', '..'))
-from mcp_server.pipeline.expressions import substitute_expressions, parse_substituted_string
+from mcp_server.pipeline.expressions import substitute_expressions, parse_substituted_string, build_default_context
 
 # State management  
 from mcp_server.file_state_manager import FileStateManager
@@ -386,14 +386,17 @@ class HTTPClient:
     
     def build_expression_context(self, session: Dict, current_request: Dict = None, previous_response: Dict = None, accumulated: List = None, vars_dict: Dict = None) -> Dict:
         """Build context for expression evaluation"""
-        context = {
-            "env": dict(os.environ),
+        # Start with default context (includes env, datetime, etc.)
+        context = build_default_context()
+        
+        # Add HTTP client specific context
+        context.update({
             "session": session,
             "current": current_request or {},
             "previous": previous_response or {},
             "accumulated": accumulated or [],
             "vars": vars_dict or session.get("vars", {})
-        }
+        })
         return context
     
     def evaluate_expression(self, expr: str, context: Dict) -> Any:
@@ -881,11 +884,11 @@ async def run_tool(name: str, parameters: dict) -> list[types.Content]:
                 from tool import BatchRunner
                 
                 pipeline_runner = BatchRunner()
-                pipeline_context = {
+                # Build pipeline context with default context (env, datetime, etc.)
+                pipeline_context = build_default_context({
                     "http_result": result,
-                    "session": client.sessions.get(result.get("session_id", ""), {}),
-                    "env": dict(os.environ)
-                }
+                    "session": client.sessions.get(result.get("session_id", ""), {})
+                })
                 
                 pipeline_result = await pipeline_runner.run_pipeline(pipeline, pipeline_context)
                 result["pipeline_result"] = pipeline_result
