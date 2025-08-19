@@ -218,10 +218,10 @@ python -m mcp_server.run run lng_batch_run '{\"pipeline\": [{\"tool\": \"lng_win
 python -m mcp_server.run run lng_webhook_server '{\"operation\":\"list\"}'
 
 # Create simple webhook
-python -m mcp_server.run run lng_webhook_server '{\"operation\":\"start\",\"name\":\"simple-test\",\"port\":8080,\"path\":\"/test\",\"response\":{\"status\":200,\"body\":{\"message\":\"Hello ${webhook.body.user}!\",\"timestamp\":\"${webhook.timestamp}\"}}}'
+python -m mcp_server.run run lng_webhook_server '{\"operation\":\"start\",\"name\":\"simple-test\",\"port\":8080,\"path\":\"/test\",\"response\":{\"status\":200,\"body\":{\"message\":\"Hello {! webhook.body.user !}!\",\"timestamp\":\"{! webhook.timestamp !}\"}}}'
 
 # Create webhook with pipeline (word counting)
-python -m mcp_server.run run lng_webhook_server '{\"operation\":\"start\",\"name\":\"word-counter\",\"port\":8081,\"path\":\"/count\",\"pipeline\":[{\"tool\":\"lng_count_words\",\"params\":{\"input_text\":\"${webhook.body.message}\"},\"output\":\"stats\"}],\"response\":{\"body\":{\"word_count\":\"${stats.wordCount}\",\"original\":\"${webhook.body.message}\"}}}'
+python -m mcp_server.run run lng_webhook_server '{\"operation\":\"start\",\"name\":\"word-counter\",\"port\":8081,\"path\":\"/count\",\"pipeline\":[{\"tool\":\"lng_count_words\",\"params\":{\"input_text\":\"{! webhook.body.message !}\"},\"output\":\"stats\"}],\"response\":{\"body\":{\"word_count\":\"{! stats.wordCount !}\",\"original\":\"{! webhook.body.message !}\"}}}'
 
 # Test webhook with HTTP request
 python -m mcp_server.run run lng_webhook_server '{\"operation\":\"test\",\"name\":\"simple-test\",\"test_data\":{\"user\":\"tester\",\"message\":\"Hello webhook!\"}}'
@@ -230,7 +230,7 @@ python -m mcp_server.run run lng_webhook_server '{\"operation\":\"test\",\"name\
 python -m mcp_server.run run lng_webhook_server '{\"operation\":\"test\",\"name\":\"word-counter\",\"test_data\":{\"message\":\"This is a test message with several words\"}}'
 
 # Create and test webhook in batch mode
-python -m mcp_server.run batch lng_webhook_server '{\"operation\":\"start\",\"name\":\"batch-test\",\"port\":8082,\"path\":\"/batch\",\"response\":{\"body\":{\"success\":true,\"received\":\"${webhook.body}\"}}}' lng_webhook_server '{\"operation\":\"test\",\"name\":\"batch-test\",\"test_data\":{\"message\":\"batch test\"}}'
+python -m mcp_server.run batch lng_webhook_server '{\"operation\":\"start\",\"name\":\"batch-test\",\"port\":8082,\"path\":\"/batch\",\"response\":{\"body\":{\"success\":true,\"received\":\"{! webhook.body !}\"}}}' lng_webhook_server '{\"operation\":\"test\",\"name\":\"batch-test\",\"test_data\":{\"message\":\"batch test\"}}'
 
 # Stop webhooks
 python -m mcp_server.run run lng_webhook_server '{\"operation\":\"stop\",\"name\":\"simple-test\"}'
