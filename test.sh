@@ -692,6 +692,44 @@ python -m mcp_server.run run lng_http_client '{\"mode\":\"export_curl\",\"url\":
 echo "=== Testing error handling ==="
 python -m mcp_server.run run lng_http_client '{\"mode\":\"request\",\"url\":\"https://invalid-url-that-does-not-exist.com\",\"timeout\":2}'
 
+####################################
+### lng_email_client testing ###
+####################################
+
+echo "=== Email Client Tool Tests ==="
+
+# Test email address validation
+echo "Testing email address validation..."
+python -m mcp_server.run run lng_email_client '{\"mode\":\"validate\",\"to\":[\"valid@example.com\",\"invalid-email\",\"test+tag@domain.co.uk\"],\"validate_content\":true,\"subject\":\"Test Subject - FREE OFFER!\",\"body_text\":\"Click here for free stuff!\"}'
+
+# Test SMTP configuration with mock server (will fail but shows config processing)
+echo "Testing SMTP configuration..."
+python -m mcp_server.run run lng_email_client '{\"mode\":\"test\",\"service\":\"smtp\",\"smtp_config\":{\"host\":\"smtp.example.com\",\"port\":587,\"username\":\"test@example.com\",\"password\":\"mock_password\",\"use_tls\":true},\"test_config\":{\"connection_only\":true}}'
+
+# Test template processing
+echo "Testing template processing..."
+python -m mcp_server.run run lng_email_client '{\"mode\":\"template\",\"service\":\"smtp\",\"smtp_config\":{\"host\":\"smtp.example.com\",\"port\":587,\"username\":\"test@example.com\",\"password\":\"mock\"},\"from_email\":\"test@example.com\",\"to\":\"recipient@example.com\",\"template\":{\"subject\":\"Welcome {{name}} to {{service}}!\",\"body_html\":\"<h1>Hello {{name}}!</h1><p>Welcome to {{service}}!</p>\"},\"template_vars\":{\"name\":\"Alice\",\"service\":\"Test App\"}}'
+
+# Test batch configuration
+echo "Testing batch email configuration..."
+python -m mcp_server.run run lng_email_client '{\"mode\":\"batch\",\"service\":\"smtp\",\"smtp_config\":{\"host\":\"smtp.example.com\",\"port\":587,\"username\":\"test@example.com\",\"password\":\"mock\"},\"from_email\":\"test@example.com\",\"template\":{\"subject\":\"Hi {{name}}!\",\"body_text\":\"Hello {{name}} from {{company}}!\"},\"recipients\":[{\"email\":\"alice@company1.com\",\"name\":\"Alice\",\"company\":\"TechCorp\"},{\"email\":\"bob@company2.com\",\"name\":\"Bob\",\"company\":\"StartupIO\"}],\"batch_config\":{\"batch_size\":1,\"delay_between_batches\":0.1}}'
+
+# Test SendGrid API configuration (will fail without real API key but shows structure)
+echo "Testing SendGrid API configuration..."
+python -m mcp_server.run run lng_email_client '{\"mode\":\"test\",\"service\":\"sendgrid\",\"api_config\":{\"api_key\":\"SG.mock_api_key_for_testing\"},\"test_config\":{\"connection_only\":true}}'
+
+# Test session info
+echo "Testing session information..."
+python -m mcp_server.run run lng_email_client '{\"mode\":\"session_info\",\"session_id\":\"test_session_123\"}'
+
+# Test expression system with environment variables
+echo "Testing expression system..."
+export TEST_FROM_EMAIL="test@example.com"
+export TEST_SUBJECT_DATE=$(date +%Y-%m-%d)
+python -m mcp_server.run run lng_email_client '{\"mode\":\"validate\",\"to\":[\"{! env.TEST_FROM_EMAIL !}\"],\"subject\":\"Test - {! env.TEST_SUBJECT_DATE !}\"}'
+
+echo "=== Email Client Tests Completed ==="
+
 ########################
 ### clean all caches ###
 ########################
