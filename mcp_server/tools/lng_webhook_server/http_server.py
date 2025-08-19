@@ -11,6 +11,9 @@ from aiohttp import web, ClientTimeout
 from aiohttp.web_request import Request
 from aiohttp.web_response import Response
 
+# Import new expression system
+from mcp_server.pipeline.expressions import substitute_expressions
+
 logger = logging.getLogger('mcp_server.tools.lng_webhook_server.http_server')
 
 class WebhookHTTPServer:
@@ -382,27 +385,9 @@ class WebhookHTTPServer:
         return context
     
     def _substitute_variables(self, obj: Any, context: dict) -> Any:
-        """Substitute variables in response template."""
-        if isinstance(obj, dict):
-            return {k: self._substitute_variables(v, context) for k, v in obj.items()}
-        elif isinstance(obj, list):
-            return [self._substitute_variables(item, context) for item in obj]
-        elif isinstance(obj, str) and "${" in obj:
-            import re
-            
-            def replace_var(match):
-                var_path = match.group(1)
-                try:
-                    value = context
-                    for part in var_path.split('.'):
-                        if isinstance(value, dict):
-                            value = value[part]
-                        else:
-                            return match.group(0)  # Can't navigate further
-                    return str(value)
-                except (KeyError, TypeError, AttributeError):
-                    return match.group(0)  # Return original if not found
-            
-            return re.sub(r'\$\{([^}]+)\}', replace_var, obj)
-        else:
+        """Substitute variables in response template using new expression system."""
+        try:
+            return substitute_expressions(obj, context, expected_result_type="python")
+        except Exception as e:
+            logger.warning(f"Variable substitution failed: {e}")
             return obj

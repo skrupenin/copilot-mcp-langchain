@@ -120,7 +120,7 @@ class LegacyPipelineExecutor:
             
             # Calculate final result
             try:
-                if isinstance(final_result_expr, str) and ("${" in final_result_expr or "$[" in final_result_expr):
+                if isinstance(final_result_expr, str) and ("{!" in final_result_expr or "[!" in final_result_expr):
                     final_result = substitute_expressions(final_result_expr, context.variables, expected_result_type="python")
                 else:
                     final_result = final_result_expr
@@ -211,7 +211,7 @@ class LegacyPipelineExecutor:
         elif isinstance(obj, list):
             return [self._substitute_recursive(item, variables) for item in obj]
         elif isinstance(obj, str):
-            if "${" in obj or "$[" in obj:
+            if "{!" in obj or "[!" in obj:
                 return substitute_expressions(obj, variables, expected_result_type="python")
             return obj
         else:

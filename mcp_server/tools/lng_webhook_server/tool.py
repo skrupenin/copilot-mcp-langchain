@@ -61,14 +61,14 @@ Create HTTP endpoints that receive webhooks and execute pipelines automatically.
     "headers": {"Content-Type": "application/json"},
     "body": {
       "received": true,
-      "processed": "${pipeline.success}",
-      "commit_count": "${webhook.body.commits.length}"
+      "processed": "{! pipeline.success !}",
+      "commit_count": "{! webhook.body.commits.length !}"
     }
   },
   "pipeline": [
     {
       "tool": "lng_count_words",
-      "params": {"input_text": "${webhook.body.commits[0].message}"},
+      "params": {"input_text": "{! webhook.body.commits[0].message !}"},
       "output": "stats"
     }
   ]

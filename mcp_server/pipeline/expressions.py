@@ -173,10 +173,8 @@ class JavaScriptExpressionStrategy(ExpressionStrategy):
         try:
             clean_expression = self.extract_expression(expression)
             
-            # Basic JS to Python syntax conversion
+            # Basic JS to Python syntax conversion  
             converted = clean_expression
-            if '`' in converted and '${' in converted:
-                converted = converted.replace('`', '"').replace('${', '{')
             
             result = eval(converted, {"__builtins__": {}}, context)
             return self.format_result(result, expected_result_type)
@@ -582,15 +580,13 @@ def substitute_in_object(obj: Any, context: Dict[str, Any], step_info: Dict[str,
         return [substitute_in_object(item, context, step_info, preserve_objects) for item in obj]
     elif isinstance(obj, str):
         # Проверяем наличие выражений (старый и новый синтаксис)
-        if "${" in obj or "$[" in obj or "{!" in obj or "[!" in obj:
+        if "{!" in obj or "[!" in obj:
             obj_stripped = obj.strip()
             
             # Проверяем, является ли это одиночным выражением
             is_single_expression = (
                 (obj_stripped.startswith('{! ') and obj_stripped.endswith(' !}')) or 
-                (obj_stripped.startswith('[! ') and obj_stripped.endswith(' !]')) or
-                (obj_stripped.startswith('${') and obj_stripped.endswith('}')) or
-                (obj_stripped.startswith('$[') and obj_stripped.endswith(']'))
+                (obj_stripped.startswith('[! ') and obj_stripped.endswith(' !]'))
             )
             
             if preserve_objects and is_single_expression:
