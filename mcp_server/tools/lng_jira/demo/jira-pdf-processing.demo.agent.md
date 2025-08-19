@@ -1,3 +1,4 @@
+- These instructions are needed to demonstrate the ability to work with Jira using a token, namely, to view the description of a ticket after receiving it, download a PDF from attachments, extract all images from the PDF, and attach them back to the ticket.
 - Use this case to make demo:
 ```
 Show me demo:

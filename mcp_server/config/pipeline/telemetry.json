@@ -3,7 +3,7 @@
     {
       "tool": "lng_javascript_execute",
       "params": {
-        "function_name": "setOrderMap"
+        "function_name": "telemetry/setOrderMap"
       },
       "output": "order_map"
     },
@@ -40,7 +40,7 @@
     {
       "tool": "lng_javascript_execute",
       "params": {
-        "function_name": "mergeJsons",
+        "function_name": "telemetry/mergeJsons",
         "parameters": {
           "json_arrays": "{! file_content !}"
         }
@@ -51,7 +51,7 @@
     {
       "tool": "lng_javascript_execute",
       "params": {
-        "function_name": "appendFieldsDescription",
+        "function_name": "telemetry/appendFieldsDescription",
         "parameters": {
           "data": "{! merged_data !}"
         }
@@ -62,7 +62,7 @@
     {
       "tool": "lng_javascript_execute",
       "params": {
-        "function_name": "prettyPrintAndSort",
+        "function_name": "telemetry/prettyPrintAndSort",
         "parameters": {
           "data": "{! data_with_descriptions !}",
           "orderMap": "{! order_map !}"

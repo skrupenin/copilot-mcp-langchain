@@ -1,3 +1,4 @@
+- These instructions are necessary to demonstrate the ability to perform actions in the Chrome browser using hotkeys and winapi.
 - Use this case to make demo:
 ```
 Show me demo:

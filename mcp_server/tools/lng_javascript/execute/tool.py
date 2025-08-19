@@ -15,12 +15,17 @@ async def tool_info() -> dict:
     return {
         "description": """Execute previously saved JavaScript functions with parameters and full console.log support.
 
+**Function Path Support:**
+Functions can be organized in subfolders using "/" notation:
+- "functionName" - searches in main javascript folder
+- "subfolder/functionName" - searches in specified subfolder
+
 **Console Logging Support:**
 JavaScript functions can use console.log, console.warn, and console.error for debugging.
 All console messages are automatically captured and logged to both server logs and console output.
 
 **Parameters:**
-- `function_name` (string, required): Name of the saved function to execute
+- `function_name` (string, required): Name of the saved function to execute (supports subfolder paths)
 - `parameters` (object, optional): Parameters to pass to the function
 
 **Parameter Handling:**
@@ -32,6 +37,13 @@ All console messages are automatically captured and logged to both server logs a
 {
     "function_name": "calculateSum",
     "parameters": {"a": 5, "b": 3}
+}
+```
+
+```json
+{
+    "function_name": "telemetry/mergeJsons",
+    "parameters": {"json_arrays": [{"data": 1}, {"data": 2}]}
 }
 ```
 
@@ -63,7 +75,7 @@ function debugExample(params) {
             "properties": {
                 "function_name": {
                     "type": "string", 
-                    "description": "Name of the JavaScript function to execute"
+                    "description": "Name of the JavaScript function to execute (supports subfolder paths like 'telemetry/functionName')"
                 },
                 "parameters": {
                     "description": "Parameters to pass to function - can be object, string, number, or any JSON type"
@@ -82,8 +94,19 @@ async def run_tool(name: str, parameters: dict) -> list[types.Content]:
         if not function_name:
             return [types.TextContent(type="text", text=json.dumps({"error": "function_name is required"}))]
         
-        # Load the function from the filesystem
-        function_code = javascript_manager.get(function_name, extension=".js")
+        # Handle function path with subfolders (e.g., "telemetry/setOrderMap")
+        if "/" in function_name:
+            # Split path and function name
+            path_parts = function_name.split("/")
+            function_file_name = path_parts[-1]  # Last part is the function name
+            subfolder_path = "/".join(path_parts[:-1])  # Everything before is the path
+            
+            # Create a new manager for the subfolder
+            subfolder_manager = FileStateManager(f"mcp_server/config/javascript/{subfolder_path}")
+            function_code = subfolder_manager.get(function_file_name, extension=".js")
+        else:
+            # Load the function from the main javascript folder
+            function_code = javascript_manager.get(function_name, extension=".js")
         
         if function_code is None:
             return [types.TextContent(type="text", text=json.dumps({
@@ -91,7 +114,9 @@ async def run_tool(name: str, parameters: dict) -> list[types.Content]:
             }))]
         
         # Execute the JavaScript function
-        result = execute_javascript_function(function_code, function_name, function_parameters)
+        # Extract actual function name from path (last part after /)
+        actual_function_name = function_name.split("/")[-1] if "/" in function_name else function_name
+        result = execute_javascript_function(function_code, actual_function_name, function_parameters)
         
         # Return the result - if it's already a string (JSON or plain text), return as-is
         if isinstance(result, str):
