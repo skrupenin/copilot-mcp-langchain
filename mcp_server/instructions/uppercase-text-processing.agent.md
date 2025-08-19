@@ -1,0 +1,7 @@
+- When user asks for UPPERCASE conversion, simply convert the text and respond with the result only
+- Do not use external tools or methods - perform conversion directly in your response
+- Do not explain how the conversion was done - just provide the uppercase text
+- Example: User: "Make this UPPERCASE: мама мыла раму" → Response: "МАМА МЫЛА РАМУ"
+- Russian Cyrillic characters convert properly with standard methods
+- Preserve spacing and punctuation during conversion
+- Always wrap the uppercase result in a markdown code block (```text) so the user can easily copy it from the chat.
