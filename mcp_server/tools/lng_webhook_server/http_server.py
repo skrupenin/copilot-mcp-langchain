@@ -314,29 +314,44 @@ class WebhookHTTPServer:
             pipeline_steps = self.config['pipeline']
             self.logger.info(f"[{request_id}] ⚙️ Starting pipeline execution with {len(pipeline_steps)} steps")
             
-            # Log pipeline steps
-            for i, step in enumerate(pipeline_steps, 1):
+            # Prepare initial context with webhook data
+            initial_context = {
+                "webhook": webhook_data
+            }
+            
+            # Substitute variables in pipeline steps
+            substituted_steps = self._substitute_variables(pipeline_steps, initial_context)
+            
+            # Log pipeline steps (with substituted values)
+            for i, step in enumerate(substituted_steps, 1):
                 tool_name = step.get('tool', 'unknown')
                 params_preview = str(step.get('params', {}))[:100] + ("..." if len(str(step.get('params', {}))) > 100 else "")
                 output_var = step.get('output', 'none')
-                self.logger.info(f"[{request_id}] ⚙️ Step {i}/{len(pipeline_steps)}: {tool_name} → {output_var} | params: {params_preview}")
+                self.logger.info(f"[{request_id}] ⚙️ Step {i}/{len(substituted_steps)}: {tool_name} → {output_var} | params: {params_preview}")
             
             # Import here to avoid circular imports
             from mcp_server.tools.lng_batch_run.tool import run_tool as run_batch_pipeline
             
             # Prepare pipeline parameters
             pipeline_params = {
-                "pipeline": pipeline_steps,
-                "final_result": "Pipeline completed"
+                "pipeline": substituted_steps,
+                "final_result": "Pipeline completed",
+                "context_fields": ["*"]  # Show all context variables
             }
             
             # Execute using lng_batch_run
             result_content = await run_batch_pipeline("lng_batch_run", pipeline_params)
             
+            # Debug: Log raw result
+            self.logger.info(f"[{request_id}] 🔍 Raw pipeline result: {result_content}")
+            self.logger.info(f"[{request_id}] 🔍 Result type: {type(result_content)}")
+            
             # Parse result
             if result_content and len(result_content) > 0:
                 result_text = result_content[0].text
+                self.logger.info(f"[{request_id}] 🔍 Result text: {result_text[:500]}...")
                 result_data = json.loads(result_text)
+                self.logger.info(f"[{request_id}] 🔍 Parsed result data: {result_data}")
                 
                 # Log pipeline results
                 if 'context' in result_data:
@@ -347,6 +362,8 @@ class WebhookHTTPServer:
                     for key, value in result_data['context'].items():
                         value_preview = str(value)[:150] + ("..." if len(str(value)) > 150 else "")
                         self.logger.info(f"[{request_id}] ⚙️ Variable '{key}': {value_preview}")
+                else:
+                    self.logger.warning(f"[{request_id}] ⚠️ No 'context' key in result_data")
                 
                 self.logger.info(f"[{request_id}] ✅ Pipeline completed successfully")
                 return result_data
@@ -386,8 +403,15 @@ class WebhookHTTPServer:
     
     def _substitute_variables(self, obj: Any, context: dict) -> Any:
         """Substitute variables in response template using new expression system."""
-        try:
-            return substitute_expressions(obj, context, expected_result_type="python")
-        except Exception as e:
-            logger.warning(f"Variable substitution failed: {e}")
+        if isinstance(obj, dict):
+            return {k: self._substitute_variables(v, context) for k, v in obj.items()}
+        elif isinstance(obj, list):
+            return [self._substitute_variables(item, context) for item in obj]
+        elif isinstance(obj, str) and ("{!" in obj or "[!" in obj):
+            try:
+                return substitute_expressions(obj, context, expected_result_type="python")
+            except Exception as e:
+                logger.warning(f"Variable substitution failed for '{obj}': {e}")
+                return obj
+        else:
             return obj
