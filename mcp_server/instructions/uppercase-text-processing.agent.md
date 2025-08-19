@@ -1,6 +1,0 @@
-- When user asks for UPPERCASE conversion, use the lng_text_uppercase MCP tool
-- Call the tool with the text to be converted: lng_text_uppercase with parameter input_text
-- Extract the `output_text` field from the JSON result
-- Present the result wrapped in a markdown code block (```text) for easy copying
-- Do not perform text conversion manually - always use the lng_text_uppercase tool
-- Example workflow: User asks for `мама мыла раму` → Call `lng_text_uppercase` → Extract `output_text` → Present in code block
