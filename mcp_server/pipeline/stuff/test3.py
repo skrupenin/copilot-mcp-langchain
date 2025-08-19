@@ -145,6 +145,134 @@ def test_fallback_plain_text():
         assert result_json == expected_json, f"Expected json: {expected_json}, got {result_json}"
     print("✅ PASSED: All Fallback tests\n")
 
+
+def test_env_variables():
+    """Test 6: Built-in environment variables support"""
+    print("🧪 Test 6: Built-in env.* variables")
+    print("-" * 50)
+    
+    # Set up test environment variables
+    import os
+    test_env = {
+        'TEST_VAR': 'hello_world',
+        'TEST_NUMBER': '42',
+        'TEST_PASSWORD': 'secret pass word',  # With spaces
+        'TEST_GMAIL_APP_PASSWORD': 'abcd efgh ijkl mnop',  # Gmail style with spaces
+    }
+    
+    # Backup original env vars
+    original_env = {}
+    for key in test_env:
+        if key in os.environ:
+            original_env[key] = os.environ[key]
+        os.environ[key] = test_env[key]
+    
+    try:
+        context = {}  # Empty context - env should be added automatically
+        
+        js_tests = [
+            ("{! env.TEST_VAR !}", "hello_world"),
+            ("{! env.TEST_NUMBER !}", "42"),
+            ("{! env.TEST_PASSWORD !}", "secretpassword"),  # Spaces removed
+            ("{! env.TEST_GMAIL_APP_PASSWORD !}", "abcdefghijklmnop"),  # Spaces removed
+        ]
+        
+        print("  JavaScript env.* tests:")
+        for expr, expected in js_tests:
+            try:
+                result = evaluate_expression(expr, context, "python")
+                print(f"    {expr:<35} → {result}")
+                assert result == expected, f"Expected {expected}, got {result}"
+            except Exception as e:
+                print(f"    {expr:<35} → ERROR: {e}")
+                raise
+        
+        py_tests = [
+            ("[! env['TEST_VAR'] !]", "hello_world"),
+            ("[! env['TEST_NUMBER'] !]", "42"),
+            ("[! env['TEST_PASSWORD'] !]", "secretpassword"),  # Spaces removed
+            ("[! env['TEST_GMAIL_APP_PASSWORD'] !]", "abcdefghijklmnop"),  # Spaces removed
+        ]
+        
+        print("  Python env[*] tests:")
+        for expr, expected in py_tests:
+            try:
+                result = evaluate_expression(expr, context, "python")
+                print(f"    {expr:<35} → {result}")
+                assert result == expected, f"Expected {expected}, got {result}"
+            except Exception as e:
+                print(f"    {expr:<35} → ERROR: {e}")
+                raise
+                
+        # Test that custom context still works with env
+        custom_context = {'custom_var': 'test'}
+        result = evaluate_expression("{! custom_var + '_' + env.TEST_VAR !}", custom_context, "python")
+        expected = "test_hello_world"
+        print(f"    Mixed context test → {result}")
+        assert result == expected, f"Expected {expected}, got {result}"
+        
+    finally:
+        # Restore original environment
+        for key in test_env:
+            if key in original_env:
+                os.environ[key] = original_env[key]
+            else:
+                del os.environ[key]
+    
+    print("✅ PASSED: All env.* tests\n")
+
+
+def test_env_password_cleaning():
+    """Test 7: Environment password cleaning feature"""
+    print("🧪 Test 7: Password cleaning in environment variables")
+    print("-" * 50)
+    
+    import os
+    test_passwords = {
+        'MY_PASSWORD': 'pass with spaces',
+        'GMAIL_APP_PASSWORD': 'abcd efgh ijkl mnop',
+        'API_PASSWORD': 'no spaces here',
+        'SECRET_PASS': 'multi   word   pass',
+        'NORMAL_VAR': 'should not be cleaned',  # Not a password
+    }
+    
+    # Backup and set test vars
+    original_env = {}
+    for key in test_passwords:
+        if key in os.environ:
+            original_env[key] = os.environ[key]
+        os.environ[key] = test_passwords[key]
+    
+    try:
+        context = {}
+        
+        tests = [
+            ("{! env.MY_PASSWORD !}", "passwithspaces"),
+            ("{! env.GMAIL_APP_PASSWORD !}", "abcdefghijklmnop"),
+            ("{! env.API_PASSWORD !}", "nospaceshere"),
+            ("{! env.SECRET_PASS !}", "multiwordpass"),
+            ("{! env.NORMAL_VAR !}", "should not be cleaned"),  # Not cleaned
+        ]
+        
+        for expr, expected in tests:
+            try:
+                result = evaluate_expression(expr, context, "python")
+                print(f"  {expr:<30} → {result}")
+                assert result == expected, f"Expected '{expected}', got '{result}'"
+            except Exception as e:
+                print(f"  {expr:<30} → ERROR: {e}")
+                raise
+                
+    finally:
+        # Restore original environment
+        for key in test_passwords:
+            if key in original_env:
+                os.environ[key] = original_env[key]
+            else:
+                del os.environ[key]
+    
+    print("✅ PASSED: All password cleaning tests\n")
+
 def run_all_tests():
     """Run all expression system tests"""
     import sys
@@ -159,7 +287,9 @@ def run_all_tests():
         test_javascript_to_json,
         test_python_to_python,
         test_python_to_json,
-        test_fallback_plain_text
+        test_fallback_plain_text,
+        test_env_variables,
+        test_env_password_cleaning
     ]
     
     passed = 0

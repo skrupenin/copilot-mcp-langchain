@@ -7,10 +7,14 @@ Provides unified expression evaluation with multiple backends:
 
 Context always contains native Python objects (dict, list, str, int, bool, None).
 Results can be returned as Python objects or JSON strings based on expected_result_type.
+
+Built-in variables:
+- env.*: Access to environment variables (env.HOME, env.PATH, etc.)
 """
 
 import json
 import re
+import os
 import logging
 from abc import ABC, abstractmethod
 from typing import Any, Dict, List, Optional
@@ -24,6 +28,19 @@ try:
 except ImportError:
     JS_AVAILABLE = False
     logger.warning("PyMiniRacer not available. JavaScript expressions will use fallback Python evaluation.")
+
+
+def build_default_context(custom_context: Dict[str, Any] = None) -> Dict[str, Any]:
+    """Build default expression context with built-in variables."""
+    context = {
+        "env": dict(os.environ),
+    }
+    
+    # Add custom context
+    if custom_context:
+        context.update(custom_context)
+    
+    return context
 
 
 class ExpressionEvaluationError(Exception):
@@ -509,11 +526,14 @@ def evaluate_expression(expression: str, context: Dict[str, Any], expected_resul
     """
     logger.debug(f"evaluate_expression: {expression!r}, expected_type: {expected_result_type}")
     
+    # Build context with built-in variables (env, etc.) + user context
+    full_context = build_default_context(context)
+    
     # Try each strategy
     for strategy in _strategies:
         if strategy.can_handle(expression):
             logger.debug(f"Using strategy: {strategy.__class__.__name__}")
-            result = strategy.evaluate(expression, context, expected_result_type, step_info)
+            result = strategy.evaluate(expression, full_context, expected_result_type, step_info)
             logger.debug(f"Strategy result: {result!r}, type: {type(result)}")
             return result
     
@@ -548,9 +568,12 @@ def substitute_expressions(text: str, context: Dict[str, Any], expected_result_t
     if not contains_expressions(text):
         return text
     
+    # Build context with built-in variables (env, etc.) + user context
+    full_context = build_default_context(context)
+    
     # Use recursive strategy to handle all expressions
     recursive_strategy = RecursiveExpressionStrategy()
-    result = recursive_strategy.evaluate(text, context, expected_result_type, step_info)
+    result = recursive_strategy.evaluate(text, full_context, expected_result_type, step_info)
     
     if expected_result_type == "json" and not isinstance(result, str):
         return json.dumps(result, ensure_ascii=False)
