@@ -1,4 +1,5 @@
-- When you create a new tool, pay attention to the `settings.yaml` file
+- When you create a new tool, pay attention to the `settings.yaml` file.
+- Always pay attention to how `settings.yaml` is used in other tools. Don't create unnecessary constructs. 
 - Dependencies in these files are inherited from the parent files.
 - When creating a new tool, use only English. Respond to me in the language I used.
 - When creating a tool group, look for the most appropriate location - the group may already exist.

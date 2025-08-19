@@ -21,3 +21,4 @@ But:
 python -m mcp_server.run run lng_count_words '{\"input_text\":\"Hello world! This is a test.\"}'
 ```
 - But if you were asked to test a new tool via MCP explicitly, then always ask after the changes if the server was restarted, as this is done manually.
+- If an error occurred during testing through MCP, report it as `FAIL` even if testing through `python -m mcp_server.run run` gave a positive result. 
