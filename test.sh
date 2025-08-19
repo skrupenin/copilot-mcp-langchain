@@ -647,6 +647,51 @@ python -m mcp_server.run run lng_copilot_chat_export_list_workspaces '{\"vscode_
 echo "=== Testing error handling - missing parameters ==="
 python -m mcp_server.run run lng_copilot_chat_export_list_workspaces '{}'
 
+###############################
+### lng_http_client tools ###
+###############################
+
+# Simple GET request
+echo "=== Testing simple GET request ==="
+python -m mcp_server.run run lng_http_client '{\"mode\":\"request\",\"url\":\"https://httpbin.org/get\",\"method\":\"GET\",\"headers\":{\"User-Agent\":\"lng_http_client/1.0\"}}'
+
+# POST request with JSON data
+echo "=== Testing POST request with JSON ==="
+python -m mcp_server.run run lng_http_client '{\"mode\":\"request\",\"url\":\"https://httpbin.org/post\",\"method\":\"POST\",\"headers\":{\"Content-Type\":\"application/json\"},\"json\":{\"test\":\"data\",\"timestamp\":\"2025-08-19\"}}'
+
+# Request with expressions
+echo "=== Testing expressions and environment variables ==="
+export TEST_USER_AGENT="TestAgent/1.0"
+python -m mcp_server.run run lng_http_client '{\"mode\":\"request\",\"url\":\"https://httpbin.org/headers\",\"headers\":{\"User-Agent\":\"{! env.TEST_USER_AGENT !}\",\"X-Test\":\"Generated at {! new Date().toISOString() !}\"}}'
+
+# Session management
+echo "=== Testing session management ==="
+python -m mcp_server.run run lng_http_client '{\"mode\":\"request\",\"url\":\"https://httpbin.org/cookies/set/test/value\",\"session_id\":\"test_session\",\"allow_redirects\":true}'
+
+# Check session info
+echo "=== Checking session info ==="
+python -m mcp_server.run run lng_http_client '{\"mode\":\"session_info\",\"session_id\":\"test_session\"}'
+
+# Batch requests
+echo "=== Testing batch requests ==="
+python -m mcp_server.run run lng_http_client '{\"mode\":\"batch\",\"requests\":[{\"url\":\"https://httpbin.org/get?test=1\"},{\"url\":\"https://httpbin.org/get?test=2\"}],\"execution\":{\"strategy\":\"sequential\"}}'
+
+# Browser emulation
+echo "=== Testing browser emulation ==="
+python -m mcp_server.run run lng_http_client '{\"mode\":\"request\",\"url\":\"https://httpbin.org/user-agent\",\"browser_emulation\":{\"user_agent_rotation\":true}}'
+
+# Authentication
+echo "=== Testing Bearer authentication ==="
+python -m mcp_server.run run lng_http_client '{\"mode\":\"request\",\"url\":\"https://httpbin.org/bearer\",\"auth\":{\"type\":\"bearer\",\"token\":\"test_token_123\"}}'
+
+# Export to cURL
+echo "=== Testing cURL export ==="
+python -m mcp_server.run run lng_http_client '{\"mode\":\"export_curl\",\"url\":\"https://api.example.com/data\",\"method\":\"POST\",\"headers\":{\"Authorization\":\"Bearer token123\"},\"json\":{\"key\":\"value\"}}'
+
+# Test error handling
+echo "=== Testing error handling ==="
+python -m mcp_server.run run lng_http_client '{\"mode\":\"request\",\"url\":\"https://invalid-url-that-does-not-exist.com\",\"timeout\":2}'
+
 ########################
 ### clean all caches ###
 ########################
