@@ -4,7 +4,7 @@
 ## How to ask for demo in chat
 Use this case to make demo:
 ```
-Show me demo:
+Show me demo from file:
 Please write in teams to Oleksandr Baglai
 Hello from Claude
 ```
@@ -19,3 +19,6 @@ Hello from Claude
   + Remove everything
   + After that you can write your message and then `Enter`.
 - Do this in one MCP request.
+
+## Tools 
+- Use only `lng_winapi_list_process` and `lng_winapi_send_hotkey` tools.

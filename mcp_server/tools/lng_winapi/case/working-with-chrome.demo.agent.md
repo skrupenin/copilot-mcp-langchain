@@ -4,7 +4,7 @@
 ## How to ask for demo in chat
 Use this case to make demo:
 ```
-Show me demo:
+Show me demo from file:
 Open in chrome `google.com` then open a development console and write `hello world` on it.
 ```
 
@@ -18,3 +18,6 @@ Open in chrome `google.com` then open a development console and write `hello wor
     - And `Enter`
   + Then write `console.log("<text>")` and press `Enter`.Here `<text>` is the text you want to log.
 - Do this in one MCP request.
+
+## Tools 
+- Use only `lng_winapi_list_process` and `lng_winapi_send_hotkey` tools.

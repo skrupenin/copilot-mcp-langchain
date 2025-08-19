@@ -4,7 +4,7 @@
 ## How to ask for demo in chat  
 Use this case to make demo:
 ```
-Show me demo:
+Show me demo from file:
 Create a simple calculator webhook that accepts math expressions via GET/POST requests and returns JSON results.
 ```
 

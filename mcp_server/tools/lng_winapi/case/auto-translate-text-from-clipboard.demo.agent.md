@@ -4,7 +4,7 @@
 ## How to ask for demo in chat
 Use this case to make demo:
 ```
-Show me demo:
+Show me demo from file:
 I need a hotkey that I can press to translate the text in the clipboard into English.
 ```
 

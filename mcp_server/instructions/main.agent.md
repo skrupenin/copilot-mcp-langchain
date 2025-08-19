@@ -16,4 +16,4 @@
 - Follow `./running-unit-tests.agent.md` when you need to run/write unit tests for the tool.
 - Follow `./uppercase-text-processing.agent.md` when working with text case conversion, especially UPPERCASE transformations and related text processing tasks.
 - Follow `./creating-instructions.agent.md` when you need to create new instruction files for the project.
-- Use pattern `*.demo.agent.md` to find all cases around tools (`./mcp_server/tools/` folder) when you are asked to show a demonstration of existing cases. **Important** Don't look for other files to search for demo cases.
+- Follow demo instructions with a pattern `*.demo.agent.md` to find all cases around tools (`./mcp_server/tools/` folder) when you are asked to show a demonstration (with wording: `demo`, `демо`, `демка` and so on) of existing cases. **Important** Don't look for other files to search for demo cases.

@@ -4,7 +4,7 @@
 ## How to ask for demo in chat
 Use this case to make demo:
 ```
-Show me demo:
+Show me demo from file:
 I have EPMXYZ-6369 ticket. Please process it.
 ```
 

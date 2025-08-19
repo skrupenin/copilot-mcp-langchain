@@ -4,7 +4,7 @@
 ## How to ask for demo in chat
 Use this case to make demo:
 ```
-Show me demo:
+Show me demo from file:
 Please process all github copilot telemetry data in `./mcp_server/tools/lng_json_to_csv/demo/data`. 
 ```
 
