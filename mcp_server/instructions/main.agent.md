@@ -4,6 +4,7 @@
 - Follow `./tool-requirements-gathering.agent.md` when you need to gather requirements before creating a tool.
 - Follow `./assign-issue-to-coding-agent.agent.md` when I asked to create issue on Github an to assign it to the Coding Agent.
 - Always follow `./activate-virtualenv.agent.md` in any case activate the virtual environment before starting any python stuff in terminal.
+- Important! Use MCP calls to demonstrate the operation of tools whenever possible, unless otherwise specified or if the tool is being debugged prior to its final demonstration.
 - Follow `./check-mcp-enabled.agent.md` if there is no MCP enabled or you need to check if MCP is enabled.
 - Follow `./reastart-mcp-server.agent.md` if you need to restart MCP server after some changes.
 - Follow `./choose-library.agent.md` when you need to choose a library for Python.
@@ -13,3 +14,4 @@
 - Follow `./testing-tool.agent.md` if you need to test the tool after creation or modification. What json escaping quotes strategy you should use is also described in the file.
 - Follow `./create-tool.agent.md` when you create a new tool.
 - Follow `./running-unit-tests.agent.md` when you need to run/write unit tests for the tool.
+- Use pattern `*.demo.agent.md` to find all cases around tools (`./mcp_server/tools/` folder) when you are asked to show a demonstration of existing cases. **Important** Don't look for other files to search for demo cases.

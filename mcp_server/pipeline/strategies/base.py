@@ -8,7 +8,7 @@ Each strategy implements specific functionality while following a common interfa
 from abc import ABC, abstractmethod
 from typing import Any, Dict
 
-from ..core import PipelineResult, ExecutionContext
+from ..models import PipelineResult, ExecutionContext
 
 
 class ExecutionStrategy(ABC):

@@ -22,6 +22,12 @@ This project demonstrates a solution through:
 
 With this setup, `GitHub Copilot` gains access to new, well-documented tools that it can see as part of your project. When you ask Copilot to "create a tool that does X", it can generate a solution very close to what you need. You simply accept its changes and restart MCP to get a new deterministic tool for your specific logic.
 
+## Data Security
+
+⚠️ **Important**: Please review the [Security Disclaimer](security-disclaimer.md) before using this tool in production environments.
+
+This document outlines potential data leak scenarios and provides guidance on risk mitigation when working with this tool. 
+
 ## Key Components
 
 - **Simple Examples** (`mcp_server/simple/`): Demonstrates integration with different LLM providers and key LangChain concepts

@@ -393,7 +393,7 @@ class JavaScriptSeparateToolsTester:
                     "output": "exec_result"
                 }
             ],
-            "final_result": "${exec_result}"
+            "final_result": "{! exec_result !}"
         })
         
         # Then: Should get execution result

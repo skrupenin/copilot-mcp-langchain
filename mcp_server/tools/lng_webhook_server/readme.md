@@ -17,7 +17,7 @@ python -m mcp_server.run run lng_webhook_server '{
   "path": "/webhook",
   "response": {
     "status": 200,
-    "body": {"message": "Hello ${webhook.body.user}!"}
+    "body": {"message": "Hello {! webhook.body.user !}"}
   }
 }'
 ```
@@ -32,14 +32,14 @@ python -m mcp_server.run run lng_webhook_server '{
   "pipeline": [
     {
       "tool": "lng_count_words",
-      "params": {"input_text": "${webhook.body.message}"},
+      "params": {"input_text": "{! webhook.body.message !}"},
       "output": "stats"
     }
   ],
   "response": {
     "body": {
-      "word_count": "${stats.wordCount}",
-      "original": "${webhook.body.message}"
+      "word_count": "{! stats.wordCount !}",
+      "original": "{! webhook.body.message !}"
     }
   }
 }'
@@ -77,35 +77,35 @@ python -m mcp_server.run run lng_webhook_server '{
   "pipeline": [
     {
       "tool": "tool_name",
-      "params": {"param": "${webhook.body.field}"},
+      "params": {"param": "{! webhook.body.field !}"},
       "output": "variable_name"
     }
   ],
   "response": {
     "status": 200,
     "headers": {"Content-Type": "application/json"},
-    "body": {"result": "${variable_name.field}"}
+    "body": {"result": "{! variable_name.field !}"}
   }
 }
 ```
 
 ## 🔄 Variable Substitution
 
-Use `${variable.path}` syntax to access:
+Use `{! variable.path !}` syntax to access:
 
 ### Webhook Context
-- `${webhook.timestamp}` - Request timestamp (ISO format)
-- `${webhook.method}` - HTTP method (GET, POST, etc.)
-- `${webhook.path}` - Request path
-- `${webhook.headers.header-name}` - Request headers
-- `${webhook.query.param}` - Query parameters
-- `${webhook.body.field}` - Request body fields
-- `${webhook.remote_ip}` - Client IP address
+- `{! webhook.timestamp !}` - Request timestamp (ISO format)
+- `{! webhook.method !}` - HTTP method (GET, POST, etc.)
+- `{! webhook.path !}` - Request path
+- `{! webhook.headers.header-name !}` - Request headers
+- `{! webhook.query.param !}` - Query parameters
+- `{! webhook.body.field !}` - Request body fields
+- `{! webhook.remote_ip !}` - Client IP address
 
 ### Pipeline Results
-- `${output_name.field}` - Results from pipeline tools
-- `${pipeline.success}` - Pipeline execution status
-- `${pipeline.execution_time}` - Pipeline timing
+- `{! output_name.field !}` - Results from pipeline tools
+- `{! pipeline.success !}` - Pipeline execution status
+- `{! pipeline.execution_time !}` - Pipeline timing
 
 ## 📁 File Structure
 

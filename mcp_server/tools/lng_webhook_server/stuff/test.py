@@ -75,9 +75,9 @@ class WebhookTester:
                 "body": {
                     "webhook_name": name,
                     "message": "Test response",
-                    "timestamp": "${webhook.timestamp}",
-                    "method": "${webhook.method}",
-                    "received_data": "${webhook.body}"
+                    "timestamp": "{! webhook.timestamp !}",
+                    "method": "{! webhook.method !}",
+                    "received_data": "{! webhook.body !}"
                 }
             }
         }
@@ -146,12 +146,12 @@ class WebhookTester:
             "pipeline": [
                 {
                     "tool": "lng_count_words",
-                    "params": {"input_text": "${webhook.body.message}"},
+                    "params": {"input_text": "{! webhook.body.message !}"},
                     "output": "word_stats"
                 },
                 {
                     "tool": "lng_math_calculator",
-                    "params": {"expression": "${word_stats.wordCount} * 2"},
+                    "params": {"expression": "{! word_stats.wordCount !} * 2"},
                     "output": "double_count"
                 }
             ],
@@ -159,9 +159,9 @@ class WebhookTester:
                 "status": 200,
                 "body": {
                     "webhook_name": name,
-                    "original_message": "${webhook.body.message}",
-                    "word_count": "${word_stats.wordCount}",
-                    "double_count": "${double_count.result}",
+                    "original_message": "{! webhook.body.message !}",
+                    "word_count": "{! word_stats.wordCount !}",
+                    "double_count": "{! double_count.result !}",
                     "pipeline_success": True
                 }
             }
@@ -203,8 +203,8 @@ class WebhookTester:
                 "headers": {"X-Custom-Header": "test-value"},
                 "body": {
                     "custom_response": True,
-                    "webhook_data": "${webhook.body}",
-                    "processing_time": "${webhook.timestamp}"
+                    "webhook_data": "{! webhook.body !}",
+                    "processing_time": "{! webhook.timestamp !}"
                 }
             }
         }

@@ -1,0 +1,3 @@
+enabled: true
+description: "PDF document processing tools - extract images, text, and metadata from PDF files"
+dependencies: ["PyMuPDF", "Pillow"]

@@ -218,10 +218,10 @@ python -m mcp_server.run run lng_batch_run '{\"pipeline\": [{\"tool\": \"lng_win
 python -m mcp_server.run run lng_webhook_server '{\"operation\":\"list\"}'
 
 # Create simple webhook
-python -m mcp_server.run run lng_webhook_server '{\"operation\":\"start\",\"name\":\"simple-test\",\"port\":8080,\"path\":\"/test\",\"response\":{\"status\":200,\"body\":{\"message\":\"Hello ${webhook.body.user}!\",\"timestamp\":\"${webhook.timestamp}\"}}}'
+python -m mcp_server.run run lng_webhook_server '{\"operation\":\"start\",\"name\":\"simple-test\",\"port\":8080,\"path\":\"/test\",\"response\":{\"status\":200,\"body\":{\"message\":\"Hello {! webhook.body.user !}!\",\"timestamp\":\"{! webhook.timestamp !}\"}}}'
 
 # Create webhook with pipeline (word counting)
-python -m mcp_server.run run lng_webhook_server '{\"operation\":\"start\",\"name\":\"word-counter\",\"port\":8081,\"path\":\"/count\",\"pipeline\":[{\"tool\":\"lng_count_words\",\"params\":{\"input_text\":\"${webhook.body.message}\"},\"output\":\"stats\"}],\"response\":{\"body\":{\"word_count\":\"${stats.wordCount}\",\"original\":\"${webhook.body.message}\"}}}'
+python -m mcp_server.run run lng_webhook_server '{\"operation\":\"start\",\"name\":\"word-counter\",\"port\":8081,\"path\":\"/count\",\"pipeline\":[{\"tool\":\"lng_count_words\",\"params\":{\"input_text\":\"{! webhook.body.message !}\"},\"output\":\"stats\"}],\"response\":{\"body\":{\"word_count\":\"{! stats.wordCount !}\",\"original\":\"{! webhook.body.message !}\"}}}'
 
 # Test webhook with HTTP request
 python -m mcp_server.run run lng_webhook_server '{\"operation\":\"test\",\"name\":\"simple-test\",\"test_data\":{\"user\":\"tester\",\"message\":\"Hello webhook!\"}}'
@@ -230,7 +230,7 @@ python -m mcp_server.run run lng_webhook_server '{\"operation\":\"test\",\"name\
 python -m mcp_server.run run lng_webhook_server '{\"operation\":\"test\",\"name\":\"word-counter\",\"test_data\":{\"message\":\"This is a test message with several words\"}}'
 
 # Create and test webhook in batch mode
-python -m mcp_server.run batch lng_webhook_server '{\"operation\":\"start\",\"name\":\"batch-test\",\"port\":8082,\"path\":\"/batch\",\"response\":{\"body\":{\"success\":true,\"received\":\"${webhook.body}\"}}}' lng_webhook_server '{\"operation\":\"test\",\"name\":\"batch-test\",\"test_data\":{\"message\":\"batch test\"}}'
+python -m mcp_server.run batch lng_webhook_server '{\"operation\":\"start\",\"name\":\"batch-test\",\"port\":8082,\"path\":\"/batch\",\"response\":{\"body\":{\"success\":true,\"received\":\"{! webhook.body !}\"}}}' lng_webhook_server '{\"operation\":\"test\",\"name\":\"batch-test\",\"test_data\":{\"message\":\"batch test\"}}'
 
 # Stop webhooks
 python -m mcp_server.run run lng_webhook_server '{\"operation\":\"stop\",\"name\":\"simple-test\"}'
@@ -546,6 +546,55 @@ python -m mcp_server.run run lng_file_list '{\"pattern\":\"*.txt\"}'
 
 # Clean up test directory
 rm -rf test_list_dir
+
+########################
+### lng_pdf_extract_images ###
+########################
+color "Testing lng_pdf_extract_images tool" $yellow
+
+# Create a test PDF with an image for demonstration
+python -c "
+import fitz
+from PIL import Image
+import os
+
+# Create test directory
+os.makedirs('test_pdf_dir', exist_ok=True)
+
+# Create a simple test image
+test_img = Image.new('RGB', (200, 100), color='green')
+test_img.save('test_pdf_dir/test_image.png')
+
+# Create a PDF with the image
+doc = fitz.open()
+page = doc.new_page(width=612, height=792)
+
+# Insert the image
+img_rect = fitz.Rect(50, 50, 250, 150)
+page.insert_image(img_rect, filename='test_pdf_dir/test_image.png')
+
+# Add some text
+text_point = fitz.Point(50, 200)
+page.insert_text(text_point, 'Sample PDF Document with Image', fontsize=14)
+
+# Save the PDF
+doc.save('test_pdf_dir/sample_document.pdf')
+doc.close()
+
+print('Test PDF created successfully!')
+"
+
+# Extract images from the test PDF
+python -m mcp_server.run run lng_pdf_extract_images '{\"pdf_path\":\"test_pdf_dir/sample_document.pdf\"}'
+
+# Test error handling - non-existent PDF file
+python -m mcp_server.run run lng_pdf_extract_images '{\"pdf_path\":\"nonexistent.pdf\"}'
+
+# Test error handling - missing pdf_path parameter
+python -m mcp_server.run run lng_pdf_extract_images '{}'
+
+# Clean up test PDF directory
+rm -rf test_pdf_dir
 
 ########################
 ### clean all caches ###
