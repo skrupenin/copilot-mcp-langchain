@@ -6,7 +6,7 @@ from pathlib import Path
 
 # Add the stuff directory to the path to import our library
 sys.path.append(os.path.join(os.path.dirname(__file__), '..', 'stuff'))
-from copilot_chat_lib import CopilotChatExporter
+from simple_chat_exporter import SimpleChatExporter
 
 async def tool_info() -> dict:
     """Returns information about the lng_copilot_chat_export_list_workspaces tool."""
@@ -59,7 +59,7 @@ async def run_tool(name: str, parameters: dict) -> list[types.Content]:
             }))]
         
         # Create exporter and find workspaces
-        exporter = CopilotChatExporter(vscode_path)
+        exporter = SimpleChatExporter(vscode_path)
         workspaces = exporter.find_workspaces()
         
         if not workspaces:
@@ -72,7 +72,7 @@ async def run_tool(name: str, parameters: dict) -> list[types.Content]:
         workspace_list = []
         for ws in workspaces:
             workspace_list.append({
-                "workspace_id": ws['id'],
+                "workspace_id": ws['workspace_id'],
                 "workspace_name": ws['workspace_name'],
                 "sessions_count": ws['sessions_count'],
                 "path": ws['path']

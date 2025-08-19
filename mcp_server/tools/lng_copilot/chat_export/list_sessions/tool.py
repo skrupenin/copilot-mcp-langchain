@@ -6,7 +6,7 @@ from pathlib import Path
 
 # Add the stuff directory to the path to import our library
 sys.path.append(os.path.join(os.path.dirname(__file__), '..', 'stuff'))
-from copilot_chat_lib import CopilotChatExporter
+from simple_chat_exporter import SimpleChatExporter
 
 async def tool_info() -> dict:
     """Returns information about the lng_copilot_chat_export_list_sessions tool."""
@@ -68,7 +68,7 @@ async def run_tool(name: str, parameters: dict) -> list[types.Content]:
             }))]
         
         # Create exporter and list sessions
-        exporter = CopilotChatExporter(vscode_path)
+        exporter = SimpleChatExporter(vscode_path)
         sessions = exporter.list_sessions_in_workspace(workspace_id)
         
         if not sessions:

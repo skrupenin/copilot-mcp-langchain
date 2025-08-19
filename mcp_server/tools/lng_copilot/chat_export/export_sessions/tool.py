@@ -7,7 +7,7 @@ from datetime import datetime
 
 # Add the stuff directory to the path to import our library
 sys.path.append(os.path.join(os.path.dirname(__file__), '..', 'stuff'))
-from copilot_chat_lib import CopilotChatExporter
+from simple_chat_exporter import SimpleChatExporter
 
 async def tool_info() -> dict:
     """Returns information about the lng_copilot_chat_export_export_sessions tool."""
@@ -94,7 +94,7 @@ async def run_tool(name: str, parameters: dict) -> list[types.Content]:
             }))]
         
         # Create exporter
-        exporter = CopilotChatExporter(vscode_path, output_dir)
+        exporter = SimpleChatExporter(vscode_path, output_dir)
         
         # Determine which sessions to export
         target_sessions = []

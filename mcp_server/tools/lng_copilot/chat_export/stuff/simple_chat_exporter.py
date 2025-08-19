@@ -21,6 +21,136 @@ class SimpleChatExporter:
         self.output_dir.mkdir(exist_ok=True)
     
     def find_workspaces(self):
+        """Find all workspaces with chat sessions and their metadata."""
+        workspace_storage = self.vscode_path / "User" / "workspaceStorage"
+        
+        if not workspace_storage.exists():
+            logger.warning(f"Workspace storage directory does not exist: {workspace_storage}")
+            return []
+        
+        workspaces = []
+        
+        for workspace_dir in workspace_storage.iterdir():
+            if not workspace_dir.is_dir():
+                continue
+            
+            chat_dir = workspace_dir / "chatSessions"
+            if not chat_dir.exists():
+                continue
+            
+            # Count sessions in this workspace
+            session_count = len(list(chat_dir.glob("*.json")))
+            if session_count == 0:
+                continue
+            
+            workspace_info = {
+                'workspace_id': workspace_dir.name,
+                'sessions_count': session_count,
+                'path': str(workspace_dir),
+                'workspace_name': workspace_dir.name  # Default name
+            }
+            
+            # Try to read workspace metadata
+            workspace_json = workspace_dir / "workspace.json"
+            if workspace_json.exists():
+                try:
+                    with open(workspace_json, 'r', encoding='utf-8') as f:
+                        workspace_data = json.load(f)
+                        if 'folder' in workspace_data:
+                            folder_path = workspace_data['folder']
+                            # Extract folder name from path
+                            if isinstance(folder_path, str):
+                                workspace_info['workspace_name'] = os.path.basename(folder_path) or folder_path
+                            elif isinstance(folder_path, dict) and 'path' in folder_path:
+                                folder_path = folder_path['path']
+                                workspace_info['workspace_name'] = os.path.basename(folder_path) or folder_path
+                        elif 'configuration' in workspace_data and 'folders' in workspace_data['configuration']:
+                            folders = workspace_data['configuration']['folders']
+                            if folders and len(folders) > 0:
+                                folder_path = folders[0].get('path', folders[0].get('uri', {}).get('path', ''))
+                                if folder_path:
+                                    workspace_info['workspace_name'] = os.path.basename(folder_path)
+                except Exception as e:
+                    logger.debug(f"Failed to read workspace.json: {e}")
+                
+            workspaces.append(workspace_info)
+        
+        logger.info(f"Found {len(workspaces)} workspaces with chat sessions")
+        return workspaces
+    
+    def list_sessions_in_workspace(self, workspace_id: str):
+        """List all chat sessions in a specific workspace."""
+        workspace_storage = self.vscode_path / "User" / "workspaceStorage"
+        workspace_dir = workspace_storage / workspace_id
+        chat_dir = workspace_dir / "chatSessions"
+        
+        if not chat_dir.exists():
+            return []
+        
+        sessions = []
+        for session_file in chat_dir.glob("*.json"):
+            session_info = {
+                'id': session_file.stem,
+                'file_path': str(session_file),
+                'file_size': session_file.stat().st_size,
+                'modified_time': datetime.fromtimestamp(session_file.stat().st_mtime).isoformat(),
+                'messages_count': 0
+            }
+            
+            # Try to count messages
+            try:
+                with open(session_file, 'r', encoding='utf-8') as f:
+                    data = json.load(f)
+                    if 'requests' in data:
+                        session_info['messages_count'] = len(data['requests'])
+            except Exception as e:
+                logger.debug(f"Failed to read session {session_file}: {e}")
+            
+            sessions.append(session_info)
+        
+        # Sort by modification time (newest first)
+        sessions.sort(key=lambda x: x['modified_time'], reverse=True)
+        return sessions
+    
+    def read_session_by_id(self, workspace_id: str, session_id: str):
+        """Read a specific session from a workspace by ID."""
+        workspace_storage = self.vscode_path / "User" / "workspaceStorage"
+        workspace_dir = workspace_storage / workspace_id
+        session_file = workspace_dir / "chatSessions" / f"{session_id}.json"
+        
+        if not session_file.exists():
+            logger.error(f"Session file not found: {session_file}")
+            return None
+        
+        try:
+            with open(session_file, 'r', encoding='utf-8') as f:
+                data = json.load(f)
+                data['_file'] = session_file.name
+                data['_workspace'] = workspace_id
+                return data
+        except Exception as e:
+            logger.error(f"Failed to read session {session_file}: {e}")
+            return None
+    
+    def export_session(self, workspace_id: str, session_id: str, output_filename: str = None):
+        """Export a single session to HTML."""
+        session_data = self.read_session_by_id(workspace_id, session_id)
+        if not session_data:
+            return None
+        
+        if not output_filename:
+            output_filename = f"chat_{session_id}_{datetime.now().strftime('%Y%m%d_%H%M%S')}.html"
+        
+        html_content = self.create_html(session_data)
+        output_file = self.output_dir / output_filename
+        
+        with open(output_file, 'w', encoding='utf-8') as f:
+            f.write(html_content)
+        
+        return str(output_file)
+    
+    # Keep original find_workspaces as well (for backward compatibility)
+    def find_workspaces_original(self):
         workspace_storage = self.vscode_path / "User" / "workspaceStorage"
         workspaces = []
         
@@ -1327,7 +1457,7 @@ class SimpleChatExporter:
         """Export specific chat session by ID"""
         logger.info(f"Searching for session: {session_id}")
         
-        workspaces = self.find_workspaces()
+        workspaces = self.find_workspaces_original()
         if not workspaces:
             logger.error("No workspaces found")
             return
@@ -1362,7 +1492,7 @@ class SimpleChatExporter:
     def export_test(self):
         logger.info("Starting test export...")
         
-        workspaces = self.find_workspaces()
+        workspaces = self.find_workspaces_original()
         if not workspaces:
             logger.error("No workspaces found")
             return
