@@ -730,7 +730,27 @@ python -m mcp_server.run run lng_email_client '{\"mode\":\"validate\",\"to\":[\"
 
 echo "=== Email Client Tests Completed ==="
 
+###############################
+### lng_xls_batch tool tests ###
+###############################
+echo "=== Testing lng_xls_batch tool ==="
+
+# Test basic Excel copy operation (will create test files)
+echo "Testing basic Excel copy operation..."
+python -m mcp_server.run run lng_xls_batch '{\"workspace\":{\"test\":\"work/test_excel.xlsx\"},\"operations\":[{\"from\":\"Test Value\",\"to\":\"[test]Sheet1!A1\",\"copy\":[\"values\"]}],\"debug\":true}'
+
+# Test batch operations with expressions
+echo "Testing batch operations with expressions..."
+python -m mcp_server.run run lng_xls_batch '{\"workspace\":{\"input\":\"work/input.xlsx\",\"output\":\"work/output.csv\"},\"defaults\":{\"copy\":[\"values\",\"formulas\"],\"insert\":\"replace\"},\"operations\":[{\"from\":\"Report Title\",\"to\":\"[output]A1\"},{\"from\":\"=SUM(A2:A10)\",\"to\":\"[output]A11\",\"copy\":[\"formulas\"]}]}'
+
+# Test CSV handling  
+echo "Testing CSV file operations..."
+python -m mcp_server.run run lng_xls_batch '{\"workspace\":{\"csv_file\":\"work/test.csv\"},\"operations\":[{\"from\":\"CSV Test\",\"to\":\"[csv_file]A1\",\"copy\":[\"values\"]}]}'
+
+echo "=== lng_xls_batch Tests Completed ==="
+
 ########################
 ### clean all caches ###
+########################
 ########################
 Get-ChildItem -Path . -Include __pycache__ -Recurse -Force | Remove-Item -Recurse -Force

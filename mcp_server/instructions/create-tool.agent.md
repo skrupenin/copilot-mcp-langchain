@@ -1,5 +1,9 @@
 - When you create a new tool, pay attention to the `settings.yaml` file.
-- Always pay attention to how `settings.yaml` is used in other tools. Don't create unnecessary constructs. 
+- Always pay attention to how `settings.yaml` is used in other tools. Don't create unnecessary constructs.  
+  + One field `enabled: true|false`.
+  + One field `description: With short summary of this tool`.
+  + And `dependencies: list of pip install libraries`
+  + Only `pip install` libraries should be added to dependencies.
 - Dependencies in these files are inherited from the parent files.
 - When creating a new tool, use only English. Respond to me in the language I used.
 - When creating a tool group, look for the most appropriate location - the group may already exist.
