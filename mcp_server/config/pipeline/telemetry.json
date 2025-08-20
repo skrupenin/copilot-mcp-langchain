@@ -83,12 +83,32 @@
     {
       "tool": "lng_file_write",
       "params": {
-        "file_path": "work/telemetry/out/telemetry_complete_report.csv",
+        "file_path": "work/telemetry/out/telemetry.csv",
         "content": "{! csv_content !}",
         "mode": "overwrite"
       },
       "output": "csv_file_saved"
+    },
+    {
+      "tool": "lng_xls_batch",
+      "params": {
+        "workspace": {
+          "csv_source": "work/telemetry/out/telemetry.csv",
+          "template": "work/telemetry/in/telemetry.xlsx",
+          "result": "work/telemetry/out/telemetry.xlsx"
+        },
+        "operations": [
+          {
+            "from": "[csv_source]A7:AP22",
+            "to": "[template]Sheet1!A11",
+            "save_as": "result",
+            "copy": ["values"],
+            "insert": "replace"
+          }
+        ]
+      },
+      "output": "excel_result"
     }
   ],
-  "final_result": "✅ Telemetry processing complete! CSV report saved to: {! csv_file_saved.metadata.file_path !}"
+  "final_result": "✅ Telemetry processing complete! Files saved:\n📄 CSV Report: {! csv_file_saved.metadata.file_path !}\n📊 Excel Report: {! excel_result.files_saved.saved_files[0] !}"
 }
