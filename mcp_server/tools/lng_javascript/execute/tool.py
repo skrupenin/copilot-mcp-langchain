@@ -94,16 +94,23 @@ async def run_tool(name: str, parameters: dict) -> list[types.Content]:
         if not function_name:
             return [types.TextContent(type="text", text=json.dumps({"error": "function_name is required"}))]
         
-        # Handle function path with subfolders (e.g., "telemetry/setOrderMap")
+        # Handle function path with subfolders
         if "/" in function_name:
             # Split path and function name
             path_parts = function_name.split("/")
             function_file_name = path_parts[-1]  # Last part is the function name
-            subfolder_path = "/".join(path_parts[:-1])  # Everything before is the path
             
-            # Create a new manager for the subfolder
-            subfolder_manager = FileStateManager(f"mcp_server/config/javascript/{subfolder_path}")
-            function_code = subfolder_manager.get(function_file_name, extension=".js")
+            # Check if this is an absolute path from project root
+            if function_name.startswith("mcp_server/projects/"):
+                # Use absolute path from project root - extract directory path
+                subfolder_path = "/".join(path_parts[:-1])  # Everything before function name
+                subfolder_manager = FileStateManager(subfolder_path)
+                function_code = subfolder_manager.get(function_file_name, extension=".js")
+            else:
+                # Use relative path from config/javascript (legacy behavior)
+                subfolder_path = "/".join(path_parts[:-1])  # Everything before is the path
+                subfolder_manager = FileStateManager(f"mcp_server/config/javascript/{subfolder_path}")
+                function_code = subfolder_manager.get(function_file_name, extension=".js")
         else:
             # Load the function from the main javascript folder
             function_code = javascript_manager.get(function_name, extension=".js")

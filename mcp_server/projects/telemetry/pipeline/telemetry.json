@@ -3,14 +3,14 @@
     {
       "tool": "lng_javascript_execute",
       "params": {
-        "function_name": "telemetry/setOrderMap"
+        "function_name": "mcp_server/projects/telemetry/javascript/setOrderMap"
       },
       "output": "order_map"
     },
     {
       "tool": "lng_file_list",
       "params": {
-        "directory_path": "work/telemetry/in",
+        "directory_path": "mcp_server/projects/telemetry/data/in",
         "include_directories": false,
         "include_files": true,
         "pattern": "*.json",
@@ -40,7 +40,7 @@
     {
       "tool": "lng_javascript_execute",
       "params": {
-        "function_name": "telemetry/mergeJsons",
+        "function_name": "mcp_server/projects/telemetry/javascript/mergeJsons",
         "parameters": {
           "json_arrays": "{! file_content !}"
         }
@@ -51,7 +51,7 @@
     {
       "tool": "lng_javascript_execute",
       "params": {
-        "function_name": "telemetry/appendFieldsDescription",
+        "function_name": "mcp_server/projects/telemetry/javascript/appendFieldsDescription",
         "parameters": {
           "data": "{! merged_data !}"
         }
@@ -62,7 +62,7 @@
     {
       "tool": "lng_javascript_execute",
       "params": {
-        "function_name": "telemetry/prettyPrintAndSort",
+        "function_name": "mcp_server/projects/telemetry/javascript/prettyPrintAndSort",
         "parameters": {
           "data": "{! data_with_descriptions !}",
           "orderMap": "{! order_map !}"
@@ -83,7 +83,7 @@
     {
       "tool": "lng_file_write",
       "params": {
-        "file_path": "work/telemetry/out/telemetry.csv",
+        "file_path": "mcp_server/projects/telemetry/data/out/telemetry.csv",
         "content": "{! csv_content !}",
         "mode": "overwrite"
       },
@@ -93,8 +93,7 @@
       "tool": "lng_xls_batch",
       "params": {
         "workspace": {
-          "csv_source": "work/telemetry/out/telemetry.csv",
-          "template": "work/telemetry/in/telemetry.xlsx"
+          "csv_source": "mcp_server/projects/telemetry/data/out/telemetry.csv"          
         },
         "analyze": true,
         "operations": []
@@ -105,9 +104,9 @@
       "tool": "lng_xls_batch",
       "params": {
         "workspace": {
-          "csv_source": "work/telemetry/out/telemetry.csv",
-          "template": "work/telemetry/in/telemetry.xlsx",
-          "result": "work/telemetry/out/telemetry.xlsx"
+          "csv_source": "mcp_server/projects/telemetry/data/out/telemetry.csv",
+          "template": "mcp_server/projects/telemetry/template/telemetry.xlsx",
+          "result": "mcp_server/projects/telemetry/data/out/telemetry.xlsx"
         },
         "operations": [
           {
