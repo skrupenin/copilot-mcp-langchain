@@ -901,6 +901,26 @@ def check_dimensions_match(source_cells, target_cells) -> bool:
         
     return src_rows == tgt_rows and src_cols == tgt_cols
 
+def force_formula_recalculation(wb):
+    """Force recalculation of all formulas in the workbook."""
+    try:
+        # Set workbook calculation properties to force recalculation
+        if hasattr(wb, 'calculation'):
+            wb.calculation.calcMode = 'auto'
+            wb.calculation.fullCalcOnLoad = True
+        else:
+            # If calculation object doesn't exist, create basic one
+            from openpyxl.workbook.properties import CalcProperties
+            wb.calculation = CalcProperties()
+            wb.calculation.calcMode = 'auto'
+            wb.calculation.fullCalcOnLoad = True
+        
+        return True
+    except Exception as e:
+        # If recalculation fails, continue without it
+        print(f"Warning: Could not force formula recalculation: {e}")
+        return False
+
 def save_workbook(file_path: str, wb, file_handlers: dict):
     """Save workbook to file."""
     path = Path(file_path)
@@ -909,6 +929,8 @@ def save_workbook(file_path: str, wb, file_handlers: dict):
         # Save as CSV
         save_excel_as_csv(wb, file_path)
     else:
+        # Force formula recalculation before saving Excel
+        force_formula_recalculation(wb)
         # Save as Excel
         wb.save(file_path)
 
@@ -939,6 +961,8 @@ def save_save_as_files(save_as_files: dict, workspace: dict, logger: logging.Log
                 # Save as CSV
                 save_excel_as_csv(wb, file_path)
             else:
+                # Force formula recalculation before saving Excel
+                force_formula_recalculation(wb)
                 # Save as Excel
                 wb.save(file_path)
                 
