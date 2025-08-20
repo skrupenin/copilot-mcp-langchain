@@ -132,22 +132,22 @@ class JavaScriptExpressionStrategy(ExpressionStrategy):
                 return self._evaluate_fallback(expression, context, expected_result_type, step_info)
             
             clean_expression = self.extract_expression(expression)
-            logger.debug(f"JS: Clean expression: {clean_expression}")
+            # logger.debug(f"JS: Clean expression: {clean_expression}")
             
             # Set context variables in JavaScript environment
             self._set_js_context(context)
             
             # Evaluate expression in JavaScript
             js_result = self.js_context.eval(clean_expression)
-            logger.debug(f"JS: Raw JS result: {js_result!r} type: {type(js_result)}")
+            # logger.debug(f"JS: Raw JS result: {js_result!r} type: {type(js_result)}")
             
             # Convert JavaScript result back to Python
             python_result = self._convert_js_to_python(js_result, clean_expression)
-            logger.debug(f"JS: Python result: {python_result!r} type: {type(python_result)}")
+            # logger.debug(f"JS: Python result: {python_result!r} type: {type(python_result)}")
             
             # Format result
             final_result = self.format_result(python_result, expected_result_type)
-            logger.debug(f"JS: Final result: {final_result!r} type: {type(final_result)}, expected_type: {expected_result_type}")
+            # logger.debug(f"JS: Final result: {final_result!r} type: {type(final_result)}, expected_type: {expected_result_type}")
             
             return final_result
             
@@ -553,7 +553,7 @@ def evaluate_expression(expression: str, context: Dict[str, Any], expected_resul
         if strategy.can_handle(expression):
             logger.debug(f"Using strategy: {strategy.__class__.__name__}")
             result = strategy.evaluate(expression, full_context, expected_result_type, step_info)
-            logger.debug(f"Strategy result: {result!r}, type: {type(result)}")
+            # logger.debug(f"Strategy result: {result!r}, type: {type(result)}")
             return result
     
     logger.debug("No strategy could handle expression, using fallback")
@@ -590,18 +590,10 @@ def substitute_expressions(text: str, context: Dict[str, Any], expected_result_t
     # Use the global evaluation function that handles strategy selection properly
     result = evaluate_expression(text, context, expected_result_type, step_info)
     
-    logger.debug(f"substitute_expressions: input='{text}', result='{result}', type={type(result)}, expected_type={expected_result_type}")
-    
     if expected_result_type == "json" and not isinstance(result, str):
-        final_result = json.dumps(result, ensure_ascii=False)
-        logger.debug(f"substitute_expressions: JSON conversion applied: '{final_result}'")
-        return final_result
-    
-    final_result = str(result)
-    logger.debug(f"substitute_expressions: str conversion: '{final_result}'")
-    return final_result
+        return json.dumps(result, ensure_ascii=False)
 
-
+    return str(result)
 def substitute_in_object(obj: Any, context: Dict[str, Any], step_info: Dict[str, Any] = None, preserve_objects: bool = False) -> Any:
     """
     Универсальная функция для подстановки выражений в объектах.
@@ -646,10 +638,7 @@ def substitute_in_object(obj: Any, context: Dict[str, Any], step_info: Dict[str,
                     return json.dumps(result, ensure_ascii=False)
             else:
                 # Для смешанного текста - возвращаем строки с правильной подстановкой
-                logger.debug(f"substitute_in_object: mixed text processing: '{obj}'")
-                result = substitute_expressions(obj, context, expected_result_type="json", step_info=step_info)
-                logger.debug(f"substitute_in_object: mixed text result: '{result}'")
-                return result
+                return substitute_expressions(obj, context, expected_result_type="json", step_info=step_info)
         return obj
     else:
         return obj
