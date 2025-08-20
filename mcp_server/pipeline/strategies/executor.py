@@ -87,6 +87,12 @@ class StrategyBasedExecutor:
             # Initialize execution context
             context = ExecutionContext(variables={}, step_number=0)
             
+            # Add user parameters to context if provided
+            user_params = config.get("user_params", {})
+            if user_params:
+                context.variables["user"] = user_params
+                logger.info(f"Added user parameters to context: {list(user_params.keys())}")
+            
             pipeline = config.get("pipeline", [])
             final_result_expr = config.get("final_result", "ok")
             

@@ -79,6 +79,25 @@ async def tool_info() -> dict:
 **File-based Pipelines** - Use `pipeline_file: "path/to/config.json"` for external configuration
 **Debug Logging** - Add `output_log: "debug_name"` to save step outputs to timestamped files
 **Dual Expression System** - Mix JavaScript `{! !}` and Python `[! !]` expressions in same pipeline
+**User Parameters** - Pass custom data via `user_params` accessible as `{! user.param_name !}` in expressions
+
+**User Parameters Feature:**
+```json
+{
+  "user_params": {
+    "input_directory": "/path/to/files",
+    "threshold": 100,
+    "config": {
+      "format": "csv",
+      "headers": true
+    }
+  },
+  "pipeline": [
+    {"tool": "lng_file_list", "params": {"directory_path": "{! user.input_directory !}"}, "output": "files"},
+    {"tool": "lng_count_words", "params": {"input_text": "Found {! files.length !} files"}}
+  ]
+}
+```
 
 **Example with Multiple Strategies:**
 ```json
@@ -205,6 +224,10 @@ Returns error details with failed tool name and variable context when any step f
                         "type": "string"
                     },
                     "description": "Array of context field names to include in output. If empty or not provided, no context will be shown (saves tokens). Use ['*'] to show all context fields, or specify field names like ['var1', 'var2'] to show only those variables."
+                },
+                "user_params": {
+                    "type": "object",
+                    "description": "User-defined parameters that become available in pipeline expressions as {! user.param_name !} or [! user.param_name !]. Can contain any JSON structure including nested objects and arrays."
                 }
             },
             "required": []

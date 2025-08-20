@@ -1251,6 +1251,360 @@ class BatchRunTest(BatchRunXUnitTest):
         expected_pattern = "File has 6 words, last operation had 1 chars"
         self.assertPipelineResult(result, expected_pattern, "Should simulate file operations")
 
+    def test_41_user_parameters_basic(self):
+        """TEST 41: Basic user parameters functionality."""
+        # Arrange
+        pipeline_config = {
+            "user_params": {
+                "message": "Hello from user parameters",
+                "multiplier": 3
+            },
+            "pipeline": [
+                {
+                    "tool": "lng_count_words",
+                    "params": {"input_text": "{! user.message !}"},
+                    "output": "word_stats"
+                }
+            ],
+            "final_result": "{! word_stats.wordCount * user.multiplier !}"
+        }
+        
+        # Act
+        result = asyncio.run(self.execute_pipeline(pipeline_config))
+        
+        # Assert
+        self.assertSuccessfulPipeline(result, "User parameters should work")
+        self.assertPipelineResult(result, "12", "Should calculate 4 * 3 = 12")
+
+    def test_42_user_parameters_nested_objects(self):
+        """TEST 42: Nested user parameters with objects and arrays."""
+        # Arrange
+        pipeline_config = {
+            "user_params": {
+                "config": {
+                    "format": "csv",
+                    "enabled": True,
+                    "settings": {
+                        "max_items": 100
+                    }
+                },
+                "input_files": ["file1.json", "file2.json"]
+            },
+            "pipeline": [
+                {
+                    "tool": "lng_count_words",
+                    "params": {"input_text": "Format: {! user.config.format !}, Files: {! user.input_files.length !}"},
+                    "output": "processing_info"
+                }
+            ],
+            "final_result": "Processed {! processing_info.wordCount !} words, Max: {! user.config.settings.max_items !}"
+        }
+        
+        # Act
+        result = asyncio.run(self.execute_pipeline(pipeline_config))
+        
+        # Assert
+        self.assertSuccessfulPipeline(result, "Nested user parameters should work")
+        self.assertPipelineResult(result, "Processed 4 words, Max: 100", "Should access nested objects")
+
+    def test_43_user_parameters_conditional_logic(self):
+        """TEST 43: User parameters in conditional logic."""
+        # Arrange
+        pipeline_config = {
+            "user_params": {
+                "threshold": 5,
+                "mode": "production"
+            },
+            "pipeline": [
+                {
+                    "tool": "lng_count_words",
+                    "params": {"input_text": "conditional user parameter test"},
+                    "output": "word_count"
+                },
+                {
+                    "type": "condition",
+                    "condition": "{! word_count.wordCount > user.threshold && user.mode === 'production' !}",
+                    "then": [
+                        {
+                            "tool": "lng_count_words",
+                            "params": {"input_text": "production mode enabled"},
+                            "output": "result"
+                        }
+                    ],
+                    "else": [
+                        {
+                            "tool": "lng_count_words",
+                            "params": {"input_text": "development mode"},
+                            "output": "result"
+                        }
+                    ]
+                }
+            ],
+            "final_result": "{! result.wordCount !}"
+        }
+        
+        # Act
+        result = asyncio.run(self.execute_pipeline(pipeline_config))
+        
+        # Assert
+        self.assertSuccessfulPipeline(result, "User parameters in conditionals should work")
+        self.assertPipelineResult(result, "2", "Should execute development branch (4 <= 5)")
+
+    def test_44_user_parameters_loops(self):
+        """TEST 44: User parameters in loop operations."""
+        # Arrange
+        pipeline_config = {
+            "user_params": {
+                "items": ["apple", "banana", "cherry"],
+                "process_count": 2
+            },
+            "pipeline": [
+                {
+                    "type": "forEach",
+                    "forEach": "{! user.items !}",
+                    "item": "fruit",
+                    "do": [
+                        {
+                            "tool": "lng_count_words",
+                            "params": {"input_text": "Processing {! fruit !}"},
+                            "output": "fruit_result"
+                        }
+                    ]
+                }
+            ],
+            "final_result": "Processed items: {! user.items.length !}, Last result: {! fruit_result.wordCount !}"
+        }
+        
+        # Act
+        result = asyncio.run(self.execute_pipeline(pipeline_config))
+        
+        # Assert
+        self.assertSuccessfulPipeline(result, "User parameters in loops should work")
+        self.assertPipelineResult(result, "Processed items: 3, Last result: 2", "Should process user array items")
+
+    def test_45_user_parameters_mixed_expressions(self):
+        """TEST 45: User parameters with mixed JavaScript and Python expressions."""
+        # Arrange
+        pipeline_config = {
+            "user_params": {
+                "base_number": 10,
+                "multipliers": [2, 3, 5]
+            },
+            "pipeline": [
+                {
+                    "tool": "lng_math_calculator",
+                    "params": {"expression": "{! user.base_number * user.multipliers[0] !}"},
+                    "output": "js_result"
+                },
+                {
+                    "tool": "lng_math_calculator", 
+                    "params": {"expression": "[! user['base_number'] * user['multipliers'][1] !]"},
+                    "output": "py_result"
+                }
+            ],
+            "final_result": "JS: {! js_result.result !}, Python: [! py_result['result'] !]"
+        }
+        
+        # Act
+        result = asyncio.run(self.execute_pipeline(pipeline_config))
+        
+        # Assert
+        self.assertSuccessfulPipeline(result, "Mixed expressions with user parameters should work")
+        self.assertPipelineResult(result, "JS: 20, Python: 30", "Should handle both JS and Python expressions")
+
+    def test_46_user_parameters_telemetry_simulation(self):
+        """TEST 46: User parameters for telemetry processing simulation."""
+        # Arrange - Simulate telemetry processing use case
+        pipeline_config = {
+            "user_params": {
+                "input_dir": "/path/to/telemetry",
+                "output_format": "csv",
+                "date_range": {
+                    "start": "2025-04-01",
+                    "end": "2025-04-30"
+                },
+                "processing": {
+                    "merge_files": True,
+                    "add_descriptions": True
+                }
+            },
+            "pipeline": [
+                {
+                    "tool": "lng_count_words",
+                    "params": {"input_text": "Processing telemetry from {! user.input_dir !}"},
+                    "output": "init_message"
+                },
+                {
+                    "type": "condition",
+                    "condition": "{! user.processing.merge_files !}",
+                    "then": [
+                        {
+                            "tool": "lng_count_words",
+                            "params": {"input_text": "Merging files from {! user.date_range.start !} to {! user.date_range.end !}"},
+                            "output": "merge_result"
+                        }
+                    ],
+                    "else": [
+                        {
+                            "tool": "lng_count_words",
+                            "params": {"input_text": "Processing individual files"},
+                            "output": "merge_result"
+                        }
+                    ]
+                },
+                {
+                    "type": "condition",
+                    "condition": "{! user.processing.add_descriptions !}",
+                    "then": [
+                        {
+                            "tool": "lng_count_words",
+                            "params": {"input_text": "Adding field descriptions for {! user.output_format !} format"},
+                            "output": "final_result"
+                        }
+                    ],
+                    "else": [
+                        {
+                            "tool": "lng_count_words",
+                            "params": {"input_text": "Raw output"},
+                            "output": "final_result"
+                        }
+                    ]
+                }
+            ],
+            "final_result": "✅ Telemetry processing complete! Format: {! user.output_format !}, Steps: {! final_result.wordCount !}"
+        }
+        
+        # Act
+        result = asyncio.run(self.execute_pipeline(pipeline_config))
+        
+        # Assert
+        self.assertSuccessfulPipeline(result, "Telemetry simulation with user parameters should work")
+        expected = "✅ Telemetry processing complete! Format: csv, Steps: 6"
+        self.assertPipelineResult(result, expected, "Should simulate telemetry processing workflow")
+
+    def test_47_user_parameters_without_user_params(self):
+        """TEST 47: Pipeline execution without user_params (backward compatibility)."""
+        # Arrange - No user_params provided
+        pipeline_config = {
+            "pipeline": [
+                {
+                    "tool": "lng_count_words",
+                    "params": {"input_text": "backward compatibility test"},
+                    "output": "compat_result"
+                }
+            ],
+            "final_result": "Compatibility: {! compat_result.wordCount !} words"
+        }
+        
+        # Act
+        result = asyncio.run(self.execute_pipeline(pipeline_config))
+        
+        # Assert
+        self.assertSuccessfulPipeline(result, "Pipeline without user_params should work (backward compatibility)")
+        self.assertPipelineResult(result, "Compatibility: 3 words", "Should maintain backward compatibility")
+
+    def test_48_user_parameters_empty_object(self):
+        """TEST 48: Empty user_params object handling."""
+        # Arrange - Empty user_params
+        pipeline_config = {
+            "user_params": {},
+            "pipeline": [
+                {
+                    "tool": "lng_count_words",
+                    "params": {"input_text": "empty user params test"},
+                    "output": "empty_test"
+                }
+            ],
+            "final_result": "{! empty_test.wordCount !}"
+        }
+        
+        # Act
+        result = asyncio.run(self.execute_pipeline(pipeline_config))
+        
+        # Assert
+        self.assertSuccessfulPipeline(result, "Empty user_params should work")
+        self.assertPipelineResult(result, "4", "Should handle empty user_params gracefully")
+
+    def test_49_user_parameters_complex_expressions(self):
+        """TEST 49: Complex expressions with user parameters."""
+        # Arrange
+        pipeline_config = {
+            "user_params": {
+                "data": {
+                    "values": [10, 20, 30],
+                    "weights": [0.1, 0.5, 0.4]
+                },
+                "options": {
+                    "calculate_average": True,
+                    "precision": 2
+                }
+            },
+            "pipeline": [
+                {
+                    "tool": "lng_math_calculator",
+                    "params": {"expression": "{! user.data.values[0] * user.data.weights[0] + user.data.values[1] * user.data.weights[1] + user.data.values[2] * user.data.weights[2] !}"},
+                    "output": "weighted_sum"
+                }
+            ],
+            "final_result": "Weighted average: {! Math.round(weighted_sum.result * Math.pow(10, user.options.precision)) / Math.pow(10, user.options.precision) !}"
+        }
+        
+        # Act
+        result = asyncio.run(self.execute_pipeline(pipeline_config))
+        
+        # Assert
+        self.assertSuccessfulPipeline(result, "Complex expressions with user parameters should work")
+        self.assertPipelineResult(result, "Weighted average: 23", "Should calculate weighted average: 1+10+12=23")
+
+    def test_50_user_parameters_cli_simulation(self):
+        """TEST 50: CLI parameter passing simulation."""
+        # Arrange - Simulate parameters that would come from CLI
+        pipeline_config = {
+            "user_params": {
+                "input_directory": "work/telemetry", 
+                "output_format": "xlsx",
+                "verbose": True,
+                "max_files": 50,
+                "filters": {
+                    "date_from": "2025-04-01",
+                    "file_pattern": "*.json"
+                }
+            },
+            "pipeline": [
+                {
+                    "type": "condition",
+                    "condition": "{! user.verbose !}",
+                    "then": [
+                        {
+                            "tool": "lng_count_words",
+                            "params": {"input_text": "Verbose mode: processing {! user.max_files !} files from {! user.input_directory !}"},
+                            "output": "verbose_msg"
+                        }
+                    ],
+                    "else": [
+                        {
+                            "tool": "lng_count_words", 
+                            "params": {"input_text": "Processing files"},
+                            "output": "verbose_msg"
+                        }
+                    ]
+                },
+                {
+                    "tool": "lng_count_words",
+                    "params": {"input_text": "Output format: {! user.output_format !}, Pattern: {! user.filters.file_pattern !}"},
+                    "output": "format_info"
+                }
+            ],
+            "final_result": "CLI execution: {! verbose_msg.wordCount + format_info.wordCount !} total words processed"
+        }
+        
+        # Act
+        result = asyncio.run(self.execute_pipeline(pipeline_config))
+        
+        # Assert
+        self.assertSuccessfulPipeline(result, "CLI parameter simulation should work")
+        self.assertPipelineResult(result, "CLI execution: 12 total words processed", "Should simulate CLI parameter processing")
+
 
 if __name__ == '__main__':
     
@@ -1259,7 +1613,7 @@ if __name__ == '__main__':
     
     print("\n" + "=" * 80)
     print(f"{Colors.BOLD}{Colors.GREEN}🎉 lng_batch_run xUnit testing completed!{Colors.RESET}")
-    print(f"{Colors.BOLD}Comprehensive xUnit pattern features tested (40 total tests):{Colors.RESET}")
+    print(f"{Colors.BOLD}Comprehensive xUnit pattern features tested (50 total tests):{Colors.RESET}")
     print("✨ Basic tool execution with result verification")
     print("✨ Variable substitution chains")
     print("✨ Conditional logic (true/false branches)")
@@ -1299,3 +1653,14 @@ if __name__ == '__main__':
     print("✨ Multiple lng_* tools integration")
     print("✨ External API simulation with error handling")
     print("✨ File operations in batch processing")
+    print(f"{Colors.BOLD}{Colors.BLUE}🆕 NEW: User Parameters Feature (Tests 41-50):{Colors.RESET}")
+    print("🎯 Basic user parameters functionality")
+    print("🎯 Nested objects and arrays in user parameters")
+    print("🎯 User parameters in conditional logic")
+    print("🎯 User parameters in loop operations")
+    print("🎯 Mixed JS/Python expressions with user parameters")
+    print("🎯 Telemetry processing simulation with user parameters")
+    print("🎯 Backward compatibility without user_params")
+    print("🎯 Empty user_params object handling")
+    print("🎯 Complex mathematical expressions with user data")
+    print("🎯 CLI parameter passing simulation")

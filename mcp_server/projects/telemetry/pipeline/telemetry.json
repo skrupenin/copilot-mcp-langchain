@@ -1,4 +1,7 @@
 {
+  "user_params": {
+    "base_directory": "mcp_server/projects/telemetry/data"
+  },
   "pipeline": [
     {
       "tool": "lng_javascript_execute",
@@ -10,7 +13,7 @@
     {
       "tool": "lng_file_list",
       "params": {
-        "directory_path": "mcp_server/projects/telemetry/data/in",
+        "directory_path": "{! user.base_directory !}",
         "include_directories": false,
         "include_files": true,
         "pattern": "*.json",
@@ -83,7 +86,7 @@
     {
       "tool": "lng_file_write",
       "params": {
-        "file_path": "mcp_server/projects/telemetry/data/out/telemetry.csv",
+        "file_path": "{! user.base_directory !}/out/telemetry.csv",
         "content": "{! csv_content !}",
         "mode": "overwrite"
       },
@@ -93,7 +96,7 @@
       "tool": "lng_xls_batch",
       "params": {
         "workspace": {
-          "csv_source": "mcp_server/projects/telemetry/data/out/telemetry.csv"          
+          "csv_source": "{! user.base_directory !}/out/telemetry.csv"          
         },
         "analyze": true,
         "operations": []
@@ -104,9 +107,9 @@
       "tool": "lng_xls_batch",
       "params": {
         "workspace": {
-          "csv_source": "mcp_server/projects/telemetry/data/out/telemetry.csv",
+          "csv_source": "{! user.base_directory !}/out/telemetry.csv",
           "template": "mcp_server/projects/telemetry/template/telemetry.xlsx",
-          "result": "mcp_server/projects/telemetry/data/out/telemetry.xlsx"
+          "result": "{! user.base_directory !}/out/telemetry.xlsx"
         },
         "operations": [
           {
