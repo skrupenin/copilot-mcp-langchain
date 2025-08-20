@@ -132,7 +132,7 @@ class LoopStrategy(ExecutionStrategy):
                         substituted_result = substitute_in_object(item_output_expr, context.variables)
                         item_result = parse_substituted_string(substituted_result, context.variables)
                         accumulated_results.append(item_result)
-                        logger.debug(f"ForEach iteration {i}: accumulated item result: {item_result}")
+                        logger.debug(f"ForEach iteration {i}: accumulated item result: {str(item_result)[:1000] + '...' if len(str(item_result)) > 1000 else item_result}")
                     except Exception as e:
                         logger.warning(f"ForEach iteration {i}: failed to evaluate item_output: {str(e)}")
                         

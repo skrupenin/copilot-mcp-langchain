@@ -40,10 +40,8 @@ class ToolStrategy(ExecutionStrategy):
             
             # Substitute variables in parameters using unified expression processing
             substituted_params = substitute_in_object(params, context.variables, preserve_objects=preserve_objects)
-            logger.debug(f"Parameters after substitution: {substituted_params}")
-            
-            logger.debug(f"Tool parameters after substitution: {substituted_params}")
-            
+            logger.debug(f"Parameters after substitution: {str(substituted_params)[:1000] + '...' if len(str(substituted_params)) > 1000 else str(substituted_params)}")
+                        
             # Execute the tool
             if asyncio.iscoroutinefunction(self.tool_runner):
                 tool_result = await self.tool_runner(tool_name, substituted_params)
