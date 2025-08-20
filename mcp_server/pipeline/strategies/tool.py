@@ -73,6 +73,18 @@ class ToolStrategy(ExecutionStrategy):
             # Ensure result is JSON-compatible before storing
             json_compatible_result = self._ensure_json_compatible(parsed_result)
             
+            # Check if tool result indicates failure
+            if isinstance(json_compatible_result, dict) and json_compatible_result.get("success") is False:
+                error_msg = f"Step {context.step_number} tool '{tool_name}' reported failure: {json_compatible_result.get('error', 'Unknown error')}"
+                logger.error(error_msg)
+                return PipelineResult(
+                    success=False,
+                    error=error_msg,
+                    step=context.step_number,
+                    tool=tool_name,
+                    context=context.variables
+                )
+            
             if output_var:
                 context.variables[output_var] = json_compatible_result
                 logger.debug(f"Stored JSON-compatible result in variable '{output_var}': {type(json_compatible_result).__name__}")

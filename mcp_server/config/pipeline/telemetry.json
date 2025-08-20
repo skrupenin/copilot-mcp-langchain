@@ -94,12 +94,24 @@
       "params": {
         "workspace": {
           "csv_source": "work/telemetry/out/telemetry.csv",
+          "template": "work/telemetry/in/telemetry.xlsx"
+        },
+        "analyze": true,
+        "operations": []
+      },
+      "output": "file_analysis"
+    },
+    {
+      "tool": "lng_xls_batch",
+      "params": {
+        "workspace": {
+          "csv_source": "work/telemetry/out/telemetry.csv",
           "template": "work/telemetry/in/telemetry.xlsx",
           "result": "work/telemetry/out/telemetry.xlsx"
         },
         "operations": [
           {
-            "from": "[csv_source]A7:AP22",
+            "from": "[csv_source]A7:AP[! file_analysis['analysis']['csv_source']['sheets']['Sheet1']['max_row'] !]",
             "to": "[template]Sheet1!A11",
             "save_as": "result",
             "copy": ["values"],

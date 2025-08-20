@@ -353,8 +353,8 @@ class RecursiveExpressionStrategy(ExpressionStrategy):
                     if strategy.can_handle(result_text):
                         return strategy.evaluate(result_text, context, expected_result_type, step_info)
             
-            # Otherwise return as formatted text
-            return self.plain_strategy.format_result(result_text, expected_result_type)
+            # Otherwise return as plain text (mixed text should not be JSON-encoded)
+            return result_text
             
         except Exception as e:
             raise ExpressionEvaluationError(
@@ -590,10 +590,16 @@ def substitute_expressions(text: str, context: Dict[str, Any], expected_result_t
     # Use the global evaluation function that handles strategy selection properly
     result = evaluate_expression(text, context, expected_result_type, step_info)
     
-    if expected_result_type == "json" and not isinstance(result, str):
-        return json.dumps(result, ensure_ascii=False)
+    logger.debug(f"substitute_expressions: input='{text}', result='{result}', type={type(result)}, expected_type={expected_result_type}")
     
-    return str(result)
+    if expected_result_type == "json" and not isinstance(result, str):
+        final_result = json.dumps(result, ensure_ascii=False)
+        logger.debug(f"substitute_expressions: JSON conversion applied: '{final_result}'")
+        return final_result
+    
+    final_result = str(result)
+    logger.debug(f"substitute_expressions: str conversion: '{final_result}'")
+    return final_result
 
 
 def substitute_in_object(obj: Any, context: Dict[str, Any], step_info: Dict[str, Any] = None, preserve_objects: bool = False) -> Any:
@@ -640,7 +646,10 @@ def substitute_in_object(obj: Any, context: Dict[str, Any], step_info: Dict[str,
                     return json.dumps(result, ensure_ascii=False)
             else:
                 # Для смешанного текста - возвращаем строки с правильной подстановкой
-                return substitute_expressions(obj, context, expected_result_type="json", step_info=step_info)
+                logger.debug(f"substitute_in_object: mixed text processing: '{obj}'")
+                result = substitute_expressions(obj, context, expected_result_type="json", step_info=step_info)
+                logger.debug(f"substitute_in_object: mixed text result: '{result}'")
+                return result
         return obj
     else:
         return obj

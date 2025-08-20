@@ -187,9 +187,14 @@ Define file aliases for easy reference:
                     "type": "boolean",
                     "default": False,
                     "description": "Enable debug logging"
+                },
+                "analyze": {
+                    "type": "boolean",
+                    "default": False,
+                    "description": "Analyze workspace files and return statistics without performing operations"
                 }
             },
-            "required": ["workspace", "operations"]
+            "required": ["workspace"]
         }
     }
 
@@ -220,8 +225,13 @@ async def main(params: dict) -> dict:
             "insert": "replace"
         })
         operations = params.get("operations", [])
+        analyze_mode = params.get("analyze", False)  # New analyze mode
         
-        if not operations:
+        # If analyze mode and no operations, return file statistics
+        if analyze_mode and not operations:
+            return analyze_workspace_files(workspace, context)
+        
+        if not analyze_mode and not operations:
             return {
                 "success": False,
                 "error": "No operations specified"
@@ -321,8 +331,8 @@ async def execute_operation(operation: dict, workspace: dict, defaults: dict,
     logger.debug(f"Executing operation: {from_source} => {to_target} (save as {save_as_id})")
     
     # Parse source and target
-    source_info = parse_range(from_source, workspace, context)
-    target_info = parse_range(to_target, workspace, context)
+    source_info = parse_range(from_source, workspace, context, logger)
+    target_info = parse_range(to_target, workspace, context, logger)
     
     # Validate target must be a range (file reference)
     if target_info["type"] != "range":
@@ -393,7 +403,7 @@ async def execute_operation(operation: dict, workspace: dict, defaults: dict,
     
     return result
 
-def parse_range(range_str: str, workspace: dict, context: dict = None) -> dict:
+def parse_range(range_str: str, workspace: dict, context: dict = None, logger = None) -> dict:
     """Parse range string into components."""
     # Handle different source types
     if range_str.startswith("="):
@@ -411,15 +421,21 @@ def parse_range(range_str: str, workspace: dict, context: dict = None) -> dict:
     elif "[" in range_str and "]" in range_str:
         # File reference with range
         # Pattern: [fileId]Sheet!Range or [fileId]Range
-        match = re.match(r'\[(\w+)\](.+)', range_str)
+        logger.debug(f"Attempting to parse range string: '{range_str}'")
+        match = re.match(r'\[([a-zA-Z0-9_-]+)\](.+)', range_str)
+        logger.debug(f"Regex match result: {match}")
+        if match:
+            logger.debug(f"Match groups: file_id='{match.group(1)}', rest='{match.group(2)}'")
         if not match:
-            raise ValueError(f"Invalid range format: {range_str}")
+            available_files = list(workspace.keys()) if workspace else []
+            raise ValueError(f"Invalid range format: '{range_str}'. Expected format: '[fileId]Range' or '[fileId]Sheet!Range'. Available file IDs: {available_files}. Debug: range_str='{range_str}', len={len(range_str)}")
             
         file_id = match.group(1)
         rest = match.group(2)
         
         if file_id not in workspace:
-            raise ValueError(f"File ID '{file_id}' not found in workspace")
+            available_files = list(workspace.keys())
+            raise ValueError(f"File ID '{file_id}' not found in workspace. Available file IDs: {available_files}. Range string: '{range_str}'")
             
         file_path = workspace[file_id]
         
@@ -901,25 +917,86 @@ def check_dimensions_match(source_cells, target_cells) -> bool:
         
     return src_rows == tgt_rows and src_cols == tgt_cols
 
-def force_formula_recalculation(wb):
-    """Force recalculation of all formulas in the workbook."""
+def analyze_workspace_files(workspace: dict, context: dict = None) -> dict:
+    """Analyze workspace files and return statistics about data ranges."""
     try:
-        # Set workbook calculation properties to force recalculation
-        if hasattr(wb, 'calculation'):
-            wb.calculation.calcMode = 'auto'
-            wb.calculation.fullCalcOnLoad = True
-        else:
-            # If calculation object doesn't exist, create basic one
-            from openpyxl.workbook.properties import CalcProperties
-            wb.calculation = CalcProperties()
-            wb.calculation.calcMode = 'auto'
-            wb.calculation.fullCalcOnLoad = True
+        file_handlers = {}
+        results = {}
         
-        return True
+        for file_id, file_path in workspace.items():
+            try:
+                # Load the file
+                if file_path.lower().endswith('.csv'):
+                    wb = load_csv_as_excel(file_path)
+                    sheet_name = "Sheet1"  # CSV becomes Sheet1
+                else:
+                    wb = load_workbook(file_path, file_handlers)
+                
+                file_stats = {
+                    "file_path": file_path,
+                    "file_type": "csv" if file_path.lower().endswith('.csv') else "excel",
+                    "sheets": {}
+                }
+                
+                # Analyze each sheet
+                for sheet in wb.worksheets:
+                    sheet_stats = analyze_sheet_data(sheet)
+                    file_stats["sheets"][sheet.title] = sheet_stats
+                
+                results[file_id] = file_stats
+                
+            except Exception as e:
+                results[file_id] = {
+                    "error": f"Could not analyze file: {str(e)}",
+                    "file_path": file_path
+                }
+        
+        return {
+            "success": True,
+            "analysis": results
+        }
+        
     except Exception as e:
-        # If recalculation fails, continue without it
-        print(f"Warning: Could not force formula recalculation: {e}")
-        return False
+        return {
+            "success": False,
+            "error": f"Analysis failed: {str(e)}"
+        }
+
+def analyze_sheet_data(sheet) -> dict:
+    """Analyze a single sheet and return data statistics."""
+    max_row = 1
+    max_col = 1
+    filled_cells = 0
+    
+    # Find the actual data boundaries
+    for row_num, row in enumerate(sheet.iter_rows(), 1):
+        row_has_data = False
+        for col_num, cell in enumerate(row, 1):
+            if cell.value is not None and str(cell.value).strip() != "":
+                filled_cells += 1
+                max_col = max(max_col, col_num)
+                row_has_data = True
+        if row_has_data:
+            max_row = max(max_row, row_num)
+    
+    # Convert column number to letter (A, B, C, ..., AA, AB, etc.)
+    def col_num_to_letter(col_num):
+        result = ""
+        while col_num > 0:
+            col_num -= 1
+            result = chr(col_num % 26 + ord('A')) + result
+            col_num //= 26
+        return result
+    
+    return {
+        "max_row": max_row,
+        "max_col": max_col,
+        "max_col_letter": col_num_to_letter(max_col),
+        "filled_cells": filled_cells,
+        "data_range": f"A1:{col_num_to_letter(max_col)}{max_row}",
+        "suggested_range": f"A2:{col_num_to_letter(max_col)}{max_row}"  # Skip header
+    }
+
 
 def save_workbook(file_path: str, wb, file_handlers: dict):
     """Save workbook to file."""
@@ -930,7 +1007,6 @@ def save_workbook(file_path: str, wb, file_handlers: dict):
         save_excel_as_csv(wb, file_path)
     else:
         # Force formula recalculation before saving Excel
-        force_formula_recalculation(wb)
         # Save as Excel
         wb.save(file_path)
 
@@ -962,7 +1038,6 @@ def save_save_as_files(save_as_files: dict, workspace: dict, logger: logging.Log
                 save_excel_as_csv(wb, file_path)
             else:
                 # Force formula recalculation before saving Excel
-                force_formula_recalculation(wb)
                 # Save as Excel
                 wb.save(file_path)
                 
