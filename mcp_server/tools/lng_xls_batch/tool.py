@@ -21,9 +21,9 @@ async def tool_info() -> dict:
     """Returns information about the lng_xls_batch tool."""
     return {
         "name": "lng_xls_batch",
-        "description": """🔄 Advanced Excel/CSV Batch Operations Tool
+        "description": """Advanced Excel/CSV Batch Operations Tool
 
-**🚀 Core Features:**
+**Core Features:**
 • **Multi-format Support** - Excel (.xlsx, .xls) and CSV files
 • **Template-based Operations** - Copy from source to template, save as result file
 • **Smart Copy Operations** - Values, formulas, formatting with flexible combinations
@@ -32,17 +32,17 @@ async def tool_info() -> dict:
 • **Flexible Insert Modes** - Replace or insert with row/column expansion
 • **CSV Integration** - CSV files treated as single-sheet Excel internally
 
-**⚡ Operation Modes:**
+**Operation Modes:**
 • `single` - Single copy operation (auto-detected)
 • `batch` - Multiple operations with workspace management
 
-**🎯 Copy Types:**
+**Copy Types:**
 • `values` - Copy cell values only
 • `formulas` - Copy formulas only
 • `formatting` - Copy cell formatting only
 • Combinations: `["values", "formulas"]`, `["values", "formatting"]`, etc.
 
-**📁 Workspace Management:**
+**Workspace Management:**
 Define file aliases for easy reference:
 ```json
 {
@@ -54,19 +54,19 @@ Define file aliases for easy reference:
 }
 ```
 
-**🔧 Insert Modes:**
+**Insert Modes:**
 • `"replace"` - Replace existing cells
 • `["rows"]` - Insert new rows, shifting existing down
 • `["columns"]` - Insert new columns, shifting existing right  
 • `["rows", "columns"]` - Insert both rows and columns
 
-**📝 Range Notation:**
+**Range Notation:**
 • Excel files: `[fileId]SheetName!A1:C10`
 • CSV files: `[fileId]A1:C10` (sheet name optional)
 • Dynamic ranges: `[source]Sheet1!A1:A{! row_count !}`
 • Template operations: copy from `[source]` to `[template]`, save result as `[result]`
 
-**✨ Example Usage:**
+**Example Usage:**
 
 **Template-based Copy:**
 ```json
@@ -116,7 +116,7 @@ Define file aliases for easy reference:
 }
 ```
 
-**🔄 Processing Flow:**
+**Processing Flow:**
 1. Load workspace files (create if needed)
 2. Process expressions in operations
 3. Copy from source to template (template remains unchanged)
@@ -697,10 +697,94 @@ def copy_value(value: str, target_ws: Worksheet, target_range: str,
     logger.info(f"Set value '{value}' to {count} cell(s)")
     return {"values_set": count, "value": value}
 
+def smart_convert_value(source_value, target_cell):
+    """
+    Smart value conversion with type detection and casting.
+    
+    Args:
+        source_value: Value from source cell
+        target_cell: Target cell to check existing type/format
+        
+    Returns:
+        Converted value with appropriate type
+    """
+    if source_value is None:
+        return None
+        
+    # If source is already correct type, return as is
+    if isinstance(source_value, (int, float, bool)):
+        return source_value
+        
+    # If source is string, try to detect and convert type
+    if isinstance(source_value, str):
+        # Empty string handling
+        if not source_value.strip():
+            return None
+            
+        # Formula handling - keep as string
+        if source_value.startswith('='):
+            return source_value
+            
+        # Try to detect numeric types
+        source_clean = source_value.strip()
+        
+        # Boolean detection
+        if source_clean.lower() in ('true', 'false', 'да', 'нет', 'yes', 'no'):
+            return source_clean.lower() in ('true', 'да', 'yes')
+            
+        # Integer detection
+        try:
+            # Handle negative numbers
+            if source_clean.lstrip('-').isdigit():
+                return int(source_clean)
+        except (ValueError, AttributeError):
+            pass
+            
+        # Float detection
+        try:
+            # Try to convert to float
+            float_val = float(source_clean.replace(',', '.'))  # Handle comma decimal separator
+            # If it's actually an integer, return as int
+            if float_val.is_integer():
+                return int(float_val)
+            return float_val
+        except (ValueError, AttributeError):
+            pass
+            
+        # Date/datetime detection (basic patterns)
+        import re
+        date_patterns = [
+            r'^\d{4}-\d{2}-\d{2}$',  # YYYY-MM-DD
+            r'^\d{2}/\d{2}/\d{4}$',  # MM/DD/YYYY or DD/MM/YYYY
+            r'^\d{2}\.\d{2}\.\d{4}$'  # DD.MM.YYYY
+        ]
+        
+        for pattern in date_patterns:
+            if re.match(pattern, source_clean):
+                try:
+                    from datetime import datetime
+                    if '-' in source_clean:
+                        return datetime.strptime(source_clean, '%Y-%m-%d').date()
+                    elif '/' in source_clean:
+                        # Try both formats
+                        try:
+                            return datetime.strptime(source_clean, '%m/%d/%Y').date()
+                        except ValueError:
+                            return datetime.strptime(source_clean, '%d/%m/%Y').date()
+                    elif '.' in source_clean:
+                        return datetime.strptime(source_clean, '%d.%m.%Y').date()
+                except (ValueError, ImportError):
+                    pass
+                    
+    # If no conversion possible, return as string
+    return source_value
+
 def copy_cell(source_cell, target_cell, copy_types: List[str]):
     """Copy cell content based on copy types."""
     if "values" in copy_types:
-        target_cell.value = source_cell.value
+        # Use smart value conversion instead of direct assignment
+        converted_value = smart_convert_value(source_cell.value, target_cell)
+        target_cell.value = converted_value
     
     if "formulas" in copy_types:
         # In openpyxl, formulas are stored in value, but we can check if it starts with =

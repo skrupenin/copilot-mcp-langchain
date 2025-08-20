@@ -49,12 +49,12 @@ async def tool_info() -> dict:
 ```
 
 **Strategy-Based Features:**
-🔧 **Tool Execution** - Sequential tool calls with variable passing
-🔀 **Conditional Logic** - if-then-else with JavaScript expressions  
-🔄 **Loops** - forEach, while, repeat iterations
-⚡ **Parallel Execution** - Run multiple steps concurrently
-⏱️ **Timing Control** - Delays and sleep functionality
-📦 **Modular Design** - Easy to extend with new strategies
+**Tool Execution** - Sequential tool calls with variable passing
+**Conditional Logic** - if-then-else with JavaScript expressions  
+**Loops** - forEach, while, repeat iterations
+**Parallel Execution** - Run multiple steps concurrently
+**Timing Control** - Delays and sleep functionality
+**Modular Design** - Easy to extend with new strategies
 
 **Variable Substitution:**
 • `{! variable !}` - JavaScript expressions - Direct variable value
@@ -75,10 +75,10 @@ async def tool_info() -> dict:
 • `{"type": "delay", "delay": 1.5}` - Sleep/wait
 
 **Advanced Features:**
-🔍 **Context Filtering** - Use `context_fields: ["var1", "var2"]` or `["*"]` to control output verbosity
-📁 **File-based Pipelines** - Use `pipeline_file: "path/to/config.json"` for external configuration
-📊 **Debug Logging** - Add `output_log: "debug_name"` to save step outputs to timestamped files
-🔀 **Dual Expression System** - Mix JavaScript `{! !}` and Python `[! !]` expressions in same pipeline
+**Context Filtering** - Use `context_fields: ["var1", "var2"]` or `["*"]` to control output verbosity
+**File-based Pipelines** - Use `pipeline_file: "path/to/config.json"` for external configuration
+**Debug Logging** - Add `output_log: "debug_name"` to save step outputs to timestamped files
+**Dual Expression System** - Mix JavaScript `{! !}` and Python `[! !]` expressions in same pipeline
 
 **Example with Multiple Strategies:**
 ```json
