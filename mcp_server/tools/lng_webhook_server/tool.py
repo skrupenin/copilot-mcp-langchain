@@ -18,7 +18,7 @@ async def tool_info() -> dict:
     return {
         "description": """Universal webhook server constructor with pipeline integration.
 
-**🌐 Universal Webhook Constructor**
+**Universal Webhook Constructor**
 Create HTTP endpoints that receive webhooks and execute pipelines automatically.
 
 **Operations:**
@@ -30,12 +30,12 @@ Create HTTP endpoints that receive webhooks and execute pipelines automatically.
 • `update` - Update pipeline configuration without restart
 
 **Features:**
-🔧 **Pipeline Integration** - Auto-execute lng_batch_run pipelines
-🔐 **Authentication** - GitHub signatures, Bearer tokens, Basic auth
-📝 **Detailed Logging** - Structured logs per endpoint with error tracking
-⚡ **High Performance** - Async processing with request queuing
-🔒 **SSL Support** - HTTPS with custom or self-signed certificates
-💾 **Persistence** - Auto-restore webhooks on server restart
+**Pipeline Integration** - Auto-execute lng_batch_run pipelines
+**Authentication** - GitHub signatures, Bearer tokens, Basic auth
+**Detailed Logging** - Structured logs per endpoint with error tracking
+**High Performance** - Async processing with request queuing
+**SSL Support** - HTTPS with custom or self-signed certificates
+**Persistence** - Auto-restore webhooks on server restart
 
 **Example Configuration:**
 ```json

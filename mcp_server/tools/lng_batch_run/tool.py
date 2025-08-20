@@ -11,7 +11,7 @@ async def tool_info() -> dict:
     return {
         "description": """Executes a batch pipeline of tool calls with variable substitution using JavaScript expressions.
 
-**⚡ Now powered by strategy-based architecture for maximum extensibility!**
+**Now powered by strategy-based architecture for maximum extensibility!**
 
 **Pipeline Structure:**
 ```json

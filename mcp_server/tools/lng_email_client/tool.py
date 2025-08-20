@@ -37,9 +37,9 @@ async def tool_info() -> dict:
     """Returns information about the lng_email_client tool."""
     return {
         "name": "lng_email_client",
-        "description": """📧 Universal Email Swiss Army Knife - The most powerful email client for automation
+        "description": """Universal Email Swiss Army Knife - The most powerful email client for automation
 
-**🚀 Core Features:**
+**Core Features:**
 • **Multiple Protocols** - SMTP (Gmail, Outlook, custom), API services (SendGrid, Mailgun, SES)
 • **Advanced Authentication** - Basic auth, OAuth 2.0, API keys, app passwords
 • **Rich Content** - HTML emails, plain text, mixed content with inline images
@@ -50,7 +50,7 @@ async def tool_info() -> dict:
 • **State Management** - Session persistence, delivery tracking, retry logic
 • **Validation** - Email address validation, content checks, deliverability tests
 
-**⚡ Operation Modes:**
+**Operation Modes:**
 • `send` - Send single email with full configuration
 • `batch` - Mass email sending with personalization and rate limiting
 • `template` - Template-based email generation and sending
@@ -58,13 +58,13 @@ async def tool_info() -> dict:
 • `session_info` - Get current session state and statistics
 • `validate` - Validate email addresses and content
 
-**🔧 Email Services Support:**
+**Email Services Support:**
 • **SMTP Servers:** Gmail, Outlook/Hotmail, Yahoo, custom SMTP
 • **API Services:** SendGrid, Mailgun, Amazon SES, Mailchimp Transactional
 • **Authentication:** Auto-detection of best auth method per service
 • **Security:** TLS/SSL encryption, OAuth 2.0 flows, secure credential handling
 
-**📊 Expression Context:**
+**Expression Context:**
 All expressions have access to:
 ```javascript
 {
@@ -77,7 +77,7 @@ All expressions have access to:
 }
 ```
 
-**🌟 Example Configurations:**
+**Example Configurations:**
 
 **Simple SMTP Email:**
 ```json

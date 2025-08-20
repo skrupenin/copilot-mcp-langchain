@@ -34,9 +34,9 @@ async def tool_info() -> dict:
     """Returns information about the lng_http_client tool."""
     return {
         "name": "lng_http_client",
-        "description": """🌐 Universal HTTP Swiss Army Knife - The most powerful HTTP client for automation
+        "description": """Universal HTTP Swiss Army Knife - The most powerful HTTP client for automation
 
-**🚀 Core Features:**
+**Core Features:**
 • **All HTTP Methods** - GET, POST, PUT, DELETE, PATCH, HEAD, OPTIONS
 • **Smart Pagination** - Auto-paginate with custom conditions and URL building
 • **Async Operations** - Background jobs with polling and webhook callbacks  
@@ -48,7 +48,7 @@ async def tool_info() -> dict:
 • **State Persistence** - Session management across MCP restarts
 • **Pipeline Integration** - Works with lng_batch_run and lng_webhook_server
 
-**⚡ Operation Modes:**
+**Operation Modes:**
 • `request` - Single HTTP request with full configuration
 • `paginate` - Auto-pagination with accumulator and stop conditions  
 • `batch` - Multiple requests with configurable concurrency
@@ -59,7 +59,7 @@ async def tool_info() -> dict:
 • `export_curl` - Export request as cURL command
 • `import_har` - Import from HAR file
 
-**🔧 Advanced Configuration:**
+**Advanced Configuration:**
 • Rate limiting per domain/endpoint
 • Custom retry strategies with exponential backoff
 • SSL/TLS configuration and certificate handling  
@@ -69,7 +69,7 @@ async def tool_info() -> dict:
 • Cookie jar persistence
 • Custom validation rules
 
-**📊 Expression Context:**
+**Expression Context:**
 All expressions have access to:
 ```javascript
 {
@@ -82,7 +82,7 @@ All expressions have access to:
 }
 ```
 
-**🌟 Example Configurations:**
+**Example Configurations:**
 
 **Simple Request:**
 ```json
