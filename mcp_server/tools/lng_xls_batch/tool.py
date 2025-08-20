@@ -25,6 +25,7 @@ async def tool_info() -> dict:
 
 **🚀 Core Features:**
 • **Multi-format Support** - Excel (.xlsx, .xls) and CSV files
+• **Template-based Operations** - Copy from source to template, save as result file
 • **Smart Copy Operations** - Values, formulas, formatting with flexible combinations
 • **Expression System** - Dynamic ranges and values using {! expression !} syntax  
 • **Batch Processing** - Multiple operations with automatic file saving
@@ -63,20 +64,23 @@ Define file aliases for easy reference:
 • Excel files: `[fileId]SheetName!A1:C10`
 • CSV files: `[fileId]A1:C10` (sheet name optional)
 • Dynamic ranges: `[source]Sheet1!A1:A{! row_count !}`
+• Template operations: copy from `[source]` to `[template]`, save result as `[result]`
 
 **✨ Example Usage:**
 
-**Simple Copy:**
+**Template-based Copy:**
 ```json
 {
   "workspace": {
-    "src": "data.xlsx",
-    "dst": "report.xlsx"
+    "source": "data.xlsx",
+    "template": "template.xlsx", 
+    "result": "output.xlsx"
   },
   "operations": [
     {
-      "from": "[src]Sheet1!A1:C10",
-      "to": "[dst]Summary!A1:C10",
+      "from": "[source]Sheet1!A1:C10",
+      "to": "[template]Summary!A1:C10",
+      "save_as": "result",
       "copy": ["values", "formulas"],
       "insert": "replace"
     }
@@ -89,7 +93,8 @@ Define file aliases for easy reference:
 {
   "workspace": {
     "input": "raw_data.csv", 
-    "output": "processed.xlsx"
+    "template": "report_template.xlsx",
+    "output": "processed_report.xlsx"
   },
   "defaults": {
     "copy": ["values"],
@@ -98,11 +103,13 @@ Define file aliases for easy reference:
   "operations": [
     {
       "from": "{! env.REPORT_TITLE !}",
-      "to": "[output]Report!A1"
+      "to": "[template]Report!A1",
+      "save_as": "output"
     },
     {
       "from": "=SUM(B:B)",
-      "to": "[output]Report!B{! row_count + 2 !}",
+      "to": "[template]Report!B{! row_count + 2 !}",
+      "save_as": "output",
       "copy": ["formulas"]
     }
   ]
@@ -112,8 +119,8 @@ Define file aliases for easy reference:
 **🔄 Processing Flow:**
 1. Load workspace files (create if needed)
 2. Process expressions in operations
-3. Execute operations sequentially
-4. Save files after each operation
+3. Copy from source to template (template remains unchanged)
+4. Save modified template as result file specified in save_as
 5. Handle CSV ↔ Excel conversion automatically""",
         
         "schema": {
@@ -154,7 +161,11 @@ Define file aliases for easy reference:
                             },
                             "to": {
                                 "type": "string", 
-                                "description": "Target range with file and sheet reference"
+                                "description": "Target template range with file and sheet reference"
+                            },
+                            "save_as": {
+                                "type": "string",
+                                "description": "File ID from workspace where to save the result (required)"
                             },
                             "copy": {
                                 "type": "array",
@@ -169,7 +180,7 @@ Define file aliases for easy reference:
                                 "description": "Insert mode (overrides defaults)"
                             }
                         },
-                        "required": ["from", "to"]
+                        "required": ["from", "to", "save_as"]
                     }
                 },
                 "debug": {
@@ -228,22 +239,33 @@ async def main(params: dict) -> dict:
         
         # Process operations
         results = []
+        save_as_files = {}  # Track files that need to be saved with save_as
+        
         for i, operation in enumerate(operations):
             try:
                 logger.info(f"Processing operation {i+1}/{len(operations)}")
+                
+                # Validate required save_as parameter
+                if "save_as" not in operation:
+                    raise ValueError(f"Operation {i+1} missing required 'save_as' parameter")
+                
+                save_as_id = operation["save_as"]
+                if save_as_id not in workspace:
+                    raise ValueError(f"Operation {i+1}: save_as file ID '{save_as_id}' not found in workspace")
                 
                 # Process expressions in operation
                 processed_op = process_expressions(operation, context)
                 
                 # Execute operation
                 result = await execute_operation(
-                    processed_op, workspace, defaults, file_handlers, logger, context
+                    processed_op, workspace, defaults, file_handlers, logger, context, save_as_files
                 )
                 
                 results.append({
                     "operation": i + 1,
                     "success": True,
-                    "result": result
+                    "result": result,
+                    "save_as": save_as_id
                 })
                 
             except Exception as e:
@@ -256,8 +278,8 @@ async def main(params: dict) -> dict:
                     "completed_operations": results
                 }
         
-        # Final save of all files
-        save_results = save_all_files(file_handlers, logger)
+        # Final save of all save_as files
+        save_results = save_save_as_files(save_as_files, workspace, logger)
         
         return {
             "success": True,
@@ -287,15 +309,16 @@ def process_expressions(operation: dict, context: dict) -> dict:
     return processed
 
 async def execute_operation(operation: dict, workspace: dict, defaults: dict, 
-                          file_handlers: dict, logger: logging.Logger, context: dict) -> dict:
+                          file_handlers: dict, logger: logging.Logger, context: dict, save_as_files: dict) -> dict:
     """Execute a single copy operation."""
     
     from_source = operation["from"]
     to_target = operation["to"] 
+    save_as_id = operation["save_as"]
     copy_types = operation.get("copy", defaults.get("copy", ["values", "formulas"]))
     insert_mode = operation.get("insert", defaults.get("insert", "replace"))
     
-    logger.debug(f"Executing operation: {from_source} => {to_target}")
+    logger.debug(f"Executing operation: {from_source} => {to_target} (save as {save_as_id})")
     
     # Parse source and target
     source_info = parse_range(from_source, workspace, context)
@@ -305,7 +328,7 @@ async def execute_operation(operation: dict, workspace: dict, defaults: dict,
     if target_info["type"] != "range":
         raise ValueError(f"Target must be a file range, got: {to_target}")
     
-    # Load source and target files
+    # Load source file
     if source_info["type"] == "range":
         source_wb = load_workbook(source_info["file"], file_handlers)
         source_ws = get_worksheet(source_wb, source_info.get("sheet"))
@@ -313,38 +336,71 @@ async def execute_operation(operation: dict, workspace: dict, defaults: dict,
         source_wb = None
         source_ws = None
     
-    target_wb = load_workbook(target_info["file"], file_handlers)
-    target_ws = get_worksheet(target_wb, target_info.get("sheet"), create=True)
+    # Load template file (to_target file)
+    template_wb = load_workbook(target_info["file"], file_handlers)
+    template_ws = get_worksheet(template_wb, target_info.get("sheet"), create=True)
     
-    # Execute copy operation based on source type
+    # Create or get save_as workbook (copy of template if first time)
+    save_as_file_path = workspace[save_as_id]
+    if save_as_id not in save_as_files:
+        # First operation for this save_as - create new workbook or load existing
+        if Path(save_as_file_path).exists():
+            # Load existing save_as file
+            save_as_wb = load_workbook(save_as_file_path, {})
+        else:
+            # Create new workbook based on template structure
+            save_as_wb = openpyxl.Workbook()
+            # Copy all sheets from template
+            for sheet_name in template_wb.sheetnames:
+                if sheet_name == template_wb.active.title:
+                    # Rename the default sheet
+                    save_as_wb.active.title = sheet_name
+                    target_sheet = save_as_wb.active
+                else:
+                    # Create new sheet
+                    target_sheet = save_as_wb.create_sheet(sheet_name)
+                
+                # Copy basic structure (we'll copy data in operations)
+                source_sheet = template_wb[sheet_name]
+                # Note: Basic sheet created, data will be copied in operations
+                
+        save_as_files[save_as_id] = {
+            'workbook': save_as_wb,
+            'file_path': save_as_file_path
+        }
+    else:
+        # Use existing save_as workbook
+        save_as_wb = save_as_files[save_as_id]['workbook']
+    
+    # Get worksheet from save_as workbook
+    save_as_ws = get_worksheet(save_as_wb, target_info.get("sheet"), create=True)
+    
+    # Execute copy operation based on source type - copy to save_as worksheet
     if source_info["type"] == "range":
         # Copy range
         result = copy_range(
             source_ws, source_info["range"],
-            target_ws, target_info["range"], 
+            save_as_ws, target_info["range"], 
             copy_types, insert_mode, logger
         )
     elif source_info["type"] == "formula":
         # Copy formula
         result = copy_formula(
             source_info["formula"],
-            target_ws, target_info["range"],
+            save_as_ws, target_info["range"],
             copy_types, insert_mode, logger
         )
     elif source_info["type"] == "value":
         # Copy value
         result = copy_value(
             source_info["value"],
-            target_ws, target_info["range"],
+            save_as_ws, target_info["range"],
             copy_types, insert_mode, logger
         )
     else:
         raise ValueError(f"Unknown source type: {source_info['type']}")
     
-    # Save files after operation
-    if source_wb:
-        save_workbook(source_info["file"], source_wb, file_handlers)
-    save_workbook(target_info["file"], target_wb, file_handlers) 
+    # Note: template file remains unchanged, only save_as file is modified
     
     return result
 
@@ -795,6 +851,30 @@ def save_excel_as_csv(wb, csv_path: str):
     if data:
         df = pd.DataFrame(data[1:], columns=data[0])  # First row as headers
         df.to_csv(csv_path, index=False)
+
+def save_save_as_files(save_as_files: dict, workspace: dict, logger: logging.Logger) -> dict:
+    """Save all save_as files."""
+    saved_files = []
+    
+    for save_as_id, file_info in save_as_files.items():
+        try:
+            wb = file_info['workbook']
+            file_path = file_info['file_path']
+            
+            path = Path(file_path)
+            if path.suffix.lower() == '.csv':
+                # Save as CSV
+                save_excel_as_csv(wb, file_path)
+            else:
+                # Save as Excel
+                wb.save(file_path)
+                
+            saved_files.append(file_path)
+            logger.info(f"Saved save_as file '{save_as_id}': {file_path}")
+        except Exception as e:
+            logger.error(f"Failed to save save_as file '{save_as_id}': {str(e)}")
+            
+    return {"saved_files": saved_files}
 
 def save_all_files(file_handlers: dict, logger: logging.Logger) -> dict:
     """Save all loaded files."""
