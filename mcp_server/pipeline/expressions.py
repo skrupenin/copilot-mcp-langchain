@@ -115,8 +115,13 @@ class JavaScriptExpressionStrategy(ExpressionStrategy):
     
     def can_handle(self, expression: str) -> bool:
         """Check if expression uses JavaScript syntax: {! ... !}"""
-        return (expression.startswith('{! ') and expression.endswith(' !}') and 
-                len(expression) > 6)
+        # Must be exactly a single pure JavaScript expression
+        expression = expression.strip()
+        if not (expression.startswith('{! ') and expression.endswith(' !}') and len(expression) > 6):
+            return False
+        
+        # Count occurrences to ensure it's a single pure expression
+        return expression.count('{!') == 1 and expression.count('!}') == 1
     
     def evaluate(self, expression: str, context: Dict[str, Any], expected_result_type: str, step_info: Dict[str, Any] = None) -> Any:
         """Evaluate JavaScript expression."""
@@ -210,8 +215,13 @@ class PythonExpressionStrategy(ExpressionStrategy):
     
     def can_handle(self, expression: str) -> bool:
         """Check if expression uses Python syntax: [! ... !]"""
-        return (expression.startswith('[! ') and expression.endswith(' !]') and 
-                len(expression) > 6)
+        # Must be exactly a single pure Python expression
+        expression = expression.strip()
+        if not (expression.startswith('[! ') and expression.endswith(' !]') and len(expression) > 6):
+            return False
+        
+        # Count occurrences to ensure it's a single pure expression
+        return expression.count('[!') == 1 and expression.count('!]') == 1
     
     def evaluate(self, expression: str, context: Dict[str, Any], expected_result_type: str, step_info: Dict[str, Any] = None) -> Any:
         """Evaluate Python expression."""
@@ -316,24 +326,28 @@ class RecursiveExpressionStrategy(ExpressionStrategy):
         self.plain_strategy = PlainTextStrategy()
     
     def can_handle(self, expression: str) -> bool:
-        """Handle text that contains any expressions or nested expressions."""
-        return self._contains_expressions(expression)
+        """Handle text that contains expressions but is not a pure single expression."""
+        if not self._contains_expressions(expression):
+            return False
+            
+        # Handle text with expressions (single or multiple)
+        return True
     
     def evaluate(self, expression: str, context: Dict[str, Any], expected_result_type: str, step_info: Dict[str, Any] = None) -> Any:
         """Recursively process all expressions in text from innermost to outermost."""
         step_info = step_info or {}
         
         try:
-            # Check if it's a single expression first, before any processing
+            # If it's a single expression without any other text, delegate to sub-strategies
             if self._is_single_expression(expression):
                 for strategy in [self.js_strategy, self.py_strategy]:
                     if strategy.can_handle(expression):
                         return strategy.evaluate(expression, context, expected_result_type, step_info)
             
-            # Otherwise process recursively for nested expressions
+            # Otherwise process recursively for mixed text with expressions
             result_text = self._process_recursive(expression, context, step_info)
             
-            # If the result after processing is a single expression, evaluate it again
+            # After recursive processing, check if the result became a single expression
             if self._is_single_expression(result_text):
                 for strategy in [self.js_strategy, self.py_strategy]:
                     if strategy.can_handle(result_text):
@@ -356,24 +370,35 @@ class RecursiveExpressionStrategy(ExpressionStrategy):
         iteration = 0
         
         while self._contains_expressions(text) and iteration < max_iterations:
-            # Find innermost expressions first
-            expressions = self._find_innermost_expressions(text)
+            # Find ALL expressions (not just innermost)
+            expressions = self._find_all_expressions(text)
             
             if not expressions:
                 break
             
-            # Process each innermost expression (from right to left to preserve positions)
+            # Process each expression (from right to left to preserve positions)
+            processed_any = False
             for expr_info in reversed(expressions):
                 expr_text = expr_info['text']
                 start_pos = expr_info['start']
                 end_pos = expr_info['end']
+                
+                # Skip if this expression contains other expressions (process inner first)
+                expr_content = expr_text[3:-3]  # Remove {! !} or [! !]
+                if self._contains_expressions(expr_content):
+                    continue
                 
                 # Evaluate the expression
                 result = self._evaluate_single_expression(expr_text, context, step_info)
                 
                 # Replace in text
                 text = text[:start_pos] + str(result) + text[end_pos:]
+                processed_any = True
             
+            # If no expressions were processed, break to avoid infinite loop
+            if not processed_any:
+                break
+                
             iteration += 1
         
         if iteration >= max_iterations:
@@ -381,8 +406,8 @@ class RecursiveExpressionStrategy(ExpressionStrategy):
         
         return text
     
-    def _find_innermost_expressions(self, text: str) -> List[Dict[str, Any]]:
-        """Find all innermost expressions (expressions that don't contain other expressions)."""
+    def _find_all_expressions(self, text: str) -> List[Dict[str, Any]]:
+        """Find all expressions with proper nesting handling."""
         expressions = []
         
         # Find all expressions with proper nesting handling
@@ -391,14 +416,8 @@ class RecursiveExpressionStrategy(ExpressionStrategy):
         
         all_expressions = js_expressions + py_expressions
         
-        # Filter to only innermost expressions
-        for expr in all_expressions:
-            expr_content = expr['text'][3:-3]  # Remove wrapper
-            if not self._contains_expressions(expr_content):
-                expressions.append(expr)
-        
         # Sort by position to process from left to right
-        return sorted(expressions, key=lambda x: x['start'])
+        return sorted(all_expressions, key=lambda x: x['start'])
     
     def _find_expressions_with_nesting(self, text: str, start_marker: str, end_marker: str) -> List[Dict[str, Any]]:
         """Find expressions with proper nesting handling."""
@@ -501,9 +520,9 @@ class RecursiveExpressionStrategy(ExpressionStrategy):
 
 # Global registry of expression strategies
 _strategies: List[ExpressionStrategy] = [
-    RecursiveExpressionStrategy(),  # First - handles complex nested cases
-    JavaScriptExpressionStrategy(), # Second - handles simple JS expressions
-    PythonExpressionStrategy(),     # Third - handles simple Python expressions  
+    JavaScriptExpressionStrategy(), # First - handles pure JS expressions: {! expr !}
+    PythonExpressionStrategy(),     # Second - handles pure Python expressions: [! expr !]
+    RecursiveExpressionStrategy(),  # Third - handles mixed text with expressions
     PlainTextStrategy()             # Last - fallback for plain text
 ]
 
@@ -568,12 +587,8 @@ def substitute_expressions(text: str, context: Dict[str, Any], expected_result_t
     if not contains_expressions(text):
         return text
     
-    # Build context with built-in variables (env, etc.) + user context
-    full_context = build_default_context(context)
-    
-    # Use recursive strategy to handle all expressions
-    recursive_strategy = RecursiveExpressionStrategy()
-    result = recursive_strategy.evaluate(text, full_context, expected_result_type, step_info)
+    # Use the global evaluation function that handles strategy selection properly
+    result = evaluate_expression(text, context, expected_result_type, step_info)
     
     if expected_result_type == "json" and not isinstance(result, str):
         return json.dumps(result, ensure_ascii=False)

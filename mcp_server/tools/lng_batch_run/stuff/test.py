@@ -1235,12 +1235,12 @@ class BatchRunTest(BatchRunXUnitTest):
                         {
                             "tool": "lng_count_words",
                             "params": {"input_text": "{! operation !}"},
-                            "output": "op_stats"
+                            "output": "last_operation_stats"
                         }
                     ]
                 }
             ],
-            "final_result": "File has {! file_content.wordCount !} words, operation '{! operation !}' processed"
+            "final_result": "File has {! file_content.wordCount !} words, last operation had {! last_operation_stats.wordCount !} chars"
         }
         
         # Act
@@ -1248,7 +1248,7 @@ class BatchRunTest(BatchRunXUnitTest):
         
         # Assert
         self.assertSuccessfulPipeline(result, "File operations simulation should work")
-        expected_pattern = "File has 6 words, operation 'save' processed"
+        expected_pattern = "File has 6 words, last operation had 1 chars"
         self.assertPipelineResult(result, expected_pattern, "Should simulate file operations")
 
 
