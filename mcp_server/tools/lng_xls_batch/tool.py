@@ -340,30 +340,19 @@ async def execute_operation(operation: dict, workspace: dict, defaults: dict,
     template_wb = load_workbook(target_info["file"], file_handlers)
     template_ws = get_worksheet(template_wb, target_info.get("sheet"), create=True)
     
-    # Create or get save_as workbook (copy of template if first time)
+    # Create or get save_as workbook
     save_as_file_path = workspace[save_as_id]
     if save_as_id not in save_as_files:
-        # First operation for this save_as - create new workbook or load existing
-        if Path(save_as_file_path).exists():
-            # Load existing save_as file
-            save_as_wb = load_workbook(save_as_file_path, {})
+        # First operation for this save_as
+        if target_info["file"] == save_as_file_path:
+            # save_as is same as template file - work directly with template
+            save_as_wb = template_wb
         else:
-            # Create new workbook based on template structure
-            save_as_wb = openpyxl.Workbook()
-            # Copy all sheets from template
-            for sheet_name in template_wb.sheetnames:
-                if sheet_name == template_wb.active.title:
-                    # Rename the default sheet
-                    save_as_wb.active.title = sheet_name
-                    target_sheet = save_as_wb.active
-                else:
-                    # Create new sheet
-                    target_sheet = save_as_wb.create_sheet(sheet_name)
-                
-                # Copy basic structure (we'll copy data in operations)
-                source_sheet = template_wb[sheet_name]
-                # Note: Basic sheet created, data will be copied in operations
-                
+            # save_as is different file - copy template file first
+            import shutil
+            shutil.copy2(target_info["file"], save_as_file_path)
+            save_as_wb = load_workbook(save_as_file_path, {})
+            
         save_as_files[save_as_id] = {
             'workbook': save_as_wb,
             'file_path': save_as_file_path

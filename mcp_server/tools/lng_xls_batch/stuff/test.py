@@ -2277,6 +2277,205 @@ ROW2: [NULL, "=AVERAGE(B1:B5)", NULL, NULL]"""
                 os.unlink(f)
 
 
+    def test_template_based_copying(self):
+        """Test 25: Template-based copying - copy from source to template, save as different result file"""
+        
+        # Import required modules
+        import pandas as pd
+        from openpyxl import Workbook
+        
+        # Create CSV source file with data
+        csv_source_path = os.path.join(self.test_dir, "template_data.csv")
+        csv_data = {
+            'Date': ['2025-03-17', '2025-03-18'], 
+            'Users': [1, 5],
+            'Engaged': [1, 3]
+        }
+        pd.DataFrame(csv_data).to_csv(csv_source_path, index=False)
+        
+        # Create Excel template file with existing structure
+        template_path = os.path.join(self.test_dir, "report_template.xlsx")
+        wb_template = Workbook()
+        ws_template = wb_template.active
+        ws_template.title = "Report"
+        # Template has headers and some existing data
+        ws_template['A1'] = "Monthly Report"
+        ws_template['A3'] = "Date"
+        ws_template['B3'] = "Active Users" 
+        ws_template['C3'] = "Engaged Users"
+        ws_template['A10'] = "Summary:"
+        ws_template['B10'] = "=SUM(B4:B9)"
+        wb_template.save(template_path)
+        
+        # Result file path (different from template)
+        result_path = os.path.join(self.test_dir, "monthly_report.xlsx")
+        
+        # Test parameters - template-based copying
+        test_params = {
+            "workspace": {
+                "csv_data": csv_source_path,
+                "template": template_path,
+                "result": result_path
+            },
+            "operations": [
+                {
+                    "from": "[csv_data]A2:C3",  # Skip CSV header row
+                    "to": "[template]Report!A4:C5", 
+                    "save_as": "result",
+                    "copy": ["values"],
+                    "insert": "replace"
+                }
+            ]
+        }
+        
+        # Execute the tool
+        loop = asyncio.new_event_loop()
+        asyncio.set_event_loop(loop)
+        try:
+            result = loop.run_until_complete(main(test_params))
+        finally:
+            loop.close()
+        
+        # Approval Test
+        expected_result = """{
+    "success": true,
+    "operations_completed": 1,
+    "results": [
+        {
+            "operation": 1,
+            "success": true,
+            "result": {
+                "copied_cells": 6,
+                "copy_types": [
+                    "values"
+                ]
+            },
+            "save_as": "result"
+        }
+    ],
+    "files_saved": {
+        "saved_files": [
+            "C:\\\\Java\\\\CopipotTraining\\\\hello-langchain\\\\mcp_server\\\\tools\\\\lng_xls_batch\\\\stuff\\\\test_data\\\\monthly_report.xlsx"
+        ]
+    }
+}"""
+        
+        result_json = json.dumps(result, indent=4, sort_keys=True, ensure_ascii=False)
+        expected_json = json.dumps(json.loads(expected_result), indent=4, sort_keys=True, ensure_ascii=False)
+        
+        self.assertEqual(result_json, expected_json)
+        
+        # Verify template file was NOT modified
+        self.assertTrue(os.path.exists(template_path), "Template file should still exist")
+        template_content = self.read_excel_sheet_content(template_path, "Report")
+        # Template should contain original data only
+        self.assertIn("Monthly Report", template_content)
+        self.assertIn("Summary:", template_content)
+        self.assertNotIn("2025-03-17", template_content)  # Data should NOT be in template
+        
+        # Verify result file contains both template structure AND copied data
+        self.assertTrue(os.path.exists(result_path), "Result file should be created")
+        result_content = self.read_excel_sheet_content(result_path, "Report")
+        # Result should have template structure + copied data
+        self.assertIn("Monthly Report", result_content)  # From template
+        self.assertIn("Summary:", result_content)        # From template
+        self.assertIn("2025-03-17", result_content)      # From copied data
+        self.assertIn("2025-03-18", result_content)      # From copied data
+
+
+    def test_in_place_editing_same_file(self):
+        """Test 26: In-place editing - when save_as points to same file as template"""
+        
+        # Import required modules
+        import pandas as pd
+        from openpyxl import Workbook
+        
+        # Create CSV source file
+        csv_source_path = os.path.join(self.test_dir, "update_data.csv") 
+        csv_data = {
+            'Status': ['Updated', 'Modified'],
+            'Value': [100, 200]
+        }
+        pd.DataFrame(csv_data).to_csv(csv_source_path, index=False)
+        
+        # Create Excel file that will be modified in-place
+        excel_path = os.path.join(self.test_dir, "inplace_file.xlsx")
+        wb = Workbook()
+        ws = wb.active
+        ws.title = "Data"
+        # Original data
+        ws['A1'] = "Original Header"
+        ws['A2'] = "Old Data"
+        ws['B2'] = "Old Value"
+        ws['A5'] = "Footer Info"
+        wb.save(excel_path)
+        
+        # Test parameters - in-place editing (save_as = template file)
+        test_params = {
+            "workspace": {
+                "csv_source": csv_source_path,
+                "excel_file": excel_path
+            },
+            "operations": [
+                {
+                    "from": "[csv_source]A2:B3",  # Skip CSV header
+                    "to": "[excel_file]Data!A2:B3",
+                    "save_as": "excel_file",  # Same as template - in-place editing
+                    "copy": ["values"],
+                    "insert": "replace"
+                }
+            ]
+        }
+        
+        # Execute the tool
+        loop = asyncio.new_event_loop()
+        asyncio.set_event_loop(loop)
+        try:
+            result = loop.run_until_complete(main(test_params))
+        finally:
+            loop.close()
+        
+        # Approval Test
+        expected_result = """{
+    "success": true,
+    "operations_completed": 1,
+    "results": [
+        {
+            "operation": 1,
+            "success": true,
+            "result": {
+                "copied_cells": 4,
+                "copy_types": [
+                    "values"
+                ]
+            },
+            "save_as": "excel_file"
+        }
+    ],
+    "files_saved": {
+        "saved_files": [
+            "C:\\\\Java\\\\CopipotTraining\\\\hello-langchain\\\\mcp_server\\\\tools\\\\lng_xls_batch\\\\stuff\\\\test_data\\\\inplace_file.xlsx"
+        ]
+    }
+}"""
+        
+        result_json = json.dumps(result, indent=4, sort_keys=True, ensure_ascii=False)
+        expected_json = json.dumps(json.loads(expected_result), indent=4, sort_keys=True, ensure_ascii=False)
+        
+        self.assertEqual(result_json, expected_json)
+        
+        # Verify the original file was modified in-place
+        self.assertTrue(os.path.exists(excel_path), "Excel file should still exist")
+        modified_content = self.read_excel_sheet_content(excel_path, "Data")
+        
+        # Should contain both original unchanged data and new copied data
+        self.assertIn("Original Header", modified_content)  # Original header preserved
+        self.assertIn("Footer Info", modified_content)      # Original footer preserved
+        self.assertIn("Updated", modified_content)          # New data copied
+        self.assertIn("Modified", modified_content)         # New data copied
+        self.assertNotIn("Old Data", modified_content)      # Old data replaced
+
+
 def run_single_test(test_name):
     """Run a single test by name."""
     suite = unittest.TestSuite()
