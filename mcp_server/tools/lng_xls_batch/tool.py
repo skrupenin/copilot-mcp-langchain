@@ -237,7 +237,7 @@ async def main(params: dict) -> dict:
                 
                 # Execute operation
                 result = await execute_operation(
-                    processed_op, workspace, defaults, file_handlers, logger
+                    processed_op, workspace, defaults, file_handlers, logger, context
                 )
                 
                 results.append({
@@ -280,14 +280,14 @@ def process_expressions(operation: dict, context: dict) -> dict:
     for key, value in operation.items():
         if isinstance(value, str):
             # Process expressions in string values
-            processed[key] = substitute_expressions(value, context)
+            processed[key] = substitute_expressions(value, context, "python")
         else:
             processed[key] = value
             
     return processed
 
 async def execute_operation(operation: dict, workspace: dict, defaults: dict, 
-                          file_handlers: dict, logger: logging.Logger) -> dict:
+                          file_handlers: dict, logger: logging.Logger, context: dict) -> dict:
     """Execute a single copy operation."""
     
     from_source = operation["from"]
@@ -298,8 +298,8 @@ async def execute_operation(operation: dict, workspace: dict, defaults: dict,
     logger.debug(f"Executing operation: {from_source} => {to_target}")
     
     # Parse source and target
-    source_info = parse_range(from_source, workspace)
-    target_info = parse_range(to_target, workspace)
+    source_info = parse_range(from_source, workspace, context)
+    target_info = parse_range(to_target, workspace, context)
     
     # Validate target must be a range (file reference)
     if target_info["type"] != "range":
@@ -348,7 +348,7 @@ async def execute_operation(operation: dict, workspace: dict, defaults: dict,
     
     return result
 
-def parse_range(range_str: str, workspace: dict) -> dict:
+def parse_range(range_str: str, workspace: dict, context: dict = None) -> dict:
     """Parse range string into components."""
     # Handle different source types
     if range_str.startswith("="):
@@ -381,6 +381,11 @@ def parse_range(range_str: str, workspace: dict) -> dict:
         # Check if it has sheet name
         if "!" in rest:
             sheet_name, range_part = rest.split("!", 1)
+            
+            # Process expressions in range_part if context is provided
+            if context and ("{!" in range_part or "[!" in range_part):
+                range_part = substitute_expressions(range_part, context, "python")
+            
             return {
                 "type": "range",
                 "file": file_path,
@@ -389,11 +394,17 @@ def parse_range(range_str: str, workspace: dict) -> dict:
             }
         else:
             # No sheet name (CSV case)
+            range_part = rest
+            
+            # Process expressions in range_part if context is provided
+            if context and ("{!" in range_part or "[!" in range_part):
+                range_part = substitute_expressions(range_part, context, "python")
+            
             return {
                 "type": "range", 
                 "file": file_path,
                 "sheet": None,
-                "range": rest
+                "range": range_part
             }
     else:
         # Simple value (fallback)
@@ -465,6 +476,40 @@ def get_worksheet(wb, sheet_name: Optional[str], create: bool = False):
             return wb.active
         raise ValueError(f"Sheet '{sheet_name}' not found")
 
+def calculate_target_range(target_range: str, source_cells) -> str:
+    """Calculate proper target range based on source dimensions."""
+    from openpyxl.utils import coordinate_to_tuple, get_column_letter
+    
+    # If target_range already contains ":" it's a full range - leave as is
+    if ":" in target_range:
+        return target_range
+    
+    # Parse starting position
+    start_row, start_col = coordinate_to_tuple(target_range)
+    
+    # Calculate dimensions needed
+    if hasattr(source_cells, 'coordinate'):
+        # Single cell - target is also single cell
+        return target_range
+    elif isinstance(source_cells, tuple) and len(source_cells) > 0 and isinstance(source_cells[0], tuple):
+        # Multiple rows
+        rows_needed = len(source_cells)
+        cols_needed = len(source_cells[0])
+    else:
+        # Single row or multiple cells in one row
+        rows_needed = 1
+        cols_needed = len(source_cells) if isinstance(source_cells, tuple) else 1
+    
+    # Calculate end position
+    end_row = start_row + rows_needed - 1
+    end_col = start_col + cols_needed - 1
+    
+    # Build range string
+    start_coord = target_range
+    end_coord = f"{get_column_letter(end_col)}{end_row}"
+    
+    return f"{start_coord}:{end_coord}"
+
 def copy_range(source_ws: Worksheet, source_range: str, 
               target_ws: Worksheet, target_range: str,
               copy_types: List[str], insert_mode, logger: logging.Logger) -> dict:
@@ -474,9 +519,16 @@ def copy_range(source_ws: Worksheet, source_range: str,
     
     # Handle insert mode
     if insert_mode != "replace":
+        logger.info(f"Handling insert mode: {insert_mode}")
         handle_insert_mode(target_ws, target_range, insert_mode, source_cells)
     
+    # Calculate proper target range based on source dimensions
+    logger.info(f"Original target_range: {target_range}")
+    target_range = calculate_target_range(target_range, source_cells)
+    logger.info(f"Calculated target_range: {target_range}")
+    
     target_cells = target_ws[target_range]
+    logger.info(f"Target cells type after calculation: {type(target_cells)}")
     
     # Ensure dimensions match for replace mode
     if insert_mode == "replace":
@@ -486,28 +538,55 @@ def copy_range(source_ws: Worksheet, source_range: str,
     # Copy data based on copy types
     copied_count = 0
     
-    if isinstance(source_cells[0], tuple):
-        # Multiple rows
-        for src_row, tgt_row in zip(source_cells, target_cells):
-            if isinstance(src_row, tuple):
-                for src_cell, tgt_cell in zip(src_row, tgt_row):
+    logger.debug(f"Source cells type: {type(source_cells)}")
+    logger.debug(f"Target cells type: {type(target_cells)}")
+    logger.debug(f"Source has coordinate: {hasattr(source_cells, 'coordinate')}")
+    logger.debug(f"Target has coordinate: {hasattr(target_cells, 'coordinate')}")
+    
+    try:
+        # Check if source_cells is a single Cell object
+        if hasattr(source_cells, 'coordinate'):
+            # Single cell
+            logger.debug("Processing single cell")
+            copy_cell(source_cells, target_cells, copy_types)
+            copied_count += 1
+        elif isinstance(source_cells, tuple) and len(source_cells) > 0 and isinstance(source_cells[0], tuple):
+            # Multiple rows
+            logger.debug(f"Processing multiple rows: {len(source_cells)} rows")
+            for src_row, tgt_row in zip(source_cells, target_cells):
+                if isinstance(src_row, tuple):
+                    for src_cell, tgt_cell in zip(src_row, tgt_row):
+                        copy_cell(src_cell, tgt_cell, copy_types)
+                        copied_count += 1
+                else:
+                    copy_cell(src_row, tgt_row, copy_types)
+                    copied_count += 1
+        else:
+            # Single row or multiple cells in one row
+            logger.debug(f"Processing single row, source is tuple: {isinstance(source_cells, tuple)}")
+            if isinstance(source_cells, tuple):
+                for src_cell, tgt_cell in zip(source_cells, target_cells):
                     copy_cell(src_cell, tgt_cell, copy_types)
                     copied_count += 1
             else:
-                copy_cell(src_row, tgt_row, copy_types)
+                copy_cell(source_cells, target_cells, copy_types)
                 copied_count += 1
-    else:
-        # Single row or cell
-        if isinstance(source_cells, tuple):
-            for src_cell, tgt_cell in zip(source_cells, target_cells):
-                copy_cell(src_cell, tgt_cell, copy_types)
-                copied_count += 1
-        else:
-            copy_cell(source_cells, target_cells, copy_types)
-            copied_count += 1
+    except Exception as e:
+        logger.error(f"Error during cell copying: {e}")
+        logger.error(f"Source cells: {source_cells}")
+        logger.error(f"Target cells: {target_cells}")
+        raise
     
     logger.info(f"Copied {copied_count} cells")
-    return {"copied_cells": copied_count, "copy_types": copy_types}
+    
+    # Build result
+    result = {"copied_cells": copied_count, "copy_types": copy_types}
+    
+    # Add insert_mode to result if it's not "replace"
+    if insert_mode != "replace":
+        result["insert_mode"] = insert_mode
+    
+    return result
 
 def copy_formula(formula: str, target_ws: Worksheet, target_range: str,
                 copy_types: List[str], insert_mode, logger: logging.Logger) -> dict:
@@ -524,10 +603,15 @@ def copy_formula(formula: str, target_ws: Worksheet, target_range: str,
         count = 1
     else:
         # Multiple cells - set formula to first cell
-        if isinstance(target_cells[0], tuple):
-            target_cells[0][0].value = formula
+        if isinstance(target_cells, tuple) and len(target_cells) > 0:
+            first_cell = target_cells[0]
+            if isinstance(first_cell, tuple):
+                first_cell[0].value = formula
+            else:
+                first_cell.value = formula
         else:
-            target_cells[0].value = formula
+            # Should not happen but handle gracefully
+            target_cells.value = formula
         count = 1
     
     logger.info(f"Set formula '{formula}' to {count} cell(s)")
@@ -549,15 +633,21 @@ def copy_value(value: str, target_ws: Worksheet, target_range: str,
     else:
         # Multiple cells - set value to all cells
         count = 0
-        if isinstance(target_cells[0], tuple):
+        if isinstance(target_cells, tuple) and len(target_cells) > 0 and isinstance(target_cells[0], tuple):
+            # Multiple rows
             for row in target_cells:
                 for cell in row:
                     cell.value = value
                     count += 1
-        else:
+        elif isinstance(target_cells, tuple):
+            # Single row
             for cell in target_cells:
                 cell.value = value
                 count += 1
+        else:
+            # This shouldn't happen if we checked hasattr(coordinate) correctly
+            target_cells.value = value
+            count += 1
     
     logger.info(f"Set value '{value}' to {count} cell(s)")
     return {"values_set": count, "value": value}
@@ -576,17 +666,40 @@ def copy_cell(source_cell, target_cell, copy_types: List[str]):
             target_cell.value = source_cell.value
         
     if "formatting" in copy_types:
-        # Copy formatting
-        if source_cell.font:
-            target_cell.font = source_cell.font
-        if source_cell.border:
-            target_cell.border = source_cell.border
-        if source_cell.fill:
-            target_cell.fill = source_cell.fill
-        if source_cell.number_format:
-            target_cell.number_format = source_cell.number_format
-        if source_cell.alignment:
-            target_cell.alignment = source_cell.alignment
+        # Copy formatting with proper handling of StyleProxy objects
+        try:
+            if source_cell.font:
+                from copy import copy
+                target_cell.font = copy(source_cell.font)
+        except (AttributeError, TypeError):
+            pass  # Skip font copying if it fails
+            
+        try:
+            if source_cell.border:
+                from copy import copy
+                target_cell.border = copy(source_cell.border)
+        except (AttributeError, TypeError):
+            pass  # Skip border copying if it fails
+            
+        try:
+            if source_cell.fill:
+                from copy import copy
+                target_cell.fill = copy(source_cell.fill)
+        except (AttributeError, TypeError):
+            pass  # Skip fill copying if it fails
+            
+        try:
+            if source_cell.number_format:
+                target_cell.number_format = source_cell.number_format
+        except (AttributeError, TypeError):
+            pass  # Skip number format copying if it fails
+            
+        try:
+            if source_cell.alignment:
+                from copy import copy
+                target_cell.alignment = copy(source_cell.alignment)
+        except (AttributeError, TypeError):
+            pass  # Skip alignment copying if it fails
 
 def handle_insert_mode(ws: Worksheet, target_range: str, insert_mode, source_cells):
     """Handle insert mode by inserting rows/columns."""
@@ -594,18 +707,34 @@ def handle_insert_mode(ws: Worksheet, target_range: str, insert_mode, source_cel
     range_obj = ws[target_range] 
     
     if hasattr(range_obj, 'coordinate'):
+        # Single cell
         start_row, start_col = range_obj.row, range_obj.column
     else:
-        start_row = range_obj[0][0].row if isinstance(range_obj[0], tuple) else range_obj[0].row
-        start_col = range_obj[0][0].column if isinstance(range_obj[0], tuple) else range_obj[0].column
+        # Multiple cells - get first cell position
+        if isinstance(range_obj, tuple) and len(range_obj) > 0:
+            first_cell = range_obj[0]
+            if isinstance(first_cell, tuple):
+                # Multiple rows - get first cell of first row
+                start_row, start_col = first_cell[0].row, first_cell[0].column
+            else:
+                # Single row - get first cell
+                start_row, start_col = first_cell.row, first_cell.column
+        else:
+            raise ValueError(f"Cannot parse target range: {target_range}")
     
     # Calculate dimensions needed
-    if isinstance(source_cells[0], tuple):
+    if hasattr(source_cells, 'coordinate'):
+        # Single cell
+        rows_needed = 1
+        cols_needed = 1
+    elif isinstance(source_cells, tuple) and len(source_cells) > 0 and isinstance(source_cells[0], tuple):
+        # Multiple rows
         rows_needed = len(source_cells)
         cols_needed = len(source_cells[0])
     else:
-        rows_needed = len(source_cells) if isinstance(source_cells, tuple) else 1
-        cols_needed = 1
+        # Single row or multiple cells in one row
+        rows_needed = 1
+        cols_needed = len(source_cells) if isinstance(source_cells, tuple) else 1
     
     # Insert rows if needed
     if "rows" in insert_mode:
@@ -618,18 +747,28 @@ def handle_insert_mode(ws: Worksheet, target_range: str, insert_mode, source_cel
 def check_dimensions_match(source_cells, target_cells) -> bool:
     """Check if source and target cell ranges have matching dimensions."""
     # Get dimensions of source
-    if isinstance(source_cells[0], tuple):
+    if hasattr(source_cells, 'coordinate'):
+        # Single cell
+        src_rows, src_cols = 1, 1
+    elif isinstance(source_cells, tuple) and len(source_cells) > 0 and isinstance(source_cells[0], tuple):
+        # Multiple rows
         src_rows, src_cols = len(source_cells), len(source_cells[0])
     else:
-        src_rows = len(source_cells) if isinstance(source_cells, tuple) else 1
-        src_cols = 1
+        # Single row or multiple cells in one row
+        src_rows = 1
+        src_cols = len(source_cells) if isinstance(source_cells, tuple) else 1
     
     # Get dimensions of target
-    if isinstance(target_cells[0], tuple):
+    if hasattr(target_cells, 'coordinate'):
+        # Single cell
+        tgt_rows, tgt_cols = 1, 1
+    elif isinstance(target_cells, tuple) and len(target_cells) > 0 and isinstance(target_cells[0], tuple):
+        # Multiple rows
         tgt_rows, tgt_cols = len(target_cells), len(target_cells[0])
     else:
-        tgt_rows = len(target_cells) if isinstance(target_cells, tuple) else 1
-        tgt_cols = 1
+        # Single row or multiple cells in one row
+        tgt_rows = 1
+        tgt_cols = len(target_cells) if isinstance(target_cells, tuple) else 1
         
     return src_rows == tgt_rows and src_cols == tgt_cols
 
