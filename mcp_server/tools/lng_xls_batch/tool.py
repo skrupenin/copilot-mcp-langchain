@@ -151,7 +151,7 @@ Define file aliases for easy reference:
                 },
                 "operations": {
                     "type": "array",
-                    "description": "List of copy operations to perform",
+                    "description": "List of copy operations to perform (optional when analyze=true)",
                     "items": {
                         "type": "object",
                         "properties": {
@@ -165,7 +165,7 @@ Define file aliases for easy reference:
                             },
                             "save_as": {
                                 "type": "string",
-                                "description": "File ID from workspace where to save the result (required)"
+                                "description": "File ID from workspace where to save the result (required for operations)"
                             },
                             "copy": {
                                 "type": "array",
@@ -180,7 +180,7 @@ Define file aliases for easy reference:
                                 "description": "Insert mode (overrides defaults)"
                             }
                         },
-                        "required": ["from", "to", "save_as"]
+                        "required": ["from", "to"]
                     }
                 },
                 "debug": {
@@ -231,6 +231,7 @@ async def main(params: dict) -> dict:
         if analyze_mode and not operations:
             return analyze_workspace_files(workspace, context)
         
+        # If not analyze mode and no operations, return error
         if not analyze_mode and not operations:
             return {
                 "success": False,
@@ -255,21 +256,29 @@ async def main(params: dict) -> dict:
             try:
                 logger.info(f"Processing operation {i+1}/{len(operations)}")
                 
-                # Validate required save_as parameter
-                if "save_as" not in operation:
+                # Validate required save_as parameter only when not in analyze mode
+                if not analyze_mode and "save_as" not in operation:
                     raise ValueError(f"Operation {i+1} missing required 'save_as' parameter")
                 
-                save_as_id = operation["save_as"]
-                if save_as_id not in workspace:
-                    raise ValueError(f"Operation {i+1}: save_as file ID '{save_as_id}' not found in workspace")
+                # Skip save_as validation in analyze mode
+                if not analyze_mode:
+                    save_as_id = operation["save_as"]
+                    if save_as_id not in workspace:
+                        raise ValueError(f"Operation {i+1}: save_as file ID '{save_as_id}' not found in workspace")
+                else:
+                    save_as_id = None  # No save_as in analyze mode
                 
                 # Process expressions in operation
                 processed_op = process_expressions(operation, context)
                 
-                # Execute operation
-                result = await execute_operation(
-                    processed_op, workspace, defaults, file_handlers, logger, context, save_as_files
-                )
+                # Execute operation (skip in analyze mode)
+                if not analyze_mode:
+                    result = await execute_operation(
+                        processed_op, workspace, defaults, file_handlers, logger, context, save_as_files
+                    )
+                else:
+                    # In analyze mode, just return the operation info
+                    result = {"operation_info": processed_op, "skipped": "analyze_mode"}
                 
                 results.append({
                     "operation": i + 1,
@@ -288,15 +297,32 @@ async def main(params: dict) -> dict:
                     "completed_operations": results
                 }
         
-        # Final save of all save_as files
-        save_results = save_save_as_files(save_as_files, workspace, logger)
+        # Final save of all save_as files (skip in analyze mode)
+        if not analyze_mode:
+            save_results = save_save_as_files(save_as_files, workspace, logger)
+        else:
+            save_results = {"saved_files": [], "note": "analyze_mode_no_files_saved"}
         
-        return {
+        result = {
             "success": True,
             "operations_completed": len(results),
             "results": results,
             "files_saved": save_results
         }
+        
+        # Add file analysis results if available
+        if analyze_mode and not operations:
+            # Analysis was already returned above
+            pass
+        elif analyze_mode:
+            # Add analysis to the result when operations were also processed
+            analysis_result = analyze_workspace_files(workspace, context)
+            if analysis_result.get("success"):
+                result["file_analysis"] = analysis_result["analysis"]
+            else:
+                result["analysis_error"] = analysis_result.get("error")
+        
+        return result
         
     except Exception as e:
         logger.error(f"Tool execution failed: {str(e)}")
