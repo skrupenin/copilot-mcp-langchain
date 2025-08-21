@@ -12,8 +12,6 @@ Please process all github copilot telemetry data in `work\telemetry`.
 - Workspace is `mcp_server/projects/telemetry/`.
 - Please use `./pipeline/telemetry.json` pipeline to process all the files. 
 - Don't analyze all the files that make up the essence of this transformation — just call the pipeline with `lng_batch_run` tool.
-- Cleanup `./data/in/` folder.
-- Copy all user's input json files into `./data/in/` folder. 
-- The pipeline will generate both CSV report and Excel report using the template in `./data/out/` folder.
-- Copy `./data/out/telemetry.xlsx` back to the user's input folder in `out` directory.
-- Then remove all content inside `./data/in/` and `./data/out/` folders.
+- You can use `{"pipeline_file": "mcp_server/projects/telemetry/pipeline/telemetry.json", "user_params": {"base_directory": "<base_directory>"}}` to run the pipeline.
+- The pipeline will generate both CSV report and Excel report using the template in `<base_directory>/out/` folder.
+- You can check the statistics of the generated file using `lng_xls_batch` with the `analyze` parameter. 
