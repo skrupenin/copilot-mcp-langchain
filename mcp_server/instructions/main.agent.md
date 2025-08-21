@@ -15,5 +15,5 @@
 - Follow `./create-tool.agent.md` when you create a new tool.
 - Follow `./running-unit-tests.agent.md` when you need to run/write unit tests for the tool.
 - Follow `./creating-instructions.agent.md` when you need to create new instruction files for the project.
-- Follow demo instructions with a pattern `*.demo.agent.md` to find all cases around tools (`./mcp_server/` folder) when you are asked to show a demonstration (with wording: `demo`, `демо`, `демка` and so on) of existing cases. **Important** Don't look for other files to search for demo cases.
+- Follow demo instructions with a pattern `**/*.demo.agent.md` to find all cases around tools (`./mcp_server/` folder) when you are asked to show a demonstration (with wording: `demo`, `демо`, `демка` and so on) of existing cases. **Important** Don't look for other files to search for demo cases.
 - Use `lng_email_client` tool for all email-related tasks including SMTP, API services (SendGrid, Mailgun), templates, batch sending, and email validation.
