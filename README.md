@@ -16,7 +16,7 @@ Instruction files are not always deterministic - they need to be fine-tuned when
 
 This project demonstrates a solution through:
 
-1. `Python` scripts installed on the local machine
+1. `Python` scripts installed on the local machine.
 2. Custom `MCP` server configuration through `.vscode/mcp.json`
 3. Custom tools defined in the `mcp_server/tools directory`
 
