@@ -11,7 +11,7 @@ async def tool_info() -> dict:
     return {
         "description": """Executes a batch pipeline of tool calls with variable substitution using JavaScript expressions.
 
-**Now powered by strategy-based architecture for maximum extensibility!**
+**Now powered by extensible architecture for maximum flexibility!**
 
 **Pipeline Structure:**
 ```json
@@ -274,8 +274,7 @@ async def run_tool(name: str, arguments: dict) -> list[types.Content]:
                     text=json.dumps({
                         "success": False,
                         "error": f"Pipeline file not found: {pipeline_file}",
-                        "context": {},
-                        "architecture": "strategy-based"
+                        "context": {}
                     }, ensure_ascii=False, indent=2)
                 )]
             except json.JSONDecodeError as e:
@@ -284,8 +283,7 @@ async def run_tool(name: str, arguments: dict) -> list[types.Content]:
                     text=json.dumps({
                         "success": False,
                         "error": f"Invalid JSON in pipeline file {pipeline_file}: {str(e)}",
-                        "context": {},
-                        "architecture": "strategy-based"
+                        "context": {}
                     }, ensure_ascii=False, indent=2)
                 )]
         else:
@@ -299,18 +297,15 @@ async def run_tool(name: str, arguments: dict) -> list[types.Content]:
                 text=json.dumps({
                     "success": False,
                     "error": "Either 'pipeline' parameter or 'pipeline_file' parameter is required",
-                    "context": {},
-                    "architecture": "strategy-based"
+                    "context": {}
                 }, ensure_ascii=False, indent=2)
             )]
         
         # Execute pipeline using the strategy-based system
         result = await executor.execute(merged_arguments)
         
-        # Add architecture info to result
+        # Get result as dictionary
         result_dict = result.to_dict()
-        result_dict["architecture"] = "strategy-based"
-        result_dict["available_strategies"] = strategies
         if "pipeline_file" in arguments:
             result_dict["pipeline_source"] = arguments["pipeline_file"]
         
@@ -352,7 +347,6 @@ async def run_tool(name: str, arguments: dict) -> list[types.Content]:
             text=json.dumps({
                 "success": False,
                 "error": f"Unexpected error: {str(e)}",
-                "context": {},
-                "architecture": "strategy-based"
+                "context": {}
             }, ensure_ascii=False, indent=2)
         )]

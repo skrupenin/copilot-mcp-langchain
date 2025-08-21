@@ -97,10 +97,20 @@ class StrategyBasedExecutor:
             final_result_expr = config.get("final_result", "ok")
             
             if not pipeline:
+                # Empty pipeline is valid - just calculate final result
+                logger.info("Empty pipeline provided, calculating final result only")
+                try:
+                    final_result = evaluate_expression(final_result_expr, context.variables, expected_result_type="python")
+                except Exception as e:
+                    logger.warning(f"Final result evaluation failed: {e}, using default")
+                    final_result = "ok"
+                
+                execution_time = time.time() - start_time
                 return PipelineResult(
-                    success=False,
-                    error="No pipeline steps provided",
-                    execution_time=time.time() - start_time
+                    success=True,
+                    result=final_result,
+                    context=context.variables,
+                    execution_time=execution_time
                 )
             
             logger.info(f"Starting pipeline execution with {len(pipeline)} steps")

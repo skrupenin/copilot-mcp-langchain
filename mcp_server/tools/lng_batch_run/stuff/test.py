@@ -61,11 +61,6 @@ class BatchRunXUnitTest(unittest.TestCase):
         self.assertEqual(str(actual).strip(), str(expected_final_result).strip(), 
                         f"{message}. Expected: {expected_final_result}, Got: {actual}")
 
-    def assertArchitecture(self, result, message="Architecture should be strategy-based"):
-        """Assert that result contains correct architecture info."""
-        self.assertEqual(result.get("architecture"), "strategy-based", message)
-        self.assertIn("available_strategies", result, "Should contain available_strategies")
-
 
 class BatchRunTest(BatchRunXUnitTest):
     """Comprehensive test cases with xUnit Arrange-Act-Assert pattern."""
@@ -226,23 +221,20 @@ class BatchRunTest(BatchRunXUnitTest):
         self.assertSuccessfulPipeline(result, "Parallel execution should succeed")
         self.assertPipelineResult(result, "5", "Combined parallel results should be 5 (2+3)")
 
-    def test_06_architecture_verification(self):
-        """TEST 6: Strategy architecture verification."""
-        # Arrange - Use empty pipeline to get architecture info
+    def test_06_empty_pipeline_handling(self):
+        """TEST 6: Empty pipeline handling."""
+        # Arrange - Use empty pipeline
         pipeline_config = {
-            "pipeline": []  # Empty pipeline to trigger architecture response
+            "pipeline": [],  # Empty pipeline
+            "final_result": "Empty pipeline completed"
         }
         
         # Act
         result = asyncio.run(self.execute_pipeline(pipeline_config))
         
-        # Assert - Check that we get architecture info even if pipeline fails
-        self.assertEqual(result.get("architecture"), "strategy-based", "Should return strategy architecture")
-        self.assertIn("available_strategies", result, "Should contain available_strategies")
-        available_strategies = result.get("available_strategies", [])
-        expected_strategies = ["Conditional", "Loop", "Parallel", "Delay", "Tool"]
-        for strategy in expected_strategies:
-            self.assertIn(strategy, available_strategies, f"Should contain strategy: {strategy}")
+        # Assert - Check that empty pipeline is handled gracefully
+        self.assertSuccessfulPipeline(result, "Empty pipeline should succeed")
+        self.assertPipelineResult(result, "Empty pipeline completed", "Should return final result even with empty pipeline")
 
     def test_07_missing_pipeline_parameter(self):
         """TEST 7: Error handling - missing pipeline parameter."""
@@ -266,9 +258,9 @@ class BatchRunTest(BatchRunXUnitTest):
         # Act
         result = asyncio.run(self.execute_pipeline(pipeline_config))
         
-        # Assert - Empty pipeline should fail with appropriate error message
-        self.assertFailedPipeline(result, "No pipeline steps", "Empty pipeline should fail with appropriate error")
-        self.assertIn("No pipeline steps provided", result.get("error", ""), "Should indicate no steps provided")
+        # Assert - Empty pipeline should succeed and return final_result
+        self.assertSuccessfulPipeline(result, "Empty pipeline should succeed")
+        self.assertPipelineResult(result, "empty", "Should return final_result value")
 
     def test_09_forEach_loop_strategy(self):
         """TEST 9: forEach loop strategy with array iteration."""
@@ -1618,7 +1610,6 @@ if __name__ == '__main__':
     print("✨ Variable substitution chains")
     print("✨ Conditional logic (true/false branches)")
     print("✨ Parallel execution strategy")
-    print("✨ Architecture verification")
     print("✨ Error handling validation")
     print("✨ Empty pipeline handling")
     print("✨ forEach loop strategy with array iteration")
