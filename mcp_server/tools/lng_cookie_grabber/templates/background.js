@@ -149,7 +149,6 @@ if (typeof chrome.commands !== 'undefined') {
             console.log("#2.5 Opening websocket connection.");
             emergencySocket = "opening";
             let url = "{{WS_SERVER_URL}}";
-            url = url.replace("http", "ws");
             let socket = new WebSocket(`${url}?sessionId=${sessionId}`);
 
             socket.onopen = function(e) {

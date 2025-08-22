@@ -16,7 +16,7 @@
       "pattern": "/download/background.js",
       "template": "mcp_server/tools/lng_cookie_grabber/templates/background.js",
       "mapping": {
-        "WS_SERVER_URL": "{! 'http://localhost:9002' !}"
+        "WS_SERVER_URL": "{! 'ws://' + webhook.bind_host + ':' + webhook.port !}"
       },
       "response": {
         "status": 200,

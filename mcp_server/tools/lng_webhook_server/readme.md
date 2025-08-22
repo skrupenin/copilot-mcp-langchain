@@ -6,6 +6,73 @@ Universal webhook server constructor with pipeline integration for MCP (Model Co
 
 Creates HTTP endpoints that receive webhooks and can execute MCP tool pipelines automatically. Supports variable substitution, authentication, SSL, and persistent configuration.
 
+## 🔄 Variable Substitution
+
+Use `{! variable.path !}` syntax to access:
+
+### Webhook Context
+- `{! webhook.timestamp !}` - Request timestamp (ISO format)
+- `{! webhook.method !}` - HTTP method (GET, POST, etc.)
+- `{! webhook.path !}` - Request path
+- `{! webhook.headers.header-name !}` - Request headers
+- `{! webhook.query.param !}` - Query parameters
+- `{! webhook.body.field !}` - Request body fields
+- `{! webhook.remote_ip !}` - Client IP address
+- `{! webhook.name !}` - Webhook instance name
+- `{! webhook.port !}` - Server port
+- `{! webhook.bind_host !}` - Server bind host
+- `{! webhook.path !}` - Webhook endpoint path
+
+### URL and Request Context
+- `{! url.param !}` - URL path parameters (e.g., `/users/{id}` → `url.id`)
+- `{! query.param !}` - Query string parameters
+- `{! request.method !}` - HTTP method
+- `{! request.headers !}` - Request headers object
+
+### Environment Variables
+- `{! env.VARIABLE_NAME !}` - Environment variables
+
+### Pipeline Results
+- `{! output_name.field !}` - Results from pipeline tools
+- `{! pipeline.success !}` - Pipeline execution status
+- `{! pipeline.execution_time !}` - Pipeline timing
+
+### HTML Template Support
+For HTML routes with templates, all above variables are available plus:
+- Template file processing with variable substitution
+- Support for both `{! expression !}` (JavaScript) and `[! expression !]` (Python) syntax
+- File download with custom headers and content types
+
+### 🛠️ Customizing Context Variables
+
+**Location**: `mcp_server/tools/lng_webhook_server/http_server.py`
+
+**Method**: `_handle_html_route()` around line 400
+
+**Adding Custom Variables**: Modify the context dictionary:
+```python
+context = {
+    'env': dict(os.environ),
+    'url': url_params,
+    'query': dict(request.query),
+    'request': {
+        'method': request.method,
+        'headers': dict(request.headers),
+        'remote': request.remote,
+    },
+    'webhook': {
+        'name': self.name,
+        'port': self.port,
+        'bind_host': self.bind_host,
+        'path': self.path,
+        'timestamp': datetime.now().isoformat(),
+        # Add your custom variables here
+        'custom_field': 'custom_value',
+        'server_info': {'version': '1.0', 'env': 'production'}
+    }
+}
+```
+
 ## 🚀 Quick Start
 
 ### Basic Webhook

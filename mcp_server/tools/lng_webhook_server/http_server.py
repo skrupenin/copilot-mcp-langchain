@@ -302,7 +302,14 @@ class WebhookHTTPServer:
                     "headers": dict(request.headers),
                     "remote_ip": request.remote
                 },
-                "env": dict(os.environ)
+                "env": dict(os.environ),
+                "webhook": {
+                    "name": self.name,
+                    "bind_host": self.bind_host,
+                    "port": self.port,
+                    "path": self.path,
+                    "endpoint": f"http://{self.bind_host}:{self.port}{self.path}"
+                }
             }
             
             # Execute pipeline if configured

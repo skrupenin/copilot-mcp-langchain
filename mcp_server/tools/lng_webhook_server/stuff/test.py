@@ -12,6 +12,7 @@ import os
 import tempfile
 import time
 import aiohttp
+import requests
 from unittest.mock import Mock, patch
 from typing import Dict, Any, List, Optional
 
@@ -2038,6 +2039,88 @@ Error Handling Success Rate: 100%"""
         
         self.assertEqual(actual_approval_text.strip(), expected_approval_text.strip(),
                         "Comprehensive error handling should match expected format")
+
+
+def test_context_variables_content():
+    """Test to see all available context variables with their full content."""
+    initialize_tools()
+    
+    # Create temporary HTML template file
+    import tempfile
+    import os
+    
+    template_content = "{{ALL_CONTENT}}"
+    temp_file = tempfile.NamedTemporaryFile(mode='w', suffix='.html', delete=False, encoding='utf-8')
+    temp_file.write(template_content)
+    temp_file.close()
+    
+    config = {
+        "name": "context-content-server", 
+        "port": 8086,
+        "path": "/debug",
+        "bind_host": "localhost",
+        "html_routes": [{
+            "pattern": "/content",
+            "template": temp_file.name,  # Use template file instead of template_content
+            "mapping": {
+                "ALL_CONTENT": "{! 'env:' + (typeof env === 'object' ? JSON.stringify(Object.keys(env)) : '[]') + ' | url:' + JSON.stringify(url || {}) + ' | query:' + JSON.stringify(query || {}) + ' | request:' + JSON.stringify(request || {}) + ' | webhook:' + JSON.stringify(webhook || {}) !}"
+            },
+            "response": {"status": 200, "headers": {"Content-Type": "text/plain"}}
+        }]
+    }
+    
+    try:
+        # Start server
+        start_result = asyncio.run(run_tool("lng_webhook_server", {"operation": "start", **config}))
+        start_data = json.loads(start_result[0].text)
+        assert start_data["success"] == True, f"Server should start successfully: {start_data}"
+        
+        print(f"Server started successfully at: {start_data['endpoint']}")
+        
+        # Wait for server to be ready
+        import time
+        time.sleep(3)
+        
+        # Get content via HTTP request
+        server_url = start_data["endpoint"].replace("/debug", "")
+        test_url = f"{server_url}/content?test=123"
+        print(f"Making request to: {test_url}")
+        
+        response = requests.get(test_url, timeout=10)
+        print(f"Response status: {response.status_code}")
+        
+        assert response.status_code == 200, f"HTTP request should succeed, got status: {response.status_code}"
+        
+        variables_content = response.text.strip()
+        print(f"\n=== ALL CONTEXT VARIABLES CONTENT ===")
+        print(variables_content)
+        print("=====================================\n")
+        
+        # Validate that we got some content
+        assert len(variables_content) > 0, "Should receive some content"
+        assert "env:" in variables_content, "Should contain env variables"
+        assert "url:" in variables_content, "Should contain url variables" 
+        assert "query:" in variables_content, "Should contain query variables"
+        assert "request:" in variables_content, "Should contain request variables"
+        assert "webhook:" in variables_content, "Should contain webhook variables"
+        assert "test\":\"123" in variables_content, "Should contain query parameter test=123"
+        
+        print("SUCCESS: All context variables detected and validated!")
+        
+    finally:
+        # Cleanup
+        try:
+            asyncio.run(run_tool("lng_webhook_server", {"operation": "stop", "name": config["name"]}))
+            print("Server stopped successfully")
+        except Exception as e:
+            print(f"Error stopping server: {e}")
+        
+        try:
+            if os.path.exists(temp_file.name):
+                os.remove(temp_file.name)
+                print("Template file cleaned up")
+        except Exception as e:
+            print(f"Error removing temp file: {e}")
 
 
 if __name__ == '__main__':
