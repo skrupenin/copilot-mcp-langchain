@@ -47,14 +47,14 @@ python -m mcp_server.run run lng_webhook_server '{
 
 ## 🔧 Operations
 
-| Operation | Description | Required Params |
-|-----------|-------------|----------------|
-| `start` | Create new webhook endpoint | `name`, `port`, `path` |
-| `stop` | Stop webhook endpoint | `name` |
-| `list` | List all active webhooks | - |
-| `status` | Get webhook details | `name` |
-| `test` | Send test HTTP request | `name`, `test_data` |
-| `update` | Update webhook config | `name`, config params |
+| Operation | Description | Required Params | Optional Params |
+|-----------|-------------|----------------|----------------|
+| `start` | Create new webhook endpoint | `name`, `port`, `path` | `config_file` |
+| `stop` | Stop webhook endpoint | `name` | - |
+| `list` | List all active webhooks | - | - |
+| `status` | Get webhook details | `name` | - |
+| `test` | Send test HTTP request | `name`, `test_data` | - |
+| `update` | Update webhook config | `name`, config params | - |
 
 ## 📂 Configuration Structure
 
@@ -89,7 +89,62 @@ python -m mcp_server.run run lng_webhook_server '{
 }
 ```
 
-## 🔄 Variable Substitution
+## � File-Based Configuration
+
+Instead of passing configuration inline, you can load it from JSON files using the `config_file` parameter:
+
+### Creating Configuration File
+Create a JSON file (e.g., `webhook_config.json`):
+```json
+{
+  "name": "file-based-webhook",
+  "port": 8080,
+  "path": "/api",
+  "bind_host": "localhost",
+  "pipeline": [
+    {
+      "tool": "lng_count_words",
+      "params": {"input_text": "{! webhook.body.message !}"},
+      "output": "word_stats"
+    }
+  ],
+  "response": {
+    "status": 200,
+    "body": {
+      "received": true,
+      "word_count": "{! word_stats.wordCount !}",
+      "message": "{! webhook.body.message !}"
+    }
+  }
+}
+```
+
+### Using Configuration File
+```bash
+python -m mcp_server.run run lng_webhook_server '{
+  "operation": "start",
+  "config_file": "webhook_config.json"
+}'
+```
+
+### Parameter Override
+You can combine file config with direct parameters (direct params take priority):
+```bash
+python -m mcp_server.run run lng_webhook_server '{
+  "operation": "start",
+  "config_file": "webhook_config.json",
+  "port": 9000,
+  "bind_host": "0.0.0.0"
+}'
+```
+
+### Benefits
+- **Reusability**: Share configs across deployments
+- **Version Control**: Track configuration changes in git
+- **Organization**: Keep complex configs in separate files
+- **Maintenance**: Easier to edit and debug large configurations
+
+## �🔄 Variable Substitution
 
 Use `{! variable.path !}` syntax to access:
 
@@ -131,6 +186,27 @@ python -m mcp_server.run run lng_webhook_server '{"operation":"test","name":"tes
 
 # Clean up
 python -m mcp_server.run run lng_webhook_server '{"operation":"stop","name":"test"}'
+```
+
+### File-Based Configuration Test
+```bash
+# Create config file
+echo '{
+  "name": "config-test",
+  "port": 8080,
+  "path": "/config-test",
+  "response": {"body": {"loaded_from": "file", "success": true}}
+}' > test_webhook_config.json
+
+# Create webhook from file
+python -m mcp_server.run run lng_webhook_server '{"operation":"start","config_file":"test_webhook_config.json"}'
+
+# Test it
+python -m mcp_server.run run lng_webhook_server '{"operation":"test","name":"config-test","test_data":{"message":"hello"}}'
+
+# Clean up
+python -m mcp_server.run run lng_webhook_server '{"operation":"stop","name":"config-test"}'
+rm test_webhook_config.json
 ```
 
 ### Universal Test Suite
