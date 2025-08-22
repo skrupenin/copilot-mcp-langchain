@@ -37,6 +37,8 @@ Create HTTP endpoints that receive webhooks and execute pipelines automatically.
 **SSL Support** - HTTPS with custom or self-signed certificates
 **Persistence** - Auto-restore webhooks on server restart
 **File-Based Configuration** - Use `config_file` parameter to load webhook config from JSON files
+**Persistent Mode** - Run webhook server in background task for MCP HTTP Client compatibility
+**Thread Mode** - Run webhook server in separate thread with isolated event loop (solves MCP deadlock)
 
 **Configuration Loading:**
 1. **Inline Configuration**: Pass all parameters directly in the tool call
@@ -52,6 +54,7 @@ Create HTTP endpoints that receive webhooks and execute pipelines automatically.
   "path": "/github",
   "bind_host": "0.0.0.0",
   "async_mode": false,
+  "thread_mode": true,
   "timeout": 30,
   "auth": {
     "type": "github_signature",
@@ -408,6 +411,7 @@ async def start_webhook(params: dict) -> list[types.Content]:
             "path": path,
             "bind_host": params.get("bind_host", "localhost"),
             "async_mode": params.get("async_mode", False),
+            "thread_mode": params.get("thread_mode", False),
             "timeout": params.get("timeout", 30),
             "auth": params.get("auth", {"type": "none"}),
             "ssl": params.get("ssl", {"enabled": False}),

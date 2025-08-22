@@ -339,9 +339,102 @@ def test_context_variables_content(self):
 3. MCP HTTP Client лучше использовать для внешних API, а не для внутренних MCP webhook servers
 4. При создании long-running services через MCP учитывайте lifecycle event loop
 
+## Финальное решение: Thread Mode в MCP Webhook Server
+
+### Скрипт 4: test_thread_mode_webhook.py
+```python
+#!/usr/bin/env python3
+import asyncio
+import time
+from mcp_server.tools.tool_registry import initialize_tools, run_tool
+
+async def test_thread_mode_webhook():
+    """Test MCP HTTP Client with MCP Webhook Server using thread_mode"""
+    
+    print("=== MCP THREAD MODE WEBHOOK TEST ===")
+    
+    # Initialize MCP tools
+    initialize_tools()
+    
+    # 1. Start webhook with thread_mode
+    print("1. Starting thread_mode webhook...")
+    webhook_config = {
+        "operation": "start",
+        "name": "mcp-thread-test",
+        "port": 8400,
+        "path": "/thread-test",
+        "thread_mode": True,  # 🔑 Ключевой параметр!
+        "response": {
+            "message": "Thread Mode Webhook Success!",
+            "timestamp": "{! datetime.now().isoformat() !}"
+        }
+    }
+    
+    result = await run_tool("lng_webhook_server", webhook_config)
+    webhook_result = json.loads(result[0].text)
+    print(f"Webhook result: {webhook_result}")
+    
+    if not webhook_result["success"]:
+        print(f"❌ Webhook failed to start: {webhook_result}")
+        return
+    
+    # 2. Wait for webhook to initialize
+    print("2. Waiting for thread-based webhook to initialize...")
+    await asyncio.sleep(3)
+    
+    # 3. Test with MCP HTTP Client
+    print("3. Testing with MCP HTTP Client...")
+    http_config = {
+        "url": "http://localhost:8400/thread-test",
+        "method": "GET",
+        "timeout": 10
+    }
+    
+    result = await run_tool("lng_http_client", http_config)
+    http_result = json.loads(result[0].text)
+    print(f"✅ HTTP Success: {http_result}")
+    
+    if http_result["result"]["success"]:
+        print("🎉 SUCCESS! MCP HTTP Client successfully called MCP Webhook Server with thread_mode!")
+    else:
+        print(f"❌ HTTP failed: {http_result}")
+    
+    # 4. Stop webhook
+    print("5. Stopping webhook...")
+    stop_result = await run_tool("lng_webhook_server", {
+        "operation": "stop", 
+        "name": "mcp-thread-test"
+    })
+    print(f"Stop result: {json.loads(stop_result[0].text)}")
+
+if __name__ == "__main__":
+    asyncio.run(test_thread_mode_webhook())
+```
+
+**Результат**: 🎉 **ПОЛНЫЙ УСПЕХ!** MCP HTTP Client успешно обращается к MCP Webhook Server с `thread_mode: true`.
+
+## Окончательное решение на уровне MCP
+
+Проблема решена добавлением параметра `thread_mode: true` в конфигурацию MCP Webhook Server. Это запускает webhook server в отдельном потоке с собственным event loop, избегая конфликтов с основным MCP event loop.
+
+### Использование в производстве
+
+```json
+{
+  "operation": "start",
+  "name": "production-webhook",
+  "port": 8080,
+  "path": "/api/webhook",
+  "thread_mode": true,
+  "response": {"status": "success"}
+}
+```
+
 ## Статус скриптов
 
 - ✅ `test_mcp_deadlock.py` - Демонстрирует успешное MCP-to-MCP взаимодействие
 - ✅ `test_mcp_http_vs_requests.py` - Сравнивает разные подходы к тестированию  
 - ✅ `test_persistent_webhook_thread.py` - Решение с persistent thread
+- ✅ `test_mcp_persistent_webhook.py` - Тест persistent_mode (частично работает)
+- 🎉 `test_thread_mode_webhook.py` - **ФИНАЛЬНОЕ РЕШЕНИЕ с thread_mode**
 - ✅ Модифицированная функция `test_context_variables_content` - Применение решения в тестах

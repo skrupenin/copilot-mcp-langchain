@@ -6,6 +6,8 @@ import json
 import logging
 import ssl
 import os
+import threading
+import time
 from datetime import datetime
 from typing import Dict, Any, Optional
 from aiohttp import web, ClientTimeout
@@ -30,6 +32,13 @@ class WebhookHTTPServer:
         self.runner = None
         self.site = None
         self.request_count = 0
+        
+        # Thread-based mode for MCP event loop isolation
+        self.thread_mode = config.get('thread_mode', False)
+        self.server_thread = None
+        self.event_loop = None
+        self.stop_event = None
+        
         self.logger = self._setup_logger()
         
     def _setup_logger(self):
@@ -65,6 +74,11 @@ class WebhookHTTPServer:
         """Start the HTTP server."""
         try:
             self.logger.info(f"Starting webhook server '{self.name}' on {self.bind_host}:{self.port}{self.path}")
+            self.logger.info(f"Thread mode: {self.thread_mode}")
+            
+            # If thread_mode is enabled, start server in separate thread
+            if self.thread_mode:
+                return await self._start_in_thread()
             
             # Create aiohttp application
             self.app = web.Application()
@@ -120,7 +134,8 @@ class WebhookHTTPServer:
                 "server_id": f"server_{self.name}",
                 "endpoint_url": endpoint_url,
                 "started_at": datetime.now().isoformat(),
-                "ssl_enabled": ssl_context is not None
+                "ssl_enabled": ssl_context is not None,
+                "thread_mode": self.thread_mode
             }
             
         except Exception as e:
@@ -131,6 +146,22 @@ class WebhookHTTPServer:
         """Stop the HTTP server."""
         try:
             self.logger.info(f"Stopping webhook server '{self.name}'")
+            
+            # If thread mode, stop the thread
+            if self.thread_mode and self.stop_event:
+                self.logger.info("Stopping thread-based server")
+                # Signal the thread to stop
+                if self.event_loop:
+                    self.event_loop.call_soon_threadsafe(self.stop_event.set)
+                
+                # Wait for thread to finish (with timeout)
+                if self.server_thread and self.server_thread.is_alive():
+                    self.server_thread.join(timeout=5)
+                    if self.server_thread.is_alive():
+                        self.logger.warning("Server thread did not stop within timeout")
+                
+                self.logger.info("Thread-based server stopped")
+                return
             
             if self.site:
                 await self.site.stop()
@@ -143,6 +174,121 @@ class WebhookHTTPServer:
         except Exception as e:
             self.logger.error(f"Error stopping webhook server: {e}")
             raise
+
+    async def _start_in_thread(self) -> dict:
+        """Start webhook server in separate thread with own event loop."""
+        self.logger.info(f"Starting webhook server in separate thread mode")
+        
+        # Threading event to signal when server is ready
+        server_ready = threading.Event()
+        result_holder = {}
+        
+        def run_server_thread():
+            """Run server in dedicated thread with own event loop."""
+            try:
+                # Create new event loop for this thread
+                self.event_loop = asyncio.new_event_loop()
+                asyncio.set_event_loop(self.event_loop)
+                
+                # Create stop event
+                self.stop_event = asyncio.Event()
+                
+                async def start_server():
+                    try:
+                        # Create aiohttp application
+                        self.app = web.Application()
+                        
+                        # Add webhook route
+                        self.app.router.add_route('*', self.path, self._handle_webhook)
+                        
+                        # Add HTML routes if configured
+                        html_routes = self.config.get('html_routes', [])
+                        for i, route_config in enumerate(html_routes):
+                            pattern = route_config.get('pattern', '/html/{template}/{param}')
+                            
+                            def make_html_handler(config):
+                                async def html_handler(request):
+                                    return await self._handle_html_route(request, config)
+                                return html_handler
+                            
+                            self.app.router.add_get(pattern, make_html_handler(route_config))
+                        
+                        # Add health check route
+                        self.app.router.add_get('/health', self._handle_health)
+                        
+                        # Create runner
+                        self.runner = web.AppRunner(self.app)
+                        await self.runner.setup()
+                        
+                        # Setup SSL if enabled
+                        ssl_context = None
+                        if self.config.get('ssl', {}).get('enabled', False):
+                            ssl_context = self._create_ssl_context()
+                        
+                        # Create site
+                        self.site = web.TCPSite(
+                            self.runner, 
+                            self.bind_host, 
+                            self.port,
+                            ssl_context=ssl_context
+                        )
+                        
+                        await self.site.start()
+                        
+                        protocol = "https" if ssl_context else "http"
+                        endpoint_url = f"{protocol}://{self.bind_host}:{self.port}{self.path}"
+                        
+                        result_holder['result'] = {
+                            "server_id": f"server_{self.name}",
+                            "endpoint_url": endpoint_url,
+                            "started_at": datetime.now().isoformat(),
+                            "ssl_enabled": ssl_context is not None,
+                            "thread_mode": self.thread_mode
+                        }
+                        
+                        self.logger.info(f"Thread-based webhook server started at {endpoint_url}")
+                        server_ready.set()
+                        
+                        # Wait for stop signal
+                        await self.stop_event.wait()
+                        
+                    except Exception as e:
+                        self.logger.error(f"Error in thread-based server: {e}")
+                        result_holder['error'] = str(e)
+                        server_ready.set()
+                        
+                    finally:
+                        # Cleanup
+                        if self.site:
+                            await self.site.stop()
+                        if self.runner:
+                            await self.runner.cleanup()
+                        self.logger.info(f"Thread-based server cleanup completed")
+                
+                # Run the server
+                self.event_loop.run_until_complete(start_server())
+                
+            except Exception as e:
+                self.logger.error(f"Thread error: {e}")
+                result_holder['error'] = str(e)
+                server_ready.set()
+            finally:
+                if self.event_loop:
+                    self.event_loop.close()
+        
+        # Start server thread
+        self.server_thread = threading.Thread(target=run_server_thread, daemon=True)
+        self.server_thread.start()
+        
+        # Wait for server to be ready (with timeout)
+        if not server_ready.wait(timeout=10):
+            raise TimeoutError("Server failed to start within 10 seconds")
+        
+        if 'error' in result_holder:
+            raise RuntimeError(f"Server failed to start: {result_holder['error']}")
+        
+        return result_holder['result']
+    
     
     async def _handle_webhook(self, request: Request) -> Response:
         """Handle incoming webhook requests."""
