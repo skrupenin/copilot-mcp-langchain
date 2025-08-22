@@ -217,10 +217,10 @@ Contains 'stopped': True"""
         # Filter only our test webhooks for approval test
         our_test_webhooks = [name for name in webhook_names if name.startswith("test-list-")]
         
-        # Approval test
+        # Approval test - focus on our test webhooks, not total count
         actual_approval_text = f"""Webhook List Result:
 Success: {result_data.get('success')}
-Active Webhooks Count: {result_data.get('active_webhooks')}
+Active Webhooks Count >= 2: {result_data.get('active_webhooks', 0) >= 2}
 Our Test Webhooks Count: {len(our_test_webhooks)}
 Our Webhook Names: {sorted(our_test_webhooks)}
 Has Test List 1: {'test-list-1' in webhook_names}
@@ -228,7 +228,7 @@ Has Test List 2: {'test-list-2' in webhook_names}"""
 
         expected_approval_text = """Webhook List Result:
 Success: True
-Active Webhooks Count: 2
+Active Webhooks Count >= 2: True
 Our Test Webhooks Count: 2
 Our Webhook Names: ['test-list-1', 'test-list-2']
 Has Test List 1: True
@@ -501,6 +501,232 @@ Graceful Response: True"""
         
         self.assertEqual(actual_approval_text.strip(), expected_approval_text.strip(),
                         "Port conflict should be handled gracefully")
+
+    def test_should_start_webhook_when_valid_config_file(self):
+        """Test webhook creation with valid config file."""
+        # given
+        config_content = {
+            "name": "test-config-file-webhook",
+            "port": 8099,
+            "path": "/config-test",
+            "bind_host": "localhost",
+            "response": {
+                "status": 200,
+                "headers": {"Content-Type": "application/json"},
+                "body": {"loaded_from_file": True}
+            }
+        }
+        
+        # Create temporary config file
+        config_file = tempfile.NamedTemporaryFile(mode='w', suffix='.json', delete=False, encoding='utf-8')
+        json.dump(config_content, config_file, indent=2)
+        config_file.close()
+        self.temp_files.append(config_file.name)
+        
+        webhook_config = {
+            "operation": "start",
+            "config_file": config_file.name
+        }
+        
+        # when
+        result = asyncio.run(run_tool("lng_webhook_server", webhook_config))
+        result_text = result[0].text
+        result_data = json.loads(result_text)
+        
+        # then
+        self.assertTrue(result_data.get("success"), "Webhook should start successfully from config file")
+        self.assertEqual(result_data.get("config", {}).get("name"), "test-config-file-webhook")
+        self.assertEqual(result_data.get("config", {}).get("port"), 8099)
+        self.assertEqual(result_data.get("config", {}).get("path"), "/config-test")
+        
+        # Store webhook name for cleanup
+        if result_data.get("success"):
+            self.created_webhooks.append("test-config-file-webhook")
+        
+        # Approval test - verify config file loading
+        actual_approval_text = f"""Config File Webhook Result:
+Success: {result_data.get('success')}
+Config Source: {result_data.get('config_source')}
+Config Name: {result_data.get('config', {}).get('name')}
+Config Port: {result_data.get('config', {}).get('port')}
+Config Path: {result_data.get('config', {}).get('path')}
+Response Body Has File Flag: {result_data.get('config', {}).get('response', {}).get('body', {}).get('loaded_from_file')}
+Has Server Info: {'server_info' in result_data.get('config', {})}"""
+
+        expected_approval_text = """Config File Webhook Result:
+Success: True
+Config Source: config_file
+Config Name: test-config-file-webhook
+Config Port: 8099
+Config Path: /config-test
+Response Body Has File Flag: True
+Has Server Info: True"""
+        
+        self.assertEqual(actual_approval_text.strip(), expected_approval_text.strip(),
+                        "Config file webhook should match expected format")
+
+    def test_should_merge_params_when_config_file_and_direct_params(self):
+        """Test parameter merging when both config file and direct parameters are provided."""
+        # given
+        file_config_content = {
+            "name": "test-merge-webhook",
+            "port": 8100,
+            "path": "/merge-test",
+            "bind_host": "localhost",
+            "response": {
+                "status": 200,
+                "body": {"from_file": True}
+            }
+        }
+        
+        # Create temporary config file
+        config_file = tempfile.NamedTemporaryFile(mode='w', suffix='.json', delete=False, encoding='utf-8')
+        json.dump(file_config_content, config_file, indent=2)
+        config_file.close()
+        self.temp_files.append(config_file.name)
+        
+        webhook_config = {
+            "operation": "start",
+            "config_file": config_file.name,
+            "port": 8101,  # Override port from file
+            "bind_host": "0.0.0.0",  # Override bind_host from file
+            "timeout": 45  # Add new parameter not in file
+        }
+        
+        # when
+        result = asyncio.run(run_tool("lng_webhook_server", webhook_config))
+        result_text = result[0].text
+        result_data = json.loads(result_text)
+        
+        # then
+        self.assertTrue(result_data.get("success"), "Webhook should start successfully with merged config")
+        self.assertEqual(result_data.get("config", {}).get("name"), "test-merge-webhook")  # From file
+        self.assertEqual(result_data.get("config", {}).get("port"), 8101)  # Overridden by direct param
+        self.assertEqual(result_data.get("config", {}).get("bind_host"), "0.0.0.0")  # Overridden by direct param
+        self.assertEqual(result_data.get("config", {}).get("path"), "/merge-test")  # From file
+        self.assertEqual(result_data.get("config", {}).get("timeout"), 45)  # From direct param
+        
+        # Store webhook name for cleanup
+        if result_data.get("success"):
+            self.created_webhooks.append("test-merge-webhook")
+        
+        # Approval test - verify parameter merging
+        actual_approval_text = f"""Parameter Merge Test Result:
+Success: {result_data.get('success')}
+Config Source: {result_data.get('config_source')}
+Name (from file): {result_data.get('config', {}).get('name')}
+Port (overridden): {result_data.get('config', {}).get('port')}
+Bind Host (overridden): {result_data.get('config', {}).get('bind_host')}
+Path (from file): {result_data.get('config', {}).get('path')}
+Timeout (added): {result_data.get('config', {}).get('timeout')}
+Response Body From File: {result_data.get('config', {}).get('response', {}).get('body', {}).get('from_file')}"""
+
+        expected_approval_text = """Parameter Merge Test Result:
+Success: True
+Config Source: config_file
+Name (from file): test-merge-webhook
+Port (overridden): 8101
+Bind Host (overridden): 0.0.0.0
+Path (from file): /merge-test
+Timeout (added): 45
+Response Body From File: True"""
+        
+        self.assertEqual(actual_approval_text.strip(), expected_approval_text.strip(),
+                        "Parameter merging should work correctly")
+
+    def test_should_fail_when_config_file_not_found(self):
+        """Test error handling when config file does not exist."""
+        # given
+        nonexistent_file = "nonexistent_webhook_config.json"
+        webhook_config = {
+            "operation": "start",
+            "config_file": nonexistent_file
+        }
+        
+        # when
+        result = asyncio.run(run_tool("lng_webhook_server", webhook_config))
+        result_text = result[0].text
+        result_data = json.loads(result_text)
+        
+        # then
+        self.assertFalse(result_data.get("success"), "Webhook creation should fail with non-existent config file")
+        self.assertIn("error", result_data, "Response should contain error information")
+        
+        error_message = result_data.get("error", "").lower()
+        file_error_indicators = ["configuration file not found", "not found", nonexistent_file.lower()]
+        
+        has_file_error = any(indicator in error_message for indicator in file_error_indicators)
+        self.assertTrue(has_file_error, f"Error message should mention file not found: {error_message}")
+        
+        # Approval test
+        actual_approval_text = f"""Config File Not Found Test Result:
+Success: {result_data.get('success')}
+Has Error: {'error' in result_data}
+Error Contains File Reference: {has_file_error}
+Error Contains Expected Message: {'configuration file not found' in error_message}"""
+
+        expected_approval_text = """Config File Not Found Test Result:
+Success: False
+Has Error: True
+Error Contains File Reference: True
+Error Contains Expected Message: True"""
+        
+        self.assertEqual(actual_approval_text.strip(), expected_approval_text.strip(),
+                        "Config file not found error should match expected format")
+
+    def test_should_fail_when_config_file_has_invalid_json(self):
+        """Test error handling when config file contains invalid JSON."""
+        # given
+        invalid_json_content = """{
+    "name": "test-invalid-json",
+    "port": 8102,
+    "path": "/invalid",
+    "invalid_json_here": {
+        "missing_closing_bracket": true
+        // missing closing bracket
+"""
+        
+        # Create temporary config file with invalid JSON
+        config_file = tempfile.NamedTemporaryFile(mode='w', suffix='.json', delete=False, encoding='utf-8')
+        config_file.write(invalid_json_content)
+        config_file.close()
+        self.temp_files.append(config_file.name)
+        
+        webhook_config = {
+            "operation": "start",
+            "config_file": config_file.name
+        }
+        
+        # when
+        result = asyncio.run(run_tool("lng_webhook_server", webhook_config))
+        result_text = result[0].text
+        result_data = json.loads(result_text)
+        
+        # then
+        self.assertFalse(result_data.get("success"), "Webhook creation should fail with invalid JSON")
+        self.assertIn("error", result_data, "Response should contain error information")
+        
+        error_message = result_data.get("error", "").lower()
+        json_error_indicators = ["invalid json", "json", "decode", "parse"]
+        
+        has_json_error = any(indicator in error_message for indicator in json_error_indicators)
+        self.assertTrue(has_json_error, f"Error message should mention JSON parsing error: {error_message}")
+        
+        # Approval test
+        actual_approval_text = f"""Invalid JSON Config Test Result:
+Success: {result_data.get('success')}
+Has Error: {'error' in result_data}
+Error Contains JSON Reference: {has_json_error}
+Error Contains Configuration File: {'configuration file' in error_message}"""
+
+        expected_approval_text = """Invalid JSON Config Test Result:
+Success: False
+Has Error: True
+Error Contains JSON Reference: True
+Error Contains Configuration File: True"""
+        
+        self.assertEqual(actual_approval_text.strip(), expected_approval_text.strip(),
+                        "Invalid JSON config error should match expected format")
 
 
 class TestWebhookServerHtmlRoutes(unittest.TestCase):
