@@ -158,7 +158,8 @@ class TestWebSocketServer(unittest.TestCase):
                     "bind_address": "localhost:8080",
                     "started_at": "2025-08-21T14:30:00.000Z"
                 }
-            }
+            },
+            "config_source": "inline"
         }
         
         # Parse result and remove dynamic fields for comparison
@@ -264,7 +265,8 @@ class TestWebSocketServer(unittest.TestCase):
                     "client_id": "ws_client_001",
                     "connected_at": "2025-08-21T14:30:00.000Z"
                 }
-            }
+            },
+            "config_source": "inline"
         }
         
         # Parse result and remove dynamic fields for comparison
@@ -684,6 +686,273 @@ class TestWebSocketServer(unittest.TestCase):
             }, indent=2),
             result[0].text
         )
+
+    @patch('tool._start_websocket_server')
+    @patch('tool._start_websocket_client')
+    @patch('tool._send_client_message')
+    @patch('tool._broadcast_to_clients')
+    def test_should_create_server_and_client_from_config_files_and_test_communication_then_cleanup(
+        self, mock_broadcast, mock_send_message, mock_start_client, mock_start_server
+    ):
+        """Integration test: Create config files, start server and client, test communication, then cleanup."""
+        
+        # Create temporary config files
+        server_config_file = os.path.join(self.test_config_dir, "test_server_config.json")
+        client_config_file = os.path.join(self.test_config_dir, "test_client_config.json")
+        
+        # Server configuration
+        server_config = {
+            "name": "integration-test-server",
+            "port": 9876,
+            "path": "/ws/integration-test",
+            "bind_host": "localhost",
+            "protocol": "ws",
+            "auth": {"type": "none"},
+            "ssl": {"enabled": False},
+            "connection_handling": {
+                "heartbeat_interval": 30,
+                "max_connections": 10,
+                "auto_cleanup": True
+            },
+            "event_handlers": {
+                "on_connect": [
+                    {
+                        "tool": "lng_count_words",
+                        "params": {"input_text": "Client connected from {! websocket.remote_ip !}"},
+                        "output": "connect_stats"
+                    }
+                ],
+                "on_message": [
+                    {
+                        "tool": "lng_count_words", 
+                        "params": {"input_text": "{! websocket.message.content !}"},
+                        "output": "message_stats"
+                    }
+                ]
+            }
+        }
+        
+        # Client configuration  
+        client_config = {
+            "name": "integration-test-client",
+            "url": "ws://localhost:9876/ws/integration-test",
+            "subprotocol": "test-protocol-v1",
+            "auth": {"type": "none"},
+            "connection_handling": {
+                "auto_reconnect": True,
+                "heartbeat_enabled": True,
+                "heartbeat_message": {"type": "ping", "timestamp": "{! new Date().toISOString() !}"}
+            },
+            "message_handlers": {
+                "on_message": [
+                    {
+                        "condition": "{! websocket.message.type === 'echo_request' !}",
+                        "tool": "lng_websocket_server",
+                        "params": {
+                            "operation": "client_send",
+                            "name": "integration-test-client",
+                            "message": {
+                                "type": "echo_response",
+                                "original": "{! websocket.message.content !}",
+                                "timestamp": "{! new Date().toISOString() !}"
+                            }
+                        }
+                    }
+                ]
+            }
+        }
+        
+        try:
+            # given - Create config files
+            with open(server_config_file, 'w', encoding='utf-8') as f:
+                json.dump(server_config, f, indent=2, ensure_ascii=False)
+            
+            with open(client_config_file, 'w', encoding='utf-8') as f:
+                json.dump(client_config, f, indent=2, ensure_ascii=False)
+            
+            # Mock server and client startup responses
+            mock_start_server.return_value = {
+                "started": True,
+                "endpoint": "ws://localhost:9876/ws/integration-test",
+                "protocol": "ws",
+                "ssl_enabled": False,
+                "server_id": "integration_server_001"
+            }
+            
+            mock_start_client.return_value = {
+                "connected": True,
+                "client_id": "integration_client_001", 
+                "connected_at": "2025-08-22T18:45:00.000Z"
+            }
+            
+            mock_send_message.return_value = {
+                "success": True,
+                "message_id": "msg_integration_001"
+            }
+            
+            mock_broadcast.return_value = {
+                "sent_count": 1,
+                "failed_count": 0,
+                "total_clients": 1
+            }
+            
+            # when - Start server from config file
+            server_result = asyncio.run(run_tool("lng_websocket_server", {
+                "operation": "server_start",
+                "config_file": server_config_file
+            }))
+            
+            # then - Verify server started successfully
+            server_data = json.loads(server_result[0].text)
+            self.assertTrue(server_data["success"])
+            self.assertEqual("integration-test-server", server_data["config"]["name"])
+            self.assertEqual(9876, server_data["config"]["port"])
+            self.assertEqual("config_file", server_data["config_source"])
+            self.assertEqual("ws://localhost:9876/ws/integration-test", server_data["endpoint"])
+            
+            # when - Start client from config file
+            client_result = asyncio.run(run_tool("lng_websocket_server", {
+                "operation": "client_connect", 
+                "config_file": client_config_file
+            }))
+            
+            # then - Verify client connected successfully
+            client_data = json.loads(client_result[0].text)
+            self.assertTrue(client_data["success"])
+            self.assertEqual("integration-test-client", client_data["config"]["name"])
+            self.assertEqual("ws://localhost:9876/ws/integration-test", client_data["config"]["url"])
+            self.assertEqual("config_file", client_data["config_source"])
+            self.assertEqual("test-protocol-v1", client_data["config"]["subprotocol"])
+            
+            # when - Test client sending message to server
+            send_result = asyncio.run(run_tool("lng_websocket_server", {
+                "operation": "client_send",
+                "name": "integration-test-client",
+                "message": {
+                    "type": "hello",
+                    "content": "Hello integration test server!",
+                    "timestamp": "2025-08-22T18:45:30.000Z"
+                }
+            }))
+            
+            # then - Verify message was sent successfully
+            send_data = json.loads(send_result[0].text)
+            self.assertTrue(send_data["success"])
+            self.assertEqual("Message sent", send_data["message"])
+            self.assertEqual("integration-test-client", send_data["connection_name"])
+            
+            # when - Test server broadcasting message to clients
+            broadcast_result = asyncio.run(run_tool("lng_websocket_server", {
+                "operation": "broadcast",
+                "name": "integration-test-server", 
+                "message": {
+                    "type": "announcement",
+                    "content": "Server broadcasting to all clients",
+                    "timestamp": "2025-08-22T18:46:00.000Z"
+                }
+            }))
+            
+            # then - Verify broadcast was successful
+            broadcast_data = json.loads(broadcast_result[0].text)
+            self.assertTrue(broadcast_data["success"])
+            self.assertEqual("Message broadcasted to 1 clients", broadcast_data["message"])
+            self.assertEqual(1, broadcast_data["sent_count"])
+            self.assertEqual(0, broadcast_data["failed_count"])
+            
+            # when - Check connections list
+            list_result = asyncio.run(run_tool("lng_websocket_server", {
+                "operation": "list"
+            }))
+            
+            # then - Verify both connections are active
+            list_data = json.loads(list_result[0].text)
+            self.assertTrue(list_data["success"])
+            self.assertEqual(2, list_data["total_connections"])
+            self.assertIn("integration-test-server", list_data["connections"])
+            self.assertIn("integration-test-client", list_data["connections"])
+            self.assertEqual("server", list_data["connections"]["integration-test-server"]["type"])
+            self.assertEqual("client", list_data["connections"]["integration-test-client"]["type"])
+            
+            # when - Get detailed status of server with metrics
+            server_status_result = asyncio.run(run_tool("lng_websocket_server", {
+                "operation": "status",
+                "name": "integration-test-server",
+                "include_metrics": True
+            }))
+            
+            # then - Verify server status
+            server_status_data = json.loads(server_status_result[0].text)
+            self.assertTrue(server_status_data["success"])
+            self.assertEqual("integration-test-server", server_status_data["connection_status"]["name"])
+            self.assertEqual("server", server_status_data["connection_status"]["type"])
+            self.assertIn("metrics", server_status_data["connection_status"])
+            
+            # when - Test server connection
+            test_server_result = asyncio.run(run_tool("lng_websocket_server", {
+                "operation": "test",
+                "name": "integration-test-server",
+                "test_data": {
+                    "type": "test_broadcast",
+                    "content": "Testing server broadcast functionality"
+                }
+            }))
+            
+            # then - Verify server test
+            test_server_data = json.loads(test_server_result[0].text)
+            self.assertTrue(test_server_data["success"])
+            self.assertEqual("Test message sent to 1 clients", test_server_data["message"])
+            
+            # when - Test client connection
+            test_client_result = asyncio.run(run_tool("lng_websocket_server", {
+                "operation": "test", 
+                "name": "integration-test-client",
+                "test_data": {
+                    "type": "test_message",
+                    "content": "Testing client send functionality"
+                }
+            }))
+            
+            # then - Verify client test
+            test_client_data = json.loads(test_client_result[0].text)
+            self.assertTrue(test_client_data["success"])
+            self.assertEqual("Test message sent", test_client_data["message"])
+            
+        finally:
+            # Cleanup - Stop client and server connections
+            try:
+                asyncio.run(run_tool("lng_websocket_server", {
+                    "operation": "client_disconnect",
+                    "name": "integration-test-client"
+                }))
+            except:
+                pass  # Ignore cleanup errors
+            
+            try:
+                asyncio.run(run_tool("lng_websocket_server", {
+                    "operation": "server_stop",
+                    "name": "integration-test-server"
+                }))
+            except:
+                pass  # Ignore cleanup errors
+            
+            # Remove config files
+            for config_file in [server_config_file, client_config_file]:
+                if os.path.exists(config_file):
+                    try:
+                        os.remove(config_file)
+                    except:
+                        pass  # Ignore file cleanup errors
+            
+            # Verify cleanup - connections should be removed
+            final_list_result = asyncio.run(run_tool("lng_websocket_server", {
+                "operation": "list"
+            }))
+            
+            final_list_data = json.loads(final_list_result[0].text)
+            self.assertTrue(final_list_data["success"])
+            # Should not contain our test connections anymore
+            self.assertNotIn("integration-test-server", final_list_data["connections"])
+            self.assertNotIn("integration-test-client", final_list_data["connections"])
 
 
 if __name__ == '__main__':

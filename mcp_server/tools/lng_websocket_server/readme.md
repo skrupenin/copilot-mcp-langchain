@@ -102,10 +102,215 @@ The most powerful and flexible WebSocket client and server for real-time communi
 - ✅ File-based state persistence
 - ✅ Dynamic message templating
 - ✅ Conditional logic in configurations
+- ✅ **File-based configuration loading** with `config_file` parameter
+- ✅ **Parameter override** - combine file configs with direct parameters
+- ✅ **Configuration reusability** - share configs across deployments
 
 **Legend:** ✅ Implemented & Tested
 
-## 📊 Expression System
+## � File-Based Configuration (✅ New Feature!)
+
+### **Configuration Loading Options**
+1. **📝 Inline Configuration**: Pass all parameters directly in tool calls
+2. **📄 File-Based Configuration**: Use `config_file` parameter to load from JSON
+3. **⚙️ Parameter Override**: Combine file config with direct parameters (direct params take priority)
+
+### **Benefits of File-Based Configuration**
+- **🔄 Reusability**: Share WebSocket configs across different deployments
+- **📝 Version Control**: Track configuration changes in git
+- **🗂️ Organization**: Keep complex WebSocket configs in separate files
+- **🛠️ Maintenance**: Easier to edit and debug large configurations
+- **⚙️ Flexibility**: Override specific parameters when needed
+
+### **File-Based Server Example**
+
+Create `websocket_server.json`:
+```json
+{
+  "name": "production-ws-server",
+  "port": 8080,
+  "path": "/ws/api",
+  "bind_host": "0.0.0.0",
+  "protocol": "wss",
+  "ssl": {
+    "enabled": true,
+    "cert_file": "/etc/ssl/certs/server.crt",
+    "key_file": "/etc/ssl/private/server.key"
+  },
+  "auth": {
+    "type": "bearer_token",
+    "token": "{! env.WS_SERVER_TOKEN !}",
+    "origin_whitelist": ["https://myapp.com", "https://admin.myapp.com"]
+  },
+  "connection_handling": {
+    "heartbeat_interval": 30,
+    "max_connections": 500,
+    "auto_cleanup": true
+  },
+  "event_handlers": {
+    "on_connect": [
+      {
+        "tool": "lng_count_words",
+        "params": {"input_text": "New connection from {! websocket.remote_ip !}"},
+        "output": "connect_stats"
+      }
+    ],
+    "on_message": [
+      {
+        "tool": "lng_batch_run",
+        "params": {
+          "pipeline": [
+            {
+              "tool": "lng_json_to_csv",
+              "params": {
+                "json_data": "{! websocket.message.data !}",
+                "output_file_path": "data/messages/{! websocket.timestamp !}.csv"
+              }
+            }
+          ]
+        }
+      }
+    ]
+  }
+}
+```
+
+Use the config file:
+```json
+{
+  "operation": "server_start",
+  "config_file": "configs/websocket_server.json"
+}
+```
+
+### **File-Based Client Example**
+
+Create `websocket_client.json`:
+```json
+{
+  "name": "data-sync-client",
+  "url": "wss://api.partner.com/ws/v2",
+  "subprotocol": "data-sync-v2",
+  "auth": {
+    "type": "query_param",
+    "param_name": "api_key",
+    "value": "{! env.PARTNER_API_KEY !}"
+  },
+  "connection_handling": {
+    "auto_reconnect": true,
+    "max_reconnect_attempts": 10,
+    "backoff_strategy": "exponential",
+    "heartbeat_enabled": true,
+    "heartbeat_message": {
+      "type": "keepalive",
+      "timestamp": "{! new Date().toISOString() !}"
+    }
+  },
+  "message_handlers": {
+    "on_message": [
+      {
+        "condition": "{! websocket.message.type === 'data_sync' !}",
+        "tool": "lng_file_write",
+        "params": {
+          "file_path": "sync/{! websocket.message.entity !}.json",
+          "content": "{! JSON.stringify(websocket.message.data, null, 2) !}",
+          "mode": "write"
+        }
+      }
+    ]
+  }
+}
+```
+
+Use the config file:
+```json
+{
+  "operation": "client_connect",
+  "config_file": "configs/websocket_client.json"
+}
+```
+
+### **Parameter Override**
+
+Override specific parameters from file:
+```json
+{
+  "operation": "server_start",
+  "config_file": "configs/websocket_server.json",
+  "port": 9000,
+  "bind_host": "127.0.0.1",
+  "name": "dev-server"
+}
+```
+
+### **Multi-Environment Configuration**
+
+**Development config** (`dev_server.json`):
+```json
+{
+  "name": "dev-websocket-server",
+  "port": 8080,
+  "bind_host": "localhost",
+  "protocol": "ws",
+  "ssl": {"enabled": false},
+  "auth": {"type": "none"},
+  "event_handlers": {
+    "on_message": [
+      {"tool": "lng_count_words", "params": {"input_text": "Dev: {! websocket.message.content !}"}}
+    ]
+  }
+}
+```
+
+**Production config** (`prod_server.json`):
+```json
+{
+  "name": "prod-websocket-server",
+  "port": 8443,
+  "bind_host": "0.0.0.0",
+  "protocol": "wss",
+  "ssl": {
+    "enabled": true,
+    "cert_file": "/etc/ssl/certs/prod.crt",
+    "key_file": "/etc/ssl/private/prod.key"
+  },
+  "auth": {
+    "type": "bearer_token",
+    "token": "{! env.PROD_WS_TOKEN !}",
+    "origin_whitelist": ["https://app.company.com"]
+  },
+  "connection_handling": {
+    "max_connections": 1000,
+    "rate_limiting": {"messages_per_minute": 120, "burst_limit": 20}
+  },
+  "event_handlers": {
+    "on_message": [
+      {
+        "tool": "lng_email_client",
+        "params": {
+          "to": "alerts@company.com",
+          "subject": "WebSocket Message Received",
+          "body": "Production WebSocket received: {! websocket.message.type !}"
+        }
+      }
+    ]
+  }
+}
+```
+
+Usage:
+```json
+// Development
+{"operation": "server_start", "config_file": "configs/dev_server.json"}
+
+// Production  
+{"operation": "server_start", "config_file": "configs/prod_server.json"}
+
+// Production with custom port
+{"operation": "server_start", "config_file": "configs/prod_server.json", "port": 9443}
+```
+
+## Expression System
 
 All configurations support dynamic expressions with full WebSocket context:
 
@@ -384,6 +589,7 @@ Every WebSocket event provides rich context for pipeline integration:
 {
   "operation": "server_start",
   "name": "my-websocket-server",
+  "config_file": "path/to/server_config.json",  // 📄 Load from file (optional)
   "port": 8080,
   "path": "/ws",
   "bind_host": "localhost",
@@ -423,7 +629,8 @@ Every WebSocket event provides rich context for pipeline integration:
 ```json
 {
   "operation": "client_connect",
-  "name": "my-websocket-client", 
+  "name": "my-websocket-client",
+  "config_file": "path/to/client_config.json",  // 📄 Load from file (optional)
   "url": "wss://example.com/ws",
   "subprotocol": "my-protocol",
   
@@ -439,6 +646,20 @@ Every WebSocket event provides rich context for pipeline integration:
     "heartbeat_enabled": true,
     "heartbeat_message": {"type": "ping"}
   }
+}
+```
+
+### Configuration Priority Order
+1. **Direct parameters** (highest priority)
+2. **File-based configuration** (loaded from `config_file`)
+3. **Default values** (lowest priority)
+
+Example of parameter override:
+```json
+{
+  "operation": "server_start",
+  "config_file": "base_config.json",    // Contains port: 8080
+  "port": 9000                          // Overrides to port 9000
 }
 ```
 
@@ -479,5 +700,15 @@ The WebSocket server seamlessly integrates with other MCP tools:
 - **Persistence and monitoring** with structured logging
 - **Auto-recovery** with connection state restoration
 - **Production reliability** with comprehensive error handling
+- **📁 File-based configuration** for reusable and maintainable setups
+- **⚙️ Parameter override** for flexible deployment scenarios
+- **🔄 Multi-environment support** with environment-specific configs
 
 Perfect for real-time applications, IoT integration, live dashboards, chat systems, telemetry collection, and automation workflows.
+
+### 🆕 Latest Features
+- ✅ **File-Based Configuration**: Use `config_file` parameter to load complex configurations from JSON files
+- ✅ **Parameter Override**: Combine file configurations with direct parameters
+- ✅ **Multi-Environment**: Easy switching between dev/staging/production configurations
+- ✅ **Configuration Reusability**: Share WebSocket configurations across deployments
+- ✅ **Integration Testing**: Comprehensive test suite including file-based configuration scenarios

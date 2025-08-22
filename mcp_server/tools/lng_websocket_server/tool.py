@@ -3,6 +3,7 @@ import json
 import logging
 import asyncio
 import os
+import mcp_server
 from datetime import datetime
 from typing import Dict, List, Optional, Any
 
@@ -33,12 +34,18 @@ Create WebSocket servers and clients for real-time communication with automatic 
 • `test` - Test connection with mock data
 
 **Features:**
-🔌 **Bidirectional Communication** - Real-time server and client WebSocket support
-🔐 **Enterprise Security** - WSS, authentication, origin validation, rate limiting
-⚡ **Auto-Reconnection** - Heartbeat monitoring with exponential backoff retry
-🎭 **Event-Driven** - Pipeline execution on connect/disconnect/message events
-📊 **Monitoring** - Structured logs, metrics, connection health tracking
-💾 **Persistence** - Auto-restore connections on MCP server restart
+**Bidirectional Communication** - Real-time server and client WebSocket support
+**Enterprise Security** - WSS, authentication, origin validation, rate limiting
+**Auto-Reconnection** - Heartbeat monitoring with exponential backoff retry
+**Event-Driven** - Pipeline execution on connect/disconnect/message events
+**Monitoring** - Structured logs, metrics, connection health tracking
+**Persistence** - Auto-restore connections on MCP server restart
+**File-Based Configuration** - Use `config_file` parameter to load WebSocket config from JSON files
+
+**Configuration Loading:**
+1. **Inline Configuration**: Pass all parameters directly in the tool call
+2. **File-Based Configuration**: Use `config_file` parameter to load config from JSON file
+3. **Parameter Override**: Can combine file config with direct parameters (direct params take priority)
 
 **Example Server Configuration:**
 ```json
@@ -93,6 +100,120 @@ Create WebSocket servers and clients for real-time communication with automatic 
   }
 }
 ```
+
+**Example File-Based Server Configuration:**
+
+Create a JSON file (e.g., `websocket_server.json`):
+```json
+{
+  "name": "telemetry-server",
+  "port": 8080,
+  "path": "/ws/telemetry",
+  "bind_host": "0.0.0.0",
+  "protocol": "ws",
+  "auth": {
+    "type": "bearer_token",
+    "token": "{! env.WEBSOCKET_TOKEN !}",
+    "origin_whitelist": ["https://example.com"]
+  },
+  "connection_handling": {
+    "heartbeat_interval": 30,
+    "max_connections": 100,
+    "auto_cleanup": true
+  },
+  "event_handlers": {
+    "on_connect": [
+      {
+        "tool": "lng_file_write",
+        "params": {
+          "file_path": "logs/connections.log",
+          "content": "Connected: {! websocket.client_id !} from {! websocket.remote_ip !}\\n",
+          "mode": "append"
+        }
+      }
+    ],
+    "on_message": [
+      {
+        "tool": "lng_count_words",
+        "params": {"input_text": "{! websocket.message.content !}"},
+        "output": "stats"
+      }
+    ]
+  }
+}
+```
+
+Then use it:
+```json
+{
+  "operation": "server_start",
+  "config_file": "mcp_server/tools/lng_websocket_server/websocket_server.json"
+}
+```
+
+**Example File-Based Client Configuration:**
+
+Create a JSON file (e.g., `websocket_client.json`):
+```json
+{
+  "name": "api-client",
+  "url": "wss://api.example.com/ws",
+  "subprotocol": "api-v1",
+  "auth": {
+    "type": "query_param",
+    "param_name": "token",
+    "value": "{! env.API_TOKEN !}"
+  },
+  "connection_handling": {
+    "auto_reconnect": true,
+    "heartbeat_enabled": true,
+    "heartbeat_message": {"type": "ping"}
+  },
+  "message_handlers": {
+    "on_message": [
+      {
+        "condition": "{! websocket.message.type === 'command' !}",
+        "tool": "lng_websocket_server",
+        "params": {
+          "operation": "client_send",
+          "name": "api-client", 
+          "message": {
+            "type": "response",
+            "result": "Command executed",
+            "timestamp": "{! datetime.now().isoformat() !}"
+          }
+        }
+      }
+    ]
+  }
+}
+```
+
+Then use it:
+```json
+{
+  "operation": "client_connect",
+  "config_file": "mcp_server/tools/lng_websocket_server/websocket_client.json"
+}
+```
+
+**Parameter Merging:**
+When using `config_file`, you can still override specific parameters:
+```json
+{
+  "operation": "server_start",
+  "config_file": "websocket_server.json",
+  "port": 8081,
+  "bind_host": "localhost"
+}
+```
+
+**Benefits of File-Based Configuration:**
+- **Reusability**: Share WebSocket configs across different deployments
+- **Version Control**: Track WebSocket configuration changes in git
+- **Organization**: Keep complex WebSocket configs in separate files  
+- **Maintenance**: Easier to edit and debug large configurations
+- **Parameter Override**: Can still override specific parameters when needed
 
 **Example Client Configuration:**
 ```json
@@ -312,6 +433,10 @@ Create WebSocket servers and clients for real-time communication with automatic 
                     "type": "boolean", 
                     "description": "Include connection details in status response",
                     "default": False
+                },
+                "config_file": {
+                    "type": "string",
+                    "description": "Path to JSON file containing WebSocket configuration (alternative to inline config)"
                 }
             },
             "required": ["operation"]
@@ -370,6 +495,56 @@ async def run_tool(name: str, parameters: dict) -> list[types.Content]:
 async def start_server(params: dict) -> list[types.Content]:
     """Start a new WebSocket server."""
     try:
+        # Store original params to detect config source
+        original_params = params.copy()
+        
+        # Check if config_file is provided and load configuration
+        if "config_file" in params:
+            config_file = params["config_file"]
+            logger.info(f"Loading WebSocket server configuration from file: {config_file}")
+            
+            try:
+                # Read configuration from file
+                if not os.path.isabs(config_file):
+                    # Make relative paths relative to the project root
+                    project_root = os.path.dirname(os.path.dirname(mcp_server.__file__))
+                    config_file = os.path.join(project_root, config_file)
+                
+                logger.info(f"Resolved config file path: {config_file}")
+                logger.info(f"File exists: {os.path.exists(config_file)}")
+                
+                with open(config_file, 'r', encoding='utf-8') as f:
+                    file_config = json.load(f)
+                
+                logger.info(f"Config loaded successfully, keys: {list(file_config.keys())}")
+                
+                # Merge file config with params, giving priority to direct params
+                merged_params = file_config.copy()
+                merged_params.update({k: v for k, v in params.items() if k != "config_file"})
+                
+                logger.info(f"Merged successfully, name param: {merged_params.get('name', 'NOT FOUND')}")
+                logger.info(f"Successfully loaded WebSocket server configuration from {config_file}")
+                params = merged_params
+                
+            except FileNotFoundError:
+                return [types.TextContent(
+                    type="text", 
+                    text=json.dumps({
+                        "success": False,
+                        "error": f"Configuration file not found: {config_file}",
+                        "config": {}
+                    }, indent=2)
+                )]
+            except json.JSONDecodeError as e:
+                return [types.TextContent(
+                    type="text", 
+                    text=json.dumps({
+                        "success": False,
+                        "error": f"Invalid JSON in configuration file {config_file}: {str(e)}",
+                        "config": {}
+                    }, indent=2)
+                )]
+        
         # Validate required parameters
         connection_name = params.get("name")
         port = params.get("port")
@@ -452,7 +627,8 @@ async def start_server(params: dict) -> list[types.Content]:
                 "message": f"WebSocket server '{connection_name}' started successfully",
                 "connection_type": "server",
                 "endpoint": endpoint_url,
-                "config": _mask_sensitive_data(config)
+                "config": _mask_sensitive_data(config),
+                "config_source": "config_file" if "config_file" in original_params else "inline"
             }, indent=2)
         )]
         
@@ -515,6 +691,56 @@ async def stop_server(params: dict) -> list[types.Content]:
 async def connect_client(params: dict) -> list[types.Content]:
     """Connect to a WebSocket server as client."""
     try:
+        # Store original params to detect config source
+        original_params = params.copy()
+        
+        # Check if config_file is provided and load configuration
+        if "config_file" in params:
+            config_file = params["config_file"]
+            logger.info(f"Loading WebSocket client configuration from file: {config_file}")
+            
+            try:
+                # Read configuration from file
+                if not os.path.isabs(config_file):
+                    # Make relative paths relative to the project root
+                    project_root = os.path.dirname(os.path.dirname(mcp_server.__file__))
+                    config_file = os.path.join(project_root, config_file)
+                
+                logger.info(f"Resolved config file path: {config_file}")
+                logger.info(f"File exists: {os.path.exists(config_file)}")
+                
+                with open(config_file, 'r', encoding='utf-8') as f:
+                    file_config = json.load(f)
+                
+                logger.info(f"Config loaded successfully, keys: {list(file_config.keys())}")
+                
+                # Merge file config with params, giving priority to direct params
+                merged_params = file_config.copy()
+                merged_params.update({k: v for k, v in params.items() if k != "config_file"})
+                
+                logger.info(f"Merged successfully, name param: {merged_params.get('name', 'NOT FOUND')}")
+                logger.info(f"Successfully loaded WebSocket client configuration from {config_file}")
+                params = merged_params
+                
+            except FileNotFoundError:
+                return [types.TextContent(
+                    type="text", 
+                    text=json.dumps({
+                        "success": False,
+                        "error": f"Configuration file not found: {config_file}",
+                        "config": {}
+                    }, indent=2)
+                )]
+            except json.JSONDecodeError as e:
+                return [types.TextContent(
+                    type="text", 
+                    text=json.dumps({
+                        "success": False,
+                        "error": f"Invalid JSON in configuration file {config_file}: {str(e)}",
+                        "config": {}
+                    }, indent=2)
+                )]
+        
         # Validate required parameters
         connection_name = params.get("name")
         url = params.get("url")
@@ -579,7 +805,8 @@ async def connect_client(params: dict) -> list[types.Content]:
                 "message": f"WebSocket client '{connection_name}' {'connected' if client_info['connected'] else 'failed to connect'}",
                 "connection_type": "client",
                 "url": url,
-                "config": _mask_sensitive_data(config)
+                "config": _mask_sensitive_data(config),
+                "config_source": "config_file" if "config_file" in original_params else "inline"
             }, indent=2)
         )]
         
