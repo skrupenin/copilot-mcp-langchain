@@ -224,7 +224,19 @@ class WebhookHTTPServer:
             if pipeline_result and isinstance(pipeline_result, dict):
                 response_context.update(pipeline_result.get('context', {}))
             
-            # Generate response
+            # Check if HTML routes are configured and match current path
+            html_routes = self.config.get('response', {}).get('html_routes', [])
+            for html_route in html_routes:
+                if html_route.get('pattern') == self.path:
+                    # This is an HTML route - render HTML template
+                    return await self._handle_html_response(
+                        html_route, 
+                        response_context, 
+                        request_id, 
+                        execution_time
+                    )
+            
+            # Generate JSON response (default behavior)
             response_config = self.config.get('response', {})
             response_body = self._substitute_variables(
                 response_config.get('body', {"received": True}),
@@ -377,6 +389,80 @@ class WebhookHTTPServer:
                 
         except Exception as e:
             self.logger.error(f"[{request_id}] HTML route error: {e}")
+            return web.Response(
+                text=f"Internal server error: {str(e)}",
+                status=500,
+                content_type='text/plain'
+            )
+    
+    async def _handle_html_response(self, html_route: dict, context: dict, request_id: str, execution_time: float) -> Response:
+        """Handle HTML response for webhook endpoint."""
+        try:
+            self.logger.info(f"[{request_id}] 🎨 Generating HTML response using template")
+            
+            # Process custom mapping if configured
+            if html_route.get('mapping'):
+                try:
+                    custom_mapping = await self._process_custom_mapping(
+                        html_route['mapping'], 
+                        context, 
+                        request_id
+                    )
+                    
+                    # Add custom mapping results to context  
+                    context.update(custom_mapping)
+                    self.logger.info(f"[{request_id}] Custom mapping processed: {len(custom_mapping)} variables")
+                    
+                except Exception as e:
+                    self.logger.error(f"[{request_id}] Custom mapping failed: {e}")
+                    return web.Response(
+                        text=f"Mapping processing failed: {str(e)}",
+                        status=500,
+                        content_type='text/plain'
+                    )
+            
+            # Load and process HTML template
+            template_path = html_route.get('template')
+            if not template_path:
+                return web.Response(
+                    text="Template path not configured",
+                    status=500,
+                    content_type='text/plain'
+                )
+            
+            # Substitute variables in template path
+            template_path = self._substitute_variables(template_path, context)
+            
+            try:
+                html_content = await self._load_and_process_template(template_path, context)
+                
+                self.logger.info(f"[{request_id}] ✅ HTML response generated in {execution_time:.3f}s")
+                self.logger.info(f"[{request_id}] 📤 HTML response size: {len(html_content)} chars")
+                
+                return web.Response(
+                    text=html_content,
+                    status=200,
+                    content_type='text/html',
+                    charset='utf-8'
+                )
+                
+            except FileNotFoundError:
+                self.logger.error(f"[{request_id}] Template not found: {template_path}")
+                return web.Response(
+                    text=f"Template not found: {template_path}",
+                    status=404,
+                    content_type='text/plain'
+                )
+            except Exception as e:
+                self.logger.error(f"[{request_id}] Template processing failed: {e}")
+                return web.Response(
+                    text=f"Template processing failed: {str(e)}",
+                    status=500,
+                    content_type='text/plain'
+                )
+                
+        except Exception as e:
+            self.logger.error(f"[{request_id}] HTML response error: {e}")
             return web.Response(
                 text=f"Internal server error: {str(e)}",
                 status=500,
