@@ -62,6 +62,12 @@ public void shouldBuildTable_whenTwoLists_caseReplaceQuotes() {
             context.getValue("csv_result"));
 }
 ```
+- When working with tests, follow an iterative approach:
+  + Create a list of actions, where each test is one task.
+  + Start with the first test on the list and do everything that is requested.
+  + Make sure it works. 
+  + If there was a change in the tested functionality, run all tests to make sure nothing is broken.
+  + After that, you can take the next task from the list. 
 - Run all tests to make sure everything works correctly: 
   + `python -m pytest mcp_server/tools/{TOOL_NAME}/ --tb=no -q`
   + `python -m unittest mcp_server.tools.{TOOL_NAME}.stuff.test -v`
