@@ -7,7 +7,7 @@
   ],
   "content_scripts": [
     {
-      "matches": ["*://*.epam.com/*", "*://*/expert/ui/*"],
+      "matches": ["*://*.epam.com/*", "http://localhost:9000/cookies/*"],
       "js": ["background.js"],
       "run_at": "document_idle"
     }
