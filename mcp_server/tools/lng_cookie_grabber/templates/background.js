@@ -8,8 +8,8 @@ const MESSAGE__STEP3__TO_MAIN_PAGE__PROCESS_RESULT = "process-result";
 let emergencySocket = null;
 let expectedPluginVersion = null;
 let PLUGIN_VERSION = "5"; // please also check WebSocketConfig
-let listPortals = JSON.parse("<PORTALS>");
-let sessionId = "<SESSION_ID>";
+let listPortals = []; // will be loaded from DOM
+let sessionId = ""; // will be loaded from DOM
 
 async function processInjection() {
     console.log("#30 Processing injection of the plugin elements.");
@@ -148,7 +148,7 @@ if (typeof chrome.commands !== 'undefined') {
         function setupWs(onMessage) {
             console.log("#2.5 Opening websocket connection.");
             emergencySocket = "opening";
-            let url = "<WS_SERVER_URL>";
+            let url = "{{WS_SERVER_URL}}";
             url = url.replace("http", "ws");
             let socket = new WebSocket(`${url}?sessionId=${sessionId}`);
 
@@ -284,14 +284,43 @@ if (typeof chrome.commands !== 'undefined') {
             updateAllStatus();
         }
 
+        function extractDataFromDOM() {
+            // Extract session ID and portals from DOM
+            const sessionElement = document.getElementById('session-id');
+            const portalsElement = document.getElementById('portals');
+            
+            if (sessionElement) {
+                sessionId = sessionElement.textContent.trim();
+                console.log("#0.1 Extracted sessionId from DOM:", sessionId);
+            }
+            
+            if (portalsElement) {
+                try {
+                    listPortals = JSON.parse(portalsElement.textContent.trim());
+                    console.log("#0.2 Extracted portals from DOM:", listPortals);
+                } catch (e) {
+                    console.error("#0.3 Failed to parse portals from DOM:", e);
+                }
+            }
+        }
+
         // during the page load, we try to find the `RUN_PLUGIN_BUTTON_ID` element and add event listener on click
         // of something changes in the DOM, we check if the element is added and add event listener
         window.addEventListener('load', async function () {
+            // Extract data from DOM first
+            extractDataFromDOM();
+            
             // if this is not the main page, we do nothing
             if (window.location.href.includes("/expert/ui/chat?expertId=")) {
                 expertId = parameter("expertId"); // TODO remove this
                 sessionId = parameter("sessionId");
                 processChatPage();
+            }
+
+            // For status page, also setup plugin status
+            if (window.location.href.includes("/cookies/")) {
+                console.log("#0.4 This is status page, setting up plugin status.");
+                updateAllStatus();
             }
 
             await processInjection();

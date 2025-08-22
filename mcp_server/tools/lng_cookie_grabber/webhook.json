@@ -8,13 +8,16 @@
       "pattern": "/cookies/{sessionId}",
       "template": "mcp_server/tools/lng_cookie_grabber/status.html",
       "mapping": {
-        "SESSION_ID": "{! url.sessionId !}"
+        "SESSION_ID": "{! url.sessionId !}",
+        "PORTALS": "[\"https://google.com\", \"https://deepl.com\"]"
       }
     },
     {
       "pattern": "/download/background.js",
       "template": "mcp_server/tools/lng_cookie_grabber/templates/background.js",
-      "mapping": {},
+      "mapping": {
+        "WS_SERVER_URL": "{! 'http://localhost:9002' !}"
+      },
       "response": {
         "status": 200,
         "headers": {

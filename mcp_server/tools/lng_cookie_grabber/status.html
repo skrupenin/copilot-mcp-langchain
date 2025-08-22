@@ -59,6 +59,12 @@
         <h1>🍪 Cookie Session Status</h1>
         <div class="session-id">Session ID: {{SESSION_ID}}</div>
         
+        <!-- Data for plugin to extract from DOM -->
+        <div id="plugin-data" style="display: none;">
+            <div id="session-id">{{SESSION_ID}}</div>
+            <div id="portals">{{PORTALS}}</div>
+        </div>
+        
         <div class="plugin-status-section">
             <h2>🔌 Plugin Status</h2>
             <div id="plugin-status-indicator" class="status-indicator">
