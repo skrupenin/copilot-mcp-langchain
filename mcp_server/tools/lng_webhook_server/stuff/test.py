@@ -2041,14 +2041,64 @@ Error Handling Success Rate: 100%"""
                         "Comprehensive error handling should match expected format")
 
 
-def test_context_variables_content():
-    """Test to see all available context variables with their full content."""
-    initialize_tools()
+def run_webhook_in_thread_for_test(config, result_holder):
+    """Run webhook server in dedicated thread with persistent event loop for testing."""
+    import threading
     
-    # Create temporary HTML template file
+    def run_server():
+        # Create new event loop for this thread
+        loop = asyncio.new_event_loop()
+        asyncio.set_event_loop(loop)
+        
+        try:
+            # Initialize tools in this thread
+            initialize_tools()
+            
+            # Start webhook server
+            result = loop.run_until_complete(run_tool("lng_webhook_server", {"operation": "start", **config}))
+            result_data = json.loads(result[0].text)
+            result_holder['start_result'] = result_data
+            
+            if result_data["success"]:
+                print(f"✅ Webhook started in thread: {result_data['endpoint']}")
+                
+                # Keep event loop running indefinitely
+                try:
+                    loop.run_forever()
+                except KeyboardInterrupt:
+                    pass
+                    
+        except Exception as e:
+            result_holder['error'] = str(e)
+            print(f"❌ Thread error: {e}")
+        finally:
+            try:
+                # Stop webhook before closing loop
+                stop_result = loop.run_until_complete(run_tool("lng_webhook_server", {
+                    "operation": "stop",
+                    "name": config["name"]
+                }))
+                print("🧹 Webhook stopped in thread")
+            except:
+                pass
+            loop.close()
+    
+    # Start server in thread
+    thread = threading.Thread(target=run_server, daemon=True)
+    thread.start()
+    return thread
+
+
+def test_context_variables_content():
+    """Test to see all available context variables with their full content using persistent webhook thread."""
     import tempfile
+    import threading
+    import time
     import os
     
+    print("=== TESTING CONTEXT VARIABLES WITH PERSISTENT WEBHOOK ===")
+    
+    # Create temporary HTML template file
     template_content = "{{ALL_CONTENT}}"
     temp_file = tempfile.NamedTemporaryFile(mode='w', suffix='.html', delete=False, encoding='utf-8')
     temp_file.write(template_content)
@@ -2069,27 +2119,34 @@ def test_context_variables_content():
         }]
     }
     
+    result_holder = {}
+    
     try:
-        # Start server
-        start_result = asyncio.run(run_tool("lng_webhook_server", {"operation": "start", **config}))
-        start_data = json.loads(start_result[0].text)
-        assert start_data["success"] == True, f"Server should start successfully: {start_data}"
+        # Start webhook in separate thread with persistent event loop
+        webhook_thread = run_webhook_in_thread_for_test(config, result_holder)
         
-        print(f"Server started successfully at: {start_data['endpoint']}")
-        
-        # Wait for server to be ready
-        import time
+        # Wait for webhook to start
         time.sleep(3)
         
-        # Get content via HTTP request
-        server_url = start_data["endpoint"].replace("/debug", "")
-        test_url = f"{server_url}/content?test=123"
+        if 'start_result' not in result_holder:
+            raise Exception("❌ Webhook failed to start in thread")
+            
+        if not result_holder['start_result']['success']:
+            raise Exception(f"❌ Webhook start failed: {result_holder['start_result']}")
+        
+        print(f"Server started successfully at: {result_holder['start_result']['endpoint']}")
+        
+        # Get content via HTTP request using Python requests (not MCP HTTP client)
+        server_url = result_holder['start_result']['endpoint'].replace("/debug", "")
+        test_url = f"{server_url}/content?test=123&debug=true"
         print(f"Making request to: {test_url}")
         
+        # Use Python requests directly to avoid MCP event loop conflicts
         response = requests.get(test_url, timeout=10)
-        print(f"Response status: {response.status_code}")
+        print(f"✅ HTTP SUCCESS: Status {response.status_code}, Length {len(response.text)}")
         
-        assert response.status_code == 200, f"HTTP request should succeed, got status: {response.status_code}"
+        if response.status_code != 200:
+            raise Exception(f"HTTP request should succeed, got status: {response.status_code}")
         
         variables_content = response.text.strip()
         print(f"\n=== ALL CONTEXT VARIABLES CONTENT ===")
@@ -2104,23 +2161,26 @@ def test_context_variables_content():
         assert "request:" in variables_content, "Should contain request variables"
         assert "webhook:" in variables_content, "Should contain webhook variables"
         assert "test\":\"123" in variables_content, "Should contain query parameter test=123"
+        assert "debug\":\"true" in variables_content, "Should contain query parameter debug=true"
         
-        print("SUCCESS: All context variables detected and validated!")
+        print("✅ SUCCESS: All context variables detected and validated using persistent webhook thread!")
+        
+    except Exception as e:
+        print(f"❌ Test failed: {e}")
+        raise
         
     finally:
         # Cleanup
-        try:
-            asyncio.run(run_tool("lng_webhook_server", {"operation": "stop", "name": config["name"]}))
-            print("Server stopped successfully")
-        except Exception as e:
-            print(f"Error stopping server: {e}")
-        
+        print("🧹 Starting cleanup...")
         try:
             if os.path.exists(temp_file.name):
                 os.remove(temp_file.name)
-                print("Template file cleaned up")
+                print("✅ Template file cleaned up")
         except Exception as e:
-            print(f"Error removing temp file: {e}")
+            print(f"⚠️ Error removing temp file: {e}")
+        
+        # Note: Thread-based webhook server will be cleaned up automatically 
+        # when thread daemon terminates with the test
 
 
 if __name__ == '__main__':
