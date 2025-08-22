@@ -62,6 +62,7 @@ public void shouldBuildTable_whenTwoLists_caseReplaceQuotes() {
             context.getValue("csv_result"));
 }
 ```
+- When creating a test, I don't want to print to the console, I want an assert that compares object.toString with the actual hardcoded expected value in the test.
 - When working with tests, follow an iterative approach:
   + Create a list of actions, where each test is one task.
   + Start with the first test on the list and do everything that is requested.
