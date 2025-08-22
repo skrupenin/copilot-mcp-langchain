@@ -2090,7 +2090,58 @@ def run_webhook_in_thread_for_test(config, result_holder):
 
 
 def test_context_variables_content():
-    """Test to see all available context variables with their full content using persistent webhook thread."""
+    """
+    Test to see all available context variables with their full content using persistent webhook thread.
+    
+    IMPLEMENTATION APPROACH EXPLANATION:
+    =====================================
+    
+    This test uses a PERSISTENT THREAD APPROACH to solve the MCP event loop conflict problem.
+    
+    PROBLEM: 
+    When MCP HTTP Client tries to call MCP Webhook Server, both tools use asyncio event loops,
+    but the webhook server created via asyncio.run() creates a temporary event loop that 
+    terminates after the tool call completes. This causes ReadTimeout when the HTTP client
+    tries to connect.
+    
+    SOLUTION - PERSISTENT THREAD APPROACH:
+    1. Create webhook server in a SEPARATE THREAD with its own persistent event loop
+    2. Use threading.Thread with daemon=True for automatic cleanup
+    3. Create new event loop with asyncio.new_event_loop() for the thread
+    4. Keep the event loop running with loop.run_forever() instead of asyncio.run()
+    5. Use Python requests library instead of MCP HTTP Client to avoid further event loop conflicts
+    
+    WHY THIS WORKS:
+    - Separate thread isolates the webhook server's event loop from the main process
+    - Persistent event loop keeps the HTTP server alive and responsive
+    - Python requests uses synchronous HTTP, avoiding asyncio conflicts entirely
+    - Thread-based approach allows both MCP tools to coexist without deadlock
+    
+    WHY NOT USE MCP HTTP CLIENT HERE:
+    - MCP HTTP Client would still cause event loop conflicts even with thread-based webhook
+    - Python requests is more reliable for testing internal webhook functionality
+    - Testing should be isolated from the MCP tool system when possible
+    
+    ALTERNATIVE APPROACHES THAT DON'T WORK:
+    - asyncio.run(): Creates temporary event loop, webhook dies after tool call
+    - Same event loop: Causes deadlock between MCP HTTP Client and MCP Webhook Server
+    - subprocess: Too heavyweight and complex for unit testing
+    
+    THIS APPROACH IS USED BY:
+    - test_context_variables_content(): For testing context variable replacement
+    - Integration tests that need persistent webhook servers
+    - Production deployments that need MCP HTTP Client ↔ MCP Webhook Server interaction
+    
+    PRODUCTION ALTERNATIVE:
+    For production use, use thread_mode=true in MCP webhook server configuration:
+    {
+        "operation": "start", 
+        "name": "webhook-name",
+        "thread_mode": true,
+        ...
+    }
+    This enables MCP HTTP Client to successfully call MCP Webhook Server.
+    """
     import tempfile
     import threading
     import time
