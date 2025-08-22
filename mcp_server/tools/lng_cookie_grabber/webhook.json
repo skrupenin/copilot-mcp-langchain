@@ -1,0 +1,25 @@
+{
+  "operation": "start",
+  "name": "cookie-status-server",
+  "port": 9000,
+  "path": "/api",
+  "bind_host": "localhost",
+  "html_routes": [
+    {
+      "pattern": "/cookies/{sessionId}",
+      "template": "mcp_server/tools/lng_cookie_grabber/status.html",
+      "mapping": {
+        "SESSION_ID": "{! url.sessionId !}"
+      }
+    }
+  ],
+  "response": {
+    "status": 200,
+    "headers": {
+      "Content-Type": "application/json"
+    },
+    "body": {
+      "message": "Cookie status server is running"
+    }
+  }
+}
