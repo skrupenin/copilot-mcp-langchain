@@ -5,6 +5,7 @@ import asyncio
 import json
 import logging
 import ssl
+import os
 from datetime import datetime
 from typing import Dict, Any, Optional
 from aiohttp import web, ClientTimeout
@@ -70,6 +71,23 @@ class WebhookHTTPServer:
             
             # Add webhook route
             self.app.router.add_route('*', self.path, self._handle_webhook)
+            
+            # Add HTML routes if configured
+            html_routes = self.config.get('html_routes', [])
+            self.logger.info(f"Configuring {len(html_routes)} HTML routes")
+            
+            for i, route_config in enumerate(html_routes):
+                pattern = route_config.get('pattern', '/html/{template}/{param}')
+                template = route_config.get('template', 'no template')
+                
+                # Create closure to capture route_config for this specific route
+                def make_html_handler(config):
+                    async def html_handler(request):
+                        return await self._handle_html_route(request, config)
+                    return html_handler
+                
+                self.app.router.add_get(pattern, make_html_handler(route_config))
+                self.logger.info(f"Added HTML route {i+1}: {pattern} -> {template}")
             
             # Add health check route
             self.app.router.add_get('/health', self._handle_health)
@@ -246,6 +264,177 @@ class WebhookHTTPServer:
                 status=500
             )
     
+    async def _handle_html_route(self, request: Request, route_config: dict) -> Response:
+        """Handle HTML route requests."""
+        request_id = f"{self.name}-html-{self.request_count:06d}"
+        self.request_count += 1
+        start_time = datetime.now()
+        
+        try:
+            # Get URL parameters
+            url_params = request.match_info
+            query_params = dict(request.query)
+            
+            self.logger.info(f"[{request_id}] HTML request: {request.path}")
+            self.logger.info(f"[{request_id}] URL params: {url_params}")
+            self.logger.info(f"[{request_id}] Query params: {query_params}")
+            self.logger.info(f"[{request_id}] Route config: {route_config}")
+            
+            # Prepare context for template and pipeline
+            context = {
+                "url": url_params,
+                "query": query_params,
+                "request": {
+                    "path": request.path,
+                    "method": request.method,
+                    "headers": dict(request.headers),
+                    "remote_ip": request.remote
+                },
+                "env": dict(os.environ)
+            }
+            
+            # Execute pipeline if configured
+            if route_config.get('pipeline'):
+                try:
+                    pipeline_result = await self._execute_html_pipeline(
+                        route_config['pipeline'], 
+                        context, 
+                        request_id
+                    )
+                    
+                    # Add pipeline results to context
+                    if isinstance(pipeline_result, dict) and 'context' in pipeline_result:
+                        context.update(pipeline_result['context'])
+                        
+                except Exception as e:
+                    self.logger.error(f"[{request_id}] HTML pipeline failed: {e}")
+                    return web.Response(
+                        text=f"Pipeline execution failed: {str(e)}",
+                        status=500,
+                        content_type='text/plain'
+                    )
+            
+            # Load and process HTML template
+            template_path = route_config.get('template')
+            if not template_path:
+                return web.Response(
+                    text="Template path not configured",
+                    status=500,
+                    content_type='text/plain'
+                )
+            
+            # Substitute variables in template path
+            template_path = self._substitute_variables(template_path, context)
+            
+            try:
+                html_content = await self._load_and_process_template(template_path, context)
+                
+                execution_time = (datetime.now() - start_time).total_seconds()
+                self.logger.info(f"[{request_id}] ✅ HTML response generated in {execution_time:.3f}s")
+                
+                return web.Response(
+                    text=html_content,
+                    status=200,
+                    content_type='text/html',
+                    charset='utf-8'
+                )
+                
+            except FileNotFoundError:
+                self.logger.error(f"[{request_id}] Template not found: {template_path}")
+                return web.Response(
+                    text=f"Template not found: {template_path}",
+                    status=404,
+                    content_type='text/plain'
+                )
+            except Exception as e:
+                self.logger.error(f"[{request_id}] Template processing failed: {e}")
+                return web.Response(
+                    text=f"Template processing failed: {str(e)}",
+                    status=500,
+                    content_type='text/plain'
+                )
+                
+        except Exception as e:
+            self.logger.error(f"[{request_id}] HTML route error: {e}")
+            return web.Response(
+                text=f"Internal server error: {str(e)}",
+                status=500,
+                content_type='text/plain'
+            )
+    
+    async def _execute_html_pipeline(self, pipeline_steps: list, context: dict, request_id: str) -> dict:
+        """Execute pipeline for HTML route."""
+        try:
+            self.logger.info(f"[{request_id}] ⚙️ Starting HTML pipeline with {len(pipeline_steps)} steps")
+            
+            # Substitute variables in pipeline steps
+            substituted_steps = self._substitute_variables(pipeline_steps, context)
+            
+            # Import here to avoid circular imports
+            from mcp_server.tools.lng_batch_run.tool import run_tool as run_batch_pipeline
+            
+            # Execute using lng_batch_run
+            pipeline_params = {
+                "pipeline": substituted_steps,
+                "final_result": "HTML pipeline completed",
+                "context_fields": ["*"]
+            }
+            
+            result_content = await run_batch_pipeline("lng_batch_run", pipeline_params)
+            
+            if result_content and len(result_content) > 0:
+                result_data = json.loads(result_content[0].text)
+                self.logger.info(f"[{request_id}] ✅ HTML pipeline completed successfully")
+                return result_data
+            else:
+                return {"success": False, "error": "Empty pipeline result"}
+                
+        except Exception as e:
+            self.logger.error(f"[{request_id}] HTML pipeline execution failed: {e}")
+            raise
+    
+    async def _load_and_process_template(self, template_path: str, context: dict) -> str:
+        """Load HTML template and substitute placeholders."""
+        
+        # Read template file
+        if not os.path.exists(template_path):
+            raise FileNotFoundError(f"Template file not found: {template_path}")
+        
+        with open(template_path, 'r', encoding='utf-8') as f:
+            template_content = f.read()
+        
+        # Simple placeholder substitution using {{VARIABLE}} format
+        processed_content = template_content
+        
+        # Flatten context for simple access
+        flat_context = self._flatten_context(context)
+        
+        # Replace placeholders
+        for key, value in flat_context.items():
+            placeholder = "{{" + key + "}}"
+            if placeholder in processed_content:
+                processed_content = processed_content.replace(placeholder, str(value))
+        
+        return processed_content
+    
+    def _flatten_context(self, context: dict, prefix: str = "") -> dict:
+        """Flatten nested context dictionary for template substitution."""
+        flat = {}
+        
+        for key, value in context.items():
+            new_key = f"{prefix}{key}" if prefix else key
+            new_key = new_key.upper()  # Convert to uppercase for template placeholders
+            
+            if isinstance(value, dict):
+                # Recursively flatten nested dictionaries
+                nested = self._flatten_context(value, f"{new_key}_")
+                flat.update(nested)
+            else:
+                # Convert value to string
+                flat[new_key] = str(value) if value is not None else ""
+        
+        return flat
+
     async def _handle_health(self, request: Request) -> Response:
         """Health check endpoint."""
         return web.json_response({

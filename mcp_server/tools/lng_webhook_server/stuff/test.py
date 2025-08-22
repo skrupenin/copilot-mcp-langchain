@@ -9,6 +9,7 @@ import sys
 import logging
 import os
 import time
+import aiohttp
 from typing import Dict, Any, Optional
 
 # Add the project root to sys.path so we can import from mcp_server
@@ -30,6 +31,26 @@ class WebhookTester:
     def __init__(self):
         self.created_webhooks = []
         self.test_results = []
+        self.temp_files = []  
+    
+    def create_temp_html_template(self, filename, content):
+        """Creates temporary HTML file for testing"""
+        temp_path = os.path.join(os.path.dirname(__file__), filename)
+        with open(temp_path, 'w', encoding='utf-8') as f:
+            f.write(content)
+        self.temp_files.append(temp_path)
+        return temp_path
+
+    def cleanup_temp_files(self):
+        """Removes temporary files"""
+        for file_path in self.temp_files:
+            try:
+                if os.path.exists(file_path):
+                    os.remove(file_path)
+                    logger.info(f"🗑️ Removed temp file: {os.path.basename(file_path)}")
+            except Exception as e:
+                logger.warning(f"⚠️ Could not remove {file_path}: {e}")
+        self.temp_files.clear()
     
     async def cleanup_webhooks(self):
         """Clean up all webhooks created during testing."""
@@ -257,6 +278,318 @@ class WebhookTester:
             logger.info(f"✅ Invalid config handling works: {e}")
             self.test_results.append(("invalid_config", True))
     
+    async def run_html_tests(self):
+        """Run HTML route functionality tests."""
+        logger.info("🌐 === Running HTML Routes Tests ===")
+        
+        # Test 1: Create webhook with simple HTML route
+        simple_html_result = await self.test_simple_html_webhook("test-html-simple", 8093)
+        self.test_results.append(("simple_html_webhook", simple_html_result.get("success", False)))
+        
+        # Test 2: Create webhook with HTML route + pipeline
+        pipeline_html_result = await self.test_html_with_pipeline_webhook("test-html-pipeline", 8094)
+        self.test_results.append(("html_pipeline_webhook", pipeline_html_result.get("success", False)))
+        
+        # Test 3: Test cookie status page specifically
+        cookie_html_result = await self.test_cookie_status_page("test-cookie-status", 8095)
+        self.test_results.append(("cookie_status_page", cookie_html_result.get("success", False)))
+        
+        # Test 4: Test multiple HTML routes on same webhook
+        multi_html_result = await self.test_multiple_html_routes("test-multi-html", 8096)
+        self.test_results.append(("multiple_html_routes", multi_html_result.get("success", False)))
+    
+    async def test_simple_html_webhook(self, name: str, port: int) -> Dict[str, Any]:
+        """Test webhook with basic HTML route."""
+        logger.info(f"🌐 Testing simple HTML webhook: {name}")
+        
+        # Create simple test template
+        simple_template_path = f"mcp_server/tools/lng_webhook_server/test_{name}.html"
+        os.makedirs(os.path.dirname(simple_template_path), exist_ok=True)
+        
+        with open(simple_template_path, 'w', encoding='utf-8') as f:
+            f.write("""<!DOCTYPE html>
+<html><head><title>Test HTML</title></head>
+<body>
+<h1>Test HTML Route</h1>
+<p>URL Template: {{URL_TEMPLATE}}</p>
+<p>URL Param: {{URL_PARAM}}</p>
+<p>Query Test: {{QUERY_TEST}}</p>
+<p>Request Path: {{REQUEST_PATH}}</p>
+</body></html>""")
+        
+        html_config = {
+            "operation": "start",
+            "name": name,
+            "port": port,
+            "path": f"/{name}",
+            "html_routes": [
+                {
+                    "pattern": "/html/{template}/{param}",
+                    "template": simple_template_path,
+                    "pipeline": []
+                }
+            ],
+            "response": {
+                "status": 200,
+                "body": {"webhook_received": True}
+            }
+        }
+        
+        try:
+            # Create webhook with HTML routes
+            create_result = await self.create_test_webhook(name, port, html_config)
+            if not create_result.get("success"):
+                return create_result
+            
+            # Test HTML route with HTTP client
+            html_test_result = await self.test_html_route_http(name, port, "/html/testTemplate/testParam123?test=hello")
+            
+            # Cleanup template file
+            try:
+                os.remove(simple_template_path)
+            except:
+                pass
+            
+            return html_test_result
+            
+        except Exception as e:
+            logger.error(f"❌ Exception in simple HTML test: {e}")
+            return {"success": False, "error": str(e)}
+    
+    async def test_html_with_pipeline_webhook(self, name: str, port: int) -> Dict[str, Any]:
+        """Test HTML route with pipeline integration."""
+        logger.info(f"⚙️🌐 Testing HTML webhook with pipeline: {name}")
+        
+        # Create template with pipeline data placeholders
+        pipeline_template_path = f"mcp_server/tools/lng_webhook_server/test_{name}.html"
+        
+        with open(pipeline_template_path, 'w', encoding='utf-8') as f:
+            f.write("""<!DOCTYPE html>
+<html><head><title>Pipeline HTML Test</title></head>
+<body>
+<h1>HTML + Pipeline Test</h1>
+<p>Session ID: {{URL_SESSIONID}}</p>
+<p>Word Count: {{PAGE_DATA_WORDCOUNT}}</p>
+<p>Unique Words: {{PAGE_DATA_UNIQUEWORDS}}</p>
+<p>Calc Result: {{CALC_RESULT_RESULT}}</p>
+<p>Test Text: {{PAGE_DATA_WORDCOUNT}} words processed</p>
+</body></html>""")
+        
+        html_config = {
+            "operation": "start", 
+            "name": name,
+            "port": port,
+            "path": f"/{name}",
+            "html_routes": [
+                {
+                    "pattern": "/test/{sessionId}",
+                    "template": pipeline_template_path,
+                    "pipeline": [
+                        {
+                            "tool": "lng_count_words",
+                            "params": {"input_text": "Testing HTML pipeline with session: {! url.sessionId !}"},
+                            "output": "page_data"
+                        },
+                        {
+                            "tool": "lng_math_calculator", 
+                            "params": {"expression": "{! page_data.wordCount !} + 5"},
+                            "output": "calc_result"
+                        }
+                    ]
+                }
+            ],
+            "response": {
+                "status": 200,
+                "body": {"webhook_received": True}
+            }
+        }
+        
+        try:
+            # Create webhook
+            create_result = await self.create_test_webhook(name, port, html_config)
+            if not create_result.get("success"):
+                return create_result
+            
+            # Test HTML route with pipeline
+            html_test_result = await self.test_html_route_http(name, port, "/test/session-123")
+            
+            # Cleanup
+            try:
+                os.remove(pipeline_template_path)
+            except:
+                pass
+            
+            return html_test_result
+            
+        except Exception as e:
+            logger.error(f"❌ Exception in HTML pipeline test: {e}")
+            return {"success": False, "error": str(e)}
+    
+    async def test_cookie_status_page(self, name: str, port: int) -> Dict[str, Any]:
+        """Test specific cookie status page functionality."""
+        logger.info(f"🍪🌐 Testing cookie status page: {name}")
+        
+        cookie_html_config = {
+            "operation": "start",
+            "name": name,
+            "port": port,
+            "path": f"/{name}",
+            "html_routes": [
+                {
+                    "pattern": "/cookies/{sessionId}",
+                    "template": "mcp_server/tools/lng_cookie_grabber/status.html",
+                    "pipeline": [
+                        {
+                            "tool": "lng_cookie_grabber",
+                            "params": {
+                                "operation": "session_status",
+                                "session_id": "{! url.sessionId !}"
+                            },
+                            "output": "cookie_data"
+                        }
+                    ]
+                }
+            ],
+            "response": {
+                "status": 200,
+                "body": {"webhook_received": True}
+            }
+        }
+        
+        try:
+            # Create webhook
+            create_result = await self.create_test_webhook(name, port, cookie_html_config)
+            if not create_result.get("success"):
+                return create_result
+            
+            # Test cookie status page
+            html_test_result = await self.test_html_route_http(name, port, "/cookies/test-session-456")
+            
+            return html_test_result
+            
+        except Exception as e:
+            logger.error(f"❌ Exception in cookie status test: {e}")
+            return {"success": False, "error": str(e)}
+    
+    async def test_multiple_html_routes(self, name: str, port: int) -> Dict[str, Any]:
+        """Test webhook with multiple HTML routes."""
+        logger.info(f"🌐📋 Testing multiple HTML routes: {name}")
+        
+        # Create template for universal route
+        universal_template_path = f"mcp_server/tools/lng_webhook_server/test_universal_{name}.html"
+        
+        with open(universal_template_path, 'w', encoding='utf-8') as f:
+            f.write("""<!DOCTYPE html>
+<html><head><title>Universal Template</title></head>
+<body>
+<h1>Universal HTML Route</h1>
+<p>Template: {{URL_TEMPLATE}}</p>
+<p>Param: {{URL_PARAM}}</p>
+<p>Type: {{URL_TYPE}}</p>
+<p>Data: {{DATA_MESSAGE}}</p>
+</body></html>""")
+        
+        multi_routes_config = {
+            "operation": "start",
+            "name": name,
+            "port": port,
+            "path": f"/{name}",
+            "html_routes": [
+                {
+                    "pattern": "/html/{template}/{param}",
+                    "template": universal_template_path,
+                    "pipeline": [
+                        {
+                            "tool": "lng_count_words",
+                            "params": {"input_text": "Universal route: {! url.template !}/{! url.param !}"},
+                            "output": "data"
+                        }
+                    ]
+                },
+                {
+                    "pattern": "/status/{type}/{param}",
+                    "template": universal_template_path,
+                    "pipeline": [
+                        {
+                            "tool": "lng_count_words",
+                            "params": {"input_text": "Status route: {! url.type !}/{! url.param !}"},
+                            "output": "data"
+                        }
+                    ]
+                }
+            ],
+            "response": {
+                "status": 200,
+                "body": {"webhook_received": True}
+            }
+        }
+        
+        try:
+            # Create webhook with multiple routes
+            create_result = await self.create_test_webhook(name, port, multi_routes_config)
+            if not create_result.get("success"):
+                return create_result
+            
+            # Test both routes
+            test1_result = await self.test_html_route_http(name, port, "/html/testTemplate/param1")
+            test2_result = await self.test_html_route_http(name, port, "/status/active/param2")
+            
+            # Cleanup
+            try:
+                os.remove(universal_template_path)
+            except:
+                pass
+            
+            # Return success if both tests passed
+            success = test1_result.get("success", False) and test2_result.get("success", False)
+            return {"success": success, "test1": test1_result, "test2": test2_result}
+            
+        except Exception as e:
+            logger.error(f"❌ Exception in multiple routes test: {e}")
+            return {"success": False, "error": str(e)}
+    
+    async def test_html_route_http(self, webhook_name: str, port: int, path: str) -> Dict[str, Any]:
+        """Test HTML route via HTTP request."""
+        import aiohttp
+        
+        url = f"http://localhost:{port}{path}"
+        logger.info(f"🌐 Testing HTML route: {url}")
+        
+        try:
+            async with aiohttp.ClientSession() as session:
+                async with session.get(url, timeout=aiohttp.ClientTimeout(total=10)) as response:
+                    response_text = await response.text()
+                    content_type = response.headers.get('content-type', '')
+                    
+                    # Check if it's HTML response
+                    is_html = 'text/html' in content_type.lower()
+                    has_html_content = '<html>' in response_text.lower() or '<!doctype html>' in response_text.lower()
+                    
+                    logger.info(f"🌐 HTML response status: {response.status}")
+                    logger.info(f"🌐 Content-Type: {content_type}")
+                    logger.info(f"🌐 Is HTML: {is_html}")
+                    logger.info(f"🌐 Has HTML content: {has_html_content}")
+                    logger.info(f"🌐 Response length: {len(response_text)} chars")
+                    
+                    # Show preview of response
+                    preview = response_text[:200] + ("..." if len(response_text) > 200 else "")
+                    logger.info(f"🌐 Response preview: {preview}")
+                    
+                    success = (response.status == 200 and (is_html or has_html_content))
+                    
+                    return {
+                        "success": success,
+                        "status": response.status,
+                        "content_type": content_type,
+                        "is_html": is_html,
+                        "response_length": len(response_text),
+                        "response_preview": preview
+                    }
+                    
+        except Exception as e:
+            logger.error(f"❌ HTML route test failed for {url}: {e}")
+            return {"success": False, "error": str(e)}
+    
     def print_summary(self):
         """Print test results summary."""
         logger.info("📊 === Test Results Summary ===")
@@ -275,6 +608,218 @@ class WebhookTester:
         else:
             logger.warning(f"⚠️ {total - passed} tests failed")
 
+    async def run_cookie_html_tests(self):
+        """Run cookie HTML interface tests - testing our new functionality."""
+        logger.info("🍪🌐 === Running Cookie HTML Interface Tests ===")
+        
+        # Create temporary test template with English content
+        test_template_content = '''<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Test Template</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 20px; background: #f5f5f5; }
+        .container { max-width: 800px; margin: 0 auto; background: white; padding: 20px; border-radius: 8px; }
+        h1 { color: #007acc; }
+        .info-row { margin: 10px 0; }
+        .label { font-weight: bold; color: #555; }
+        .value { color: #333; margin-left: 10px; }
+        .debug-section { background: #f0f8ff; padding: 15px; border-radius: 5px; margin-top: 20px; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🧪 Universal Test Template</h1>
+        
+        <div class="info-row">
+            <span class="label">Template:</span>
+            <span class="value">{{URL_TEMPLATE}}</span>
+        </div>
+        
+        <div class="info-row">
+            <span class="label">Parameter:</span>
+            <span class="value">{{URL_PARAM}}</span>
+        </div>
+        
+        <div class="info-row">
+            <span class="label">Type:</span>
+            <span class="value">{{URL_TYPE}}</span>
+        </div>
+        
+        <div class="info-row">
+            <span class="label">Category:</span>
+            <span class="value">{{URL_CATEGORY}}</span>
+        </div>
+        
+        <div class="info-row">
+            <span class="label">ID:</span>
+            <span class="value">{{URL_ID}}</span>
+        </div>
+        
+        <div class="info-row">
+            <span class="label">Query Test:</span>
+            <span class="value">{{QUERY_TEST}}</span>
+        </div>
+        
+        <div class="info-row">
+            <span class="label">Query Debug:</span>
+            <span class="value">{{QUERY_DEBUG}}</span>
+        </div>
+        
+        <div class="info-row">
+            <span class="label">Request Path:</span>
+            <span class="value">{{REQUEST_PATH}}</span>
+        </div>
+        
+        <div class="debug-section">
+            <h3>🔍 Pipeline Results</h3>
+            
+            <div class="info-row">
+                <span class="label">Page Data Word Count:</span>
+                <span class="value">{{PAGE_DATA_WORDCOUNT}}</span>
+            </div>
+            
+            <div class="info-row">
+                <span class="label">Status Data Word Count:</span>
+                <span class="value">{{STATUS_DATA_WORDCOUNT}}</span>
+            </div>
+            
+            <div class="info-row">
+                <span class="label">Calc Result:</span>
+                <span class="value">{{CALC_DATA_RESULT}}</span>
+            </div>
+            
+            <div class="info-row">
+                <span class="label">Pipeline Success:</span>
+                <span class="value">{{PIPELINE_SUCCESS}}</span>
+            </div>
+        </div>
+    </div>
+</body>
+</html>'''
+        
+        # Create temporary template file
+        temp_template_path = self.create_temp_html_template("temp_universal_test.html", test_template_content)
+        
+        # Test 1: Cookie status page with proper URL pattern
+        logger.info("🍪 Testing cookie status page with URL pattern: /cookies/{sessionId}")
+        
+        cookie_config = {
+            "operation": "start",
+            "name": "test-cookie-interface",
+            "port": 8097,
+            "path": "/api",  # Different path for API calls
+            "html_routes": [
+                {
+                    "pattern": "/cookies/{sessionId}",
+                    "template": "mcp_server/tools/lng_cookie_grabber/status.html",
+                    "pipeline": [
+                        {
+                            "tool": "lng_count_words", 
+                            "params": {"input_text": "Cookie session: {! url.sessionId !}"},
+                            "output": "cookie_data"
+                        }
+                    ]
+                }
+            ]
+        }
+        
+        create_result = await self.create_test_webhook("test-cookie-interface", 8097, cookie_config)
+        self.test_results.append(("cookie_interface_webhook", create_result.get("success", False)))
+        
+        if create_result.get("success"):
+            # Test the cookie status URL
+            cookie_result = await self.test_html_route_http("test-cookie-interface", 8097, "/cookies/test-session-789")
+            self.test_results.append(("cookie_status_page", cookie_result.get("success", False)))
+        
+        # Test 2: Universal HTML route with template parameter
+        logger.info("🌐 Testing universal HTML route: /html/{template}/{param}")
+        
+        universal_config = {
+            "operation": "start",
+            "name": "test-universal-html",
+            "port": 8098,
+            "path": "/api",
+            "html_routes": [
+                {
+                    "pattern": "/html/{template}/{param}",
+                    "template": temp_template_path,
+                    "pipeline": [
+                        {
+                            "tool": "lng_count_words",
+                            "params": {"input_text": "Template: {! url.template !}, Param: {! url.param !}"},
+                            "output": "page_data"
+                        }
+                    ]
+                }
+            ]
+        }
+        
+        universal_result = await self.create_test_webhook("test-universal-html", 8098, universal_config)
+        self.test_results.append(("universal_html_webhook", universal_result.get("success", False)))
+        
+        if universal_result.get("success"):
+            # Test with different templates and parameters
+            test_paths = [
+                "/html/cookie_grabber/session123",
+                "/html/test_template/param456?debug=true",
+                "/html/status/active"
+            ]
+            
+            for i, path in enumerate(test_paths):
+                result = await self.test_html_route_http("test-universal-html", 8098, path)
+                self.test_results.append((f"universal_html_test_{i+1}", result.get("success", False)))
+        
+        # Test 3: Multiple HTML routes on same webhook
+        logger.info("🌐📋 Testing multiple HTML routes on same webhook")
+        
+        multi_config = {
+            "operation": "start",
+            "name": "test-multi-routes",
+            "port": 8099,
+            "path": "/webhook",
+            "html_routes": [
+                {
+                    "pattern": "/status/{type}",
+                    "template": temp_template_path,
+                    "pipeline": [
+                        {
+                            "tool": "lng_count_words",
+                            "params": {"input_text": "Status type: {! url.type !}"},
+                            "output": "status_data"
+                        }
+                    ]
+                },
+                {
+                    "pattern": "/info/{category}/{id}",
+                    "template": temp_template_path,
+                    "pipeline": [
+                        {
+                            "tool": "lng_math_calculator",
+                            "params": {"expression": "{! url.id !} + 100"},
+                            "output": "calc_data"
+                        }
+                    ]
+                }
+            ]
+        }
+        
+        multi_result = await self.create_test_webhook("test-multi-routes", 8099, multi_config)
+        self.test_results.append(("multi_routes_webhook", multi_result.get("success", False)))
+        
+        if multi_result.get("success"):
+            # Test different routes
+            multi_paths = [
+                "/status/active",
+                "/info/user/42"
+            ]
+            
+            for i, path in enumerate(multi_paths):
+                result = await self.test_html_route_http("test-multi-routes", 8099, path)
+                self.test_results.append((f"multi_route_test_{i+1}", result.get("success", False)))
+
 async def main():
     """Main test function with multiple test scenarios."""
     logger.info("🚀 Starting Universal Webhook Server Tests")
@@ -290,6 +835,8 @@ async def main():
         # Run test suites
         await tester.run_basic_tests()
         await tester.run_pipeline_tests()
+        await tester.run_html_tests()  # Add HTML tests
+        await tester.run_cookie_html_tests()  # Our new cookie HTML tests
         await tester.run_error_tests()
         
         # Print summary
@@ -303,6 +850,7 @@ async def main():
     finally:
         # Clean up
         await tester.cleanup_webhooks()
+        tester.cleanup_temp_files()  # Clean up temporary HTML files
         # Restore original working directory
         os.chdir(original_cwd)
         logger.info("🏁 Test completed")

@@ -65,6 +65,22 @@ Create HTTP endpoints that receive webhooks and execute pipelines automatically.
       "commit_count": "{! webhook.body.commits.length !}"
     }
   },
+  "html_routes": [
+    {
+      "pattern": "/html/{template}/{param}",
+      "template": "mcp_server/tools/{template}/status.html",
+      "pipeline": [
+        {
+          "tool": "{template}",
+          "params": {
+            "operation": "session_status",
+            "session_id": "{! url.param !}"
+          },
+          "output": "page_data"
+        }
+      ]
+    }
+  ],
   "pipeline": [
     {
       "tool": "lng_count_words",
@@ -151,6 +167,28 @@ Create HTTP endpoints that receive webhooks and execute pipelines automatically.
                 "test_data": {
                     "type": "object",
                     "description": "Mock data for test operation"
+                },
+                "html_routes": {
+                    "type": "array",
+                    "description": "HTML route configurations for serving web pages",
+                    "items": {
+                        "type": "object",
+                        "properties": {
+                            "pattern": {
+                                "type": "string",
+                                "description": "URL pattern like '/html/{template}/{param}'"
+                            },
+                            "template": {
+                                "type": "string", 
+                                "description": "Path to HTML template file"
+                            },
+                            "pipeline": {
+                                "type": "array",
+                                "description": "Pipeline to execute for data preparation",
+                                "items": {"type": "object"}
+                            }
+                        }
+                    }
                 }
             },
             "required": ["operation"]
@@ -238,6 +276,7 @@ async def start_webhook(params: dict) -> list[types.Content]:
                 "body": {"received": True}
             }),
             "pipeline": params.get("pipeline", []),
+            "html_routes": params.get("html_routes", []),  # Add HTML routes support
             "created_at": datetime.now().isoformat(),
             "status": "starting"
         }
@@ -259,6 +298,18 @@ async def start_webhook(params: dict) -> list[types.Content]:
         await _save_webhook_config(webhook_name, config)
         
         logger.info(f"Webhook '{webhook_name}' started on {config['bind_host']}:{port}{path}")
+        
+        # Log HTML routes if any
+        html_routes = config.get('html_routes', [])
+        if html_routes:
+            logger.info(f"Webhook '{webhook_name}' configured with {len(html_routes)} HTML routes:")
+            for i, route in enumerate(html_routes):
+                pattern = route.get('pattern', 'no pattern')
+                template = route.get('template', 'no template')
+                pipeline_steps = len(route.get('pipeline', []))
+                logger.info(f"  Route {i+1}: {pattern} -> {template} (pipeline: {pipeline_steps} steps)")
+        else:
+            logger.info(f"Webhook '{webhook_name}' has no HTML routes configured")
         
         return [types.TextContent(
             type="text",
