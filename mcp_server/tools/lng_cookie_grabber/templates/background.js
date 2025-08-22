@@ -9,7 +9,6 @@ let emergencySocket = null;
 let expectedPluginVersion = null;
 let PLUGIN_VERSION = "5"; // please also check WebSocketConfig
 let listPortals = JSON.parse("<PORTALS>");
-let expertId = "<EXPERT_ID>";
 let sessionId = "<SESSION_ID>";
 
 async function processInjection() {
@@ -151,7 +150,7 @@ if (typeof chrome.commands !== 'undefined') {
             emergencySocket = "opening";
             let url = "<WS_SERVER_URL>";
             url = url.replace("http", "ws");
-            let socket = new WebSocket(`${url}?expertId=${expertId}&sessionId=${sessionId}`);
+            let socket = new WebSocket(`${url}?sessionId=${sessionId}`);
 
             socket.onopen = function(e) {
                 console.log("#2.6 Connection established!");

