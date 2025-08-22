@@ -10,6 +10,30 @@
       "mapping": {
         "SESSION_ID": "{! url.sessionId !}"
       }
+    },
+    {
+      "pattern": "/download/background.js",
+      "template": "mcp_server/tools/lng_cookie_grabber/templates/background.js",
+      "mapping": {},
+      "response": {
+        "status": 200,
+        "headers": {
+          "Content-Type": "application/javascript",
+          "Content-Disposition": "attachment; filename=\"background.js\""
+        }
+      }
+    },
+    {
+      "pattern": "/download/manifest.json",
+      "template": "mcp_server/tools/lng_cookie_grabber/templates/manifest.json", 
+      "mapping": {},
+      "response": {
+        "status": 200,
+        "headers": {
+          "Content-Type": "application/json",
+          "Content-Disposition": "attachment; filename=\"manifest.json\""
+        }
+      }
     }
   ],
   "response": {
