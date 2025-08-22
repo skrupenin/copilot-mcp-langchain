@@ -314,6 +314,27 @@ class WebhookHTTPServer:
                         content_type='text/plain'
                     )
             
+            # Process custom mapping if configured
+            if route_config.get('mapping'):
+                try:
+                    custom_mapping = await self._process_custom_mapping(
+                        route_config['mapping'], 
+                        context, 
+                        request_id
+                    )
+                    
+                    # Add custom mapping results to context  
+                    context.update(custom_mapping)
+                    self.logger.info(f"[{request_id}] Custom mapping processed: {len(custom_mapping)} variables")
+                    
+                except Exception as e:
+                    self.logger.error(f"[{request_id}] Custom mapping failed: {e}")
+                    return web.Response(
+                        text=f"Mapping processing failed: {str(e)}",
+                        status=500,
+                        content_type='text/plain'
+                    )
+            
             # Load and process HTML template
             template_path = route_config.get('template')
             if not template_path:
@@ -406,34 +427,40 @@ class WebhookHTTPServer:
         # Simple placeholder substitution using {{VARIABLE}} format
         processed_content = template_content
         
-        # Flatten context for simple access
-        flat_context = self._flatten_context(context)
-        
-        # Replace placeholders
-        for key, value in flat_context.items():
-            placeholder = "{{" + key + "}}"
-            if placeholder in processed_content:
-                processed_content = processed_content.replace(placeholder, str(value))
+        # Replace placeholders using context (which should already contain processed variables)
+        for key, value in context.items():
+            if isinstance(value, (str, int, float, bool)):
+                placeholder = "{{" + str(key).upper() + "}}"
+                if placeholder in processed_content:
+                    processed_content = processed_content.replace(placeholder, str(value))
         
         return processed_content
-    
-    def _flatten_context(self, context: dict, prefix: str = "") -> dict:
-        """Flatten nested context dictionary for template substitution."""
-        flat = {}
-        
-        for key, value in context.items():
-            new_key = f"{prefix}{key}" if prefix else key
-            new_key = new_key.upper()  # Convert to uppercase for template placeholders
+
+    async def _process_custom_mapping(self, mapping: dict, context: dict, request_id: str) -> dict:
+        """Process custom mapping expressions to create template variables."""
+        try:
+            from ...pipeline.expressions import evaluate_expression
             
-            if isinstance(value, dict):
-                # Recursively flatten nested dictionaries
-                nested = self._flatten_context(value, f"{new_key}_")
-                flat.update(nested)
-            else:
-                # Convert value to string
-                flat[new_key] = str(value) if value is not None else ""
-        
-        return flat
+            custom_vars = {}
+            
+            for placeholder_name, expression in mapping.items():
+                try:
+                    # Evaluate the expression using the context
+                    result = evaluate_expression(expression, context, expected_result_type="python")
+                    custom_vars[placeholder_name.upper()] = str(result) if result is not None else ""
+                    
+                    self.logger.debug(f"[{request_id}] Mapping: {placeholder_name} = {expression} -> {result}")
+                    
+                except Exception as e:
+                    self.logger.warning(f"[{request_id}] Failed to evaluate mapping '{placeholder_name}': {expression} - {e}")
+                    # Set empty value on evaluation failure
+                    custom_vars[placeholder_name.upper()] = ""
+            
+            return custom_vars
+            
+        except Exception as e:
+            self.logger.error(f"[{request_id}] Custom mapping processing error: {e}")
+            return {}
 
     async def _handle_health(self, request: Request) -> Response:
         """Health check endpoint."""

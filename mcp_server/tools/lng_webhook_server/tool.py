@@ -69,6 +69,14 @@ Create HTTP endpoints that receive webhooks and execute pipelines automatically.
     {
       "pattern": "/html/{template}/{param}",
       "template": "mcp_server/tools/{template}/status.html",
+      "mapping": {
+        "URL_TEMPLATE": "{! url.template !}",
+        "URL_PARAM": "{! url.param !}",
+        "FORMATTED_PARAM": "{! 'Parameter: ' + url.param !}",
+        "PARAM_UPPER": "{! url.param.toUpperCase() !}",
+        "CURRENT_TIME": "{! new Date().toISOString() !}",
+        "PAGE_DATA_COUNT": "{! page_data.wordCount || 0 !}"
+      },
       "pipeline": [
         {
           "tool": "{template}",
@@ -79,6 +87,16 @@ Create HTTP endpoints that receive webhooks and execute pipelines automatically.
           "output": "page_data"
         }
       ]
+    },
+    {
+      "pattern": "/cookies/{sessionId}",
+      "template": "mcp_server/tools/lng_cookie_grabber/status.html",
+      "mapping": {
+        "URL_SESSIONID": "{! url.sessionId !}",
+        "SESSION_DISPLAY": "{! 'Session ID: ' + url.sessionId !}",
+        "SESSION_LENGTH": "[! len(url.sessionId) !]",
+        "IS_VALID_SESSION": "{! url.sessionId.length > 5 !}"
+      }
     }
   ],
   "pipeline": [
@@ -186,6 +204,14 @@ Create HTTP endpoints that receive webhooks and execute pipelines automatically.
                                 "type": "array",
                                 "description": "Pipeline to execute for data preparation",
                                 "items": {"type": "object"}
+                            },
+                            "mapping": {
+                                "type": "object",
+                                "description": "Custom mapping of template placeholders to expressions. Keys are placeholder names (e.g., 'URL_SESSIONID'), values are expressions (e.g., '{! url.sessionId !}' or '[! url.sessionId.upper() !]')",
+                                "additionalProperties": {
+                                    "type": "string",
+                                    "description": "Expression that will be evaluated to provide the placeholder value"
+                                }
                             }
                         }
                     }
