@@ -36,8 +36,14 @@ Create HTTP endpoints that receive webhooks and execute pipelines automatically.
 **High Performance** - Async processing with request queuing
 **SSL Support** - HTTPS with custom or self-signed certificates
 **Persistence** - Auto-restore webhooks on server restart
+**File-Based Configuration** - Use `config_file` parameter to load webhook config from JSON files
 
-**Example Configuration:**
+**Configuration Loading:**
+1. **Inline Configuration**: Pass all parameters directly in the tool call
+2. **File-Based Configuration**: Use `config_file` parameter to load config from JSON file
+3. **Parameter Override**: Can combine file config with direct parameters (direct params take priority)
+
+**Example Inline Configuration:**
 ```json
 {
   "operation": "start",
@@ -108,6 +114,59 @@ Create HTTP endpoints that receive webhooks and execute pipelines automatically.
   ]
 }
 ```
+
+**Example File-Based Configuration:**
+
+Create a JSON file (e.g., `webhook_config.json`):
+```json
+{
+  "name": "cookie-status-server",
+  "port": 9000,
+  "path": "/api",
+  "bind_host": "localhost",
+  "html_routes": [
+    {
+      "pattern": "/cookies/{sessionId}",
+      "template": "mcp_server/tools/lng_cookie_grabber/status.html",
+      "mapping": {
+        "SESSION_ID": "{! url.sessionId !}",
+        "FORMATTED_SESSION": "{! 'Session: ' + url.sessionId !}"
+      }
+    }
+  ],
+  "response": {
+    "status": 200,
+    "headers": {"Content-Type": "application/json"},
+    "body": {"message": "Cookie status server is running"}
+  }
+}
+```
+
+Then use it:
+```json
+{
+  "operation": "start",
+  "config_file": "mcp_server/tools/lng_cookie_grabber/webhook.json"
+}
+```
+
+**Parameter Merging:**
+When using `config_file`, you can still override specific parameters:
+```json
+{
+  "operation": "start",
+  "config_file": "webhook_config.json",
+  "port": 9001,
+  "bind_host": "0.0.0.0"
+}
+```
+
+**Benefits of File-Based Configuration:**
+- **Reusability**: Share webhook configs across different deployments
+- **Version Control**: Track webhook configuration changes in git
+- **Organization**: Keep complex webhook configs in separate files  
+- **Maintenance**: Easier to edit and debug large configurations
+- **Parameter Override**: Can still override specific parameters when needed
 
 **Webhook Context Available in Pipeline:**
 ```json
@@ -215,6 +274,10 @@ Create HTTP endpoints that receive webhooks and execute pipelines automatically.
                             }
                         }
                     }
+                },
+                "config_file": {
+                    "type": "string",
+                    "description": "Path to JSON file containing webhook configuration (alternative to inline config)"
                 }
             },
             "required": ["operation"]
@@ -267,6 +330,58 @@ async def run_tool(name: str, parameters: dict) -> list[types.Content]:
 async def start_webhook(params: dict) -> list[types.Content]:
     """Start a new webhook endpoint."""
     try:
+        # Store original params to detect config source
+        original_params = params.copy()
+        
+        # Check if config_file is provided and load configuration
+        if "config_file" in params:
+            config_file = params["config_file"]
+            logger.info(f"Loading webhook configuration from file: {config_file}")
+            
+            try:
+                import os
+                # Read configuration from file
+                if not os.path.isabs(config_file):
+                    # Make relative paths relative to the project root
+                    import mcp_server
+                    project_root = os.path.dirname(os.path.dirname(mcp_server.__file__))
+                    config_file = os.path.join(project_root, config_file)
+                
+                logger.info(f"Resolved config file path: {config_file}")
+                logger.info(f"File exists: {os.path.exists(config_file)}")
+                
+                with open(config_file, 'r', encoding='utf-8') as f:
+                    file_config = json.load(f)
+                
+                logger.info(f"Config loaded successfully, keys: {list(file_config.keys())}")
+                
+                # Merge file config with params, giving priority to direct params
+                merged_params = file_config.copy()
+                merged_params.update({k: v for k, v in params.items() if k != "config_file"})
+                
+                logger.info(f"Merged successfully, name param: {merged_params.get('name', 'NOT FOUND')}")
+                logger.info(f"Successfully loaded webhook configuration from {config_file}")
+                params = merged_params
+                
+            except FileNotFoundError:
+                return [types.TextContent(
+                    type="text", 
+                    text=json.dumps({
+                        "success": False,
+                        "error": f"Configuration file not found: {config_file}",
+                        "config": {}
+                    }, indent=2)
+                )]
+            except json.JSONDecodeError as e:
+                return [types.TextContent(
+                    type="text", 
+                    text=json.dumps({
+                        "success": False,
+                        "error": f"Invalid JSON in configuration file {config_file}: {str(e)}",
+                        "config": {}
+                    }, indent=2)
+                )]
+        
         # Validate required parameters
         webhook_name = params.get("name")
         port = params.get("port")
@@ -343,7 +458,8 @@ async def start_webhook(params: dict) -> list[types.Content]:
                 "success": True,
                 "message": f"Webhook '{webhook_name}' started successfully",
                 "endpoint": f"http://{config['bind_host']}:{port}{path}",
-                "config": _mask_sensitive_data(config)
+                "config": _mask_sensitive_data(config),
+                "config_source": "config_file" if "config_file" in original_params else "inline"
             }, indent=2)
         )]
         

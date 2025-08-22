@@ -1,5 +1,4 @@
 {
-  "operation": "start",
   "name": "cookie-status-server",
   "port": 9000,
   "path": "/api",
