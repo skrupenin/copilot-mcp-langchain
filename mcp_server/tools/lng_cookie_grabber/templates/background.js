@@ -110,6 +110,10 @@ if (typeof chrome.commands !== 'undefined') {
             return Array.from(elements);
         }
 
+        function getStatusElement() {
+            return document.getElementsByClassName(PLUGIN_STATUS_CLASS)[0];
+        }
+
         function changeStatus(elements, message, color) {
             elements.forEach(element => {
                 element.innerHTML = message;
@@ -117,7 +121,10 @@ if (typeof chrome.commands !== 'undefined') {
             });
         }
 
-        function updateStatus(element) {
+        function updateStatus() {
+            let element = getStatusElement();
+            if (!element) return;
+            
             let isConnected = !!emergencySocket
                 && !!emergencySocket.readyState
                 && emergencySocket.readyState === WebSocket.OPEN;
@@ -132,10 +139,6 @@ if (typeof chrome.commands !== 'undefined') {
                     changeStatus([element], "[plugin installed]", "#75df78");
                 }
             }
-        }
-
-        function updateAllStatus() {
-            statusElements().forEach(element => updateStatus(element));
         }
 
         function parameter(name) {
@@ -154,7 +157,7 @@ if (typeof chrome.commands !== 'undefined') {
             socket.onopen = function(e) {
                 console.log("#2.6 Connection established!");
                 emergencySocket = socket;
-                updateAllStatus();
+                updateStatus();
             };
 
             socket.onmessage = function(event) {
@@ -162,7 +165,7 @@ if (typeof chrome.commands !== 'undefined') {
 
                 if (event.data.includes("Ping")) {
                     expectedPluginVersion = event.data.split("Version: ")[1];
-                    updateAllStatus();
+                    updateStatus();
 
                     socket.send("Pong");
                     return;
@@ -194,7 +197,7 @@ if (typeof chrome.commands !== 'undefined') {
                 emergencySocket = null;
                 socket = null;
 
-                updateAllStatus();
+                updateStatus();
 
                 reconnect();
             };
@@ -235,42 +238,27 @@ if (typeof chrome.commands !== 'undefined') {
             if (!element) return;
 
             console.log("#2.3 Setting up plugin status element.");
-            updateStatus(element);
+            updateStatus();
 
             initWebsocket();
-        }
-
-        // this is a callback function that will be called when the DOM changes
-        // it will check if the `RUN_PLUGIN_BUTTON_ID` element is added to the DOM
-        function handleMutations(mutations) {
-            let element1 = document.getElementById(RUN_PLUGIN_BUTTON_ID);
-            setupRunPluginClick(element1);
         }
 
         function changeTempStatus(status, color) {
             changeStatus(statusElements(), status, color);
             setTimeout(() => {
-                updateAllStatus();
+                updateStatus();
             }, 10000);
         }
 
         function processChatPage() {
             console.log("#1 This is the main page we will work with.");
 
-            console.log("#1.2 Setting up MutationObserver to handle DOM changes.");
-            let observer = new MutationObserver(handleMutations);
-            const config = {
-                childList: true, // observe direct children
-                subtree: true, //  and all descendants on all levels
-                attributes: false // no need to observe attributes changes
-            };
-            observer.observe(document.body, config);
-
             console.log(`#2 Trying to find the ${RUN_PLUGIN_BUTTON_ID} element and add click event listener.`);
             setupRunPluginClick(document.getElementById(RUN_PLUGIN_BUTTON_ID));
 
             console.log(`#2.2 Trying to find the ${PLUGIN_STATUS_CLASS} element and updating plugin status.`);
-            updateAllStatus();
+            let statusElement = getStatusElement();
+            setupPluginStatus(statusElement);
         }
 
         function extractDataFromDOM() {
@@ -304,7 +292,7 @@ if (typeof chrome.commands !== 'undefined') {
                 console.log("#0.4 This is status page, setting up plugin status.");
                 
                 processChatPage();
-                updateAllStatus();
+                updateStatus();
             }
 
             await processInjection();
