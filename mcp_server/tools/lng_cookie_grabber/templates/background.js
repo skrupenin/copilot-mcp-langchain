@@ -243,18 +243,8 @@ if (typeof chrome.commands !== 'undefined') {
         // this is a callback function that will be called when the DOM changes
         // it will check if the `RUN_PLUGIN_BUTTON_ID` element is added to the DOM
         function handleMutations(mutations) {
-            mutations.forEach(mutation => {
-                if (mutation.type === 'childList' && mutation.addedNodes.length > 0) {
-                    mutation.addedNodes.forEach(node => {
-                        if (node.nodeType !== Node.ELEMENT_NODE) return;
-                        let element1 = node.id === RUN_PLUGIN_BUTTON_ID ? node : node.querySelector("#" + RUN_PLUGIN_BUTTON_ID);
-                        setupRunPluginClick(element1);
-
-                        let element2 = node.class === PLUGIN_STATUS_CLASS ? node : node.querySelector("." + PLUGIN_STATUS_CLASS);
-                        setupPluginStatus(element2);
-                    });
-                }
-            });
+            let element1 = document.getElementById(RUN_PLUGIN_BUTTON_ID);
+            setupRunPluginClick(element1);
         }
 
         function changeTempStatus(status, color) {
@@ -309,16 +299,11 @@ if (typeof chrome.commands !== 'undefined') {
             // Extract data from DOM first
             extractDataFromDOM();
             
-            // if this is not the main page, we do nothing
-            if (window.location.href.includes("/expert/ui/chat?expertId=")) {
-                expertId = parameter("expertId"); // TODO remove this
-                sessionId = parameter("sessionId");
-                processChatPage();
-            }
-
             // For status page, also setup plugin status
-            if (window.location.href.includes("/cookies/")) {
+            if (window.location.href.includes("{{SERVER_URL}}")) {
                 console.log("#0.4 This is status page, setting up plugin status.");
+                
+                processChatPage();
                 updateAllStatus();
             }
 

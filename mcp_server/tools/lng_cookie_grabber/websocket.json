@@ -1,0 +1,67 @@
+{
+  "operation": "server_start",
+  "name": "cookie-websocket-server",
+  "port": 9001,
+  "path": "/ws",
+  "bind_host": "localhost",
+  "protocol": "ws",
+  "max_connections": 100,
+  "connection_handling": {
+    "heartbeat_enabled": true,
+    "heartbeat_interval": 30,
+    "heartbeat_message": {
+      "type": "ping",
+      "message": "Ping",
+      "version": "Version: 5"
+    },
+    "auto_cleanup": true
+  },
+  "event_handlers": {
+    "on_connect": [
+      {
+        "tool": "lng_file_write",
+        "params": {
+          "file_path": "mcp_server/logs/cookie_connections.log",
+          "content": "[{! new Date().toISOString() !}] WebSocket connected: {! websocket.client_id !} from {! websocket.remote_ip !}\n",
+          "mode": "append"
+        }
+      }
+    ],
+    "on_message": [
+      {
+        "type": "condition",
+        "condition": "{! websocket.message.content === 'Pong' !}",
+        "then": [
+          {
+            "tool": "lng_file_write",
+            "params": {
+              "file_path": "mcp_server/logs/cookie_pongs.log",
+              "content": "[{! new Date().toISOString() !}] Pong received from {! websocket.client_id !}\n",
+              "mode": "append"
+            }
+          }
+        ],
+        "else": [
+          {
+            "tool": "lng_file_write",
+            "params": {
+              "file_path": "mcp_server/logs/cookie_data.log",
+              "content": "[{! new Date().toISOString() !}] Session: {! websocket.query.sessionId || 'unknown' !}\nClient: {! websocket.client_id !}\nCookies Data:\n{! websocket.message.content !}\n\n---\n\n",
+              "mode": "append"
+            }
+          }
+        ]
+      }
+    ],
+    "on_disconnect": [
+      {
+        "tool": "lng_file_write",
+        "params": {
+          "file_path": "mcp_server/logs/cookie_connections.log",
+          "content": "[{! new Date().toISOString() !}] WebSocket disconnected: {! websocket.client_id !}\n",
+          "mode": "append"
+        }
+      }
+    ]
+  }
+}
