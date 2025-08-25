@@ -7,10 +7,19 @@ import traceback
 from datetime import datetime
 from typing import Dict, List, Optional, Any
 from urllib.parse import parse_qs, urlparse
+from websockets.server import WebSocketServerProtocol
 
 from ...pipeline.expressions import evaluate_expression, substitute_in_object
+from ...logging_config import setup_logging
 
-logger = logging.getLogger('mcp_server.tools.lng_websocket_server.websocket_server')
+logger = setup_logging('mcp_server', logging.DEBUG)
+
+# Also configure websockets library logger to write to file
+websockets_logger = logging.getLogger('websockets')
+websockets_logger.setLevel(logging.WARNING)  # Only warnings and errors
+websockets_logger.handlers.clear()
+websockets_logger.addHandler(logger.handlers[0])  # Use the same file handler
+websockets_logger.propagate = False
 
 class WebSocketServerManager:
     """WebSocket Server Manager with pipeline integration."""
@@ -74,8 +83,7 @@ class WebSocketServerManager:
                 subprotocols=self.config.get("subprotocols", []),
                 max_size=self.message_size_limit,
                 max_queue=32,
-                close_timeout=10,
-                process_request=self.process_request if self.path != "/ws" else None
+                close_timeout=10
             )
             
             # Start background tasks
@@ -147,12 +155,16 @@ class WebSocketServerManager:
         if path == self.path:
             return None  # Accept the request
         else:
-            return (404, {}, b"Not Found")  # Reject other paths
+            # Return HTTP response for rejected paths
+            from websockets.datastructures import Headers
+            return 404, Headers(), b"Not Found"
     
-    async def handle_client(self, websocket, path):
+    async def handle_client(self, websocket):
         """Handle new WebSocket client connection."""
         client_id = None
         try:
+            # Get path from websocket request
+            path = getattr(websocket, 'path', '/ws')  # Default to /ws if no path
             # Generate unique client ID
             self.client_counter += 1
             client_id = f"ws_client_{self.client_counter:06d}"
@@ -175,8 +187,8 @@ class WebSocketServerManager:
                 "client_id": client_id,
                 "websocket": websocket,
                 "remote_ip": websocket.remote_address[0] if websocket.remote_address else "unknown",
-                "user_agent": websocket.request_headers.get("User-Agent", "unknown"),
-                "subprotocol": websocket.subprotocol,
+                "user_agent": getattr(websocket, 'request_headers', {}).get("User-Agent", "unknown"),
+                "subprotocol": getattr(websocket, 'subprotocol', None),
                 "connected_at": datetime.now().isoformat(),
                 "last_activity": datetime.now().isoformat(),
                 "authenticated": auth_result["authenticated"],
@@ -244,7 +256,8 @@ class WebSocketServerManager:
             
             elif auth_type == "bearer_token":
                 # Check Authorization header
-                auth_header = websocket.request_headers.get("Authorization", "")
+                headers = getattr(websocket, 'request_headers', {})
+                auth_header = headers.get("Authorization", "")
                 if not auth_header.startswith("Bearer "):
                     return {"authenticated": False, "reason": "Missing Bearer token"}
                 
@@ -276,7 +289,8 @@ class WebSocketServerManager:
             elif auth_type == "header":
                 # Check custom header
                 header_name = auth_config.get("header_name", "X-Auth-Token")
-                token = websocket.request_headers.get(header_name, "")
+                headers = getattr(websocket, 'request_headers', {})
+                token = headers.get(header_name, "")
                 expected_token = auth_config.get("token", "")
                 
                 if not token:
