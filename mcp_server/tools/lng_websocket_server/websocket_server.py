@@ -57,6 +57,30 @@ class WebSocketServerManager:
         
         # Expression evaluation - use function instead of class
         
+    def _safe_parse_datetime(self, date_value, fallback=None):
+        """
+        Safely parse datetime from various formats.
+        
+        Args:
+            date_value: Can be datetime object, ISO string, or None
+            fallback: Fallback datetime if parsing fails (defaults to now)
+            
+        Returns:
+            datetime: Parsed datetime object
+        """
+        if fallback is None:
+            fallback = datetime.now()
+            
+        if isinstance(date_value, datetime):
+            return date_value
+        elif isinstance(date_value, str):
+            try:
+                return datetime.fromisoformat(date_value)
+            except ValueError:
+                return fallback
+        else:
+            return fallback
+        
         # Heartbeat and cleanup tasks
         self.heartbeat_task = None
         self.cleanup_task = None
@@ -373,7 +397,10 @@ class WebSocketServerManager:
             now = datetime.now()
             
             # Reset rate limit counter if minute passed
-            if (now - datetime.fromisoformat(client_info.get("rate_limit_reset", now.isoformat()))).seconds >= 60:
+            rate_limit_reset = client_info.get("rate_limit_reset", now.isoformat())
+            reset_time = self._safe_parse_datetime(rate_limit_reset, now)
+            
+            if (now - reset_time).seconds >= 60:
                 client_info["rate_limit_count"] = 0
                 client_info["rate_limit_reset"] = now.isoformat()
             
@@ -496,13 +523,14 @@ class WebSocketServerManager:
             evaluated_params = substitute_in_object(tool_params, context)
             
             # Import and execute tool dynamically
-            from ...tools.tool_registry import get_tool
-            tool_function = get_tool(tool_name)
+            from ...tools.tool_registry import run_tool
             
-            if tool_function:
-                await tool_function(tool_name, evaluated_params)
-            else:
-                logger.warning(f"Tool '{tool_name}' not found for handler execution")
+            try:
+                await run_tool(tool_name, evaluated_params)
+            except ValueError as e:
+                logger.warning(f"Tool '{tool_name}' not found for handler execution: {e}")
+            except Exception as e:
+                logger.error(f"Error running tool '{tool_name}': {e}")
                 
         except Exception as e:
             logger.error(f"Error executing single handler: {e}")
@@ -678,8 +706,15 @@ class WebSocketServerManager:
                 
                 for client_id, client_info in self.clients.items():
                     try:
-                        last_activity = datetime.fromisoformat(client_info["last_activity"])
-                        if (now - last_activity).seconds > timeout_seconds:
+                        last_activity = client_info.get("last_activity", now.isoformat())
+                        # Ensure last_activity is a string
+                        if isinstance(last_activity, datetime):
+                            last_activity = last_activity.isoformat()
+                        elif not isinstance(last_activity, str):
+                            last_activity = now.isoformat()
+                        
+                        last_activity_dt = self._safe_parse_datetime(last_activity, now)
+                        if (now - last_activity_dt).seconds > timeout_seconds:
                             stale_clients.append(client_id)
                     except Exception as e:
                         logger.warning(f"Error checking client {client_id} activity: {e}")
@@ -691,7 +726,15 @@ class WebSocketServerManager:
                     logger.info(f"Cleaned up stale client {client_id}")
                 
                 # Update metrics
-                self.metrics["uptime_seconds"] = (now - datetime.fromisoformat(self.metrics["started_at"])).seconds
+                started_at = self.metrics.get("started_at", now.isoformat())
+                # Ensure started_at is a string
+                if isinstance(started_at, datetime):
+                    started_at = started_at.isoformat()
+                elif not isinstance(started_at, str):
+                    started_at = now.isoformat()
+                    
+                started_at_dt = self._safe_parse_datetime(started_at, now)
+                self.metrics["uptime_seconds"] = (now - started_at_dt).seconds
                 
         except asyncio.CancelledError:
             logger.info("Cleanup loop cancelled")
