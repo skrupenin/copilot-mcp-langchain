@@ -32,7 +32,7 @@
         "tool": "lng_file_write",
         "params": {
           "file_path": "mcp_server/logs/websocket/cookie-websocket-server.log",
-          "content": "[{! new Date().toISOString() !}] MESSAGE: Client={! websocket.client_id !} Type={! typeof websocket.message.content !} Length={! websocket.message.content.length !}\nContent: {! websocket.message.content !}\n--- END MESSAGE ---\n\n",
+          "content": "[{! new Date().toISOString() !}] MESSAGE: Client={! websocket.client_id !} Type={! typeof websocket.message.content !} Length={! websocket.message.content.length !} Content:\n============================\n{! websocket.message.content !}\n============================\n",
           "mode": "append"
         }
       }
