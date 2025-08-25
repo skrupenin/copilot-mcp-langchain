@@ -32,33 +32,9 @@
         "tool": "lng_file_write",
         "params": {
           "file_path": "mcp_server/logs/websocket/cookie-websocket-server.log",
-          "content": "[{! new Date().toISOString() !}] RAW MESSAGE: Client={! websocket.client_id !} Type={! typeof websocket.message.content !} Length={! websocket.message.content.length !}\nContent: {! websocket.message.content !}\n--- END RAW ---\n\n",
+          "content": "[{! new Date().toISOString() !}] MESSAGE: Client={! websocket.client_id !} Type={! typeof websocket.message.content !} Length={! websocket.message.content.length !}\nContent: {! websocket.message.content !}\n--- END MESSAGE ---\n\n",
           "mode": "append"
         }
-      },
-      {
-        "type": "condition",
-        "condition": "{! websocket.message.content === 'Pong' !}",
-        "then": [
-          {
-            "tool": "lng_file_write",
-            "params": {
-              "file_path": "mcp_server/logs/websocket/cookie-websocket-server.log",
-              "content": "[{! new Date().toISOString() !}] PONG: Received from {! websocket.client_id !}\n",
-              "mode": "append"
-            }
-          }
-        ],
-        "else": [
-          {
-            "tool": "lng_file_write",
-            "params": {
-              "file_path": "mcp_server/logs/websocket/cookie-websocket-server.log",
-              "content": "[{! new Date().toISOString() !}] COOKIES: Session={! websocket.query.sessionId || 'unknown' !} Client={! websocket.client_id !}\n{! websocket.message.content !}\n--- END COOKIES ---\n\n",
-              "mode": "append"
-            }
-          }
-        ]
       }
     ],
     "on_disconnect": [
