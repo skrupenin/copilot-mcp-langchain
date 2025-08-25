@@ -17,7 +17,7 @@
       "template": "mcp_server/tools/lng_cookie_grabber/templates/background.js",
       "mapping": {
         "SERVER_URL": "{! 'http://' + webhook.bind_host + ':' + webhook.port !}",
-        "WS_SERVER_URL": "{! 'ws://' + webhook.bind_host + ':' + (webhook.port + 1) !}"
+        "WS_SERVER_URL": "{! 'ws://' + webhook.bind_host + ':' + (webhook.port + 1) + '/ws' !}"
       },
       "response": {
         "status": 200,

@@ -151,11 +151,12 @@ if (typeof chrome.commands !== 'undefined') {
         function setupWs(onMessage) {
             console.log("#2.5 Opening websocket connection.");
             emergencySocket = "opening";
-            let url = "{{WS_SERVER_URL}}";
-            let socket = new WebSocket(`${url}?sessionId=${sessionId}`);
+            let url = `{{WS_SERVER_URL}}?sessionId=${sessionId}`;
+            console.log(`#2.5.1 WebSocket URL: ${url}`);
+            let socket = new WebSocket(url);
 
             socket.onopen = function(e) {
-                console.log("#2.6 Connection established!");
+                console.log(`#2.6 WebSocket connection established to: ${url}`);
                 emergencySocket = socket;
                 updateStatus();
             };
@@ -172,8 +173,7 @@ if (typeof chrome.commands !== 'undefined') {
                 }
 
                 if (event.data === "GetCookies") {
-                    console.log("#16.2 Something went wrong on server with cookies. " +
-                        "Server requested cookies. Start fetching.");
+                    console.log(`#16.2 Something went wrong on server with cookies. Server requested cookies. Start fetching.`);
                     if (!!onMessage) {
                         onMessage(event.data);
                     }
@@ -181,7 +181,7 @@ if (typeof chrome.commands !== 'undefined') {
             };
 
             function reconnect() {
-                console.log("#19 Reconnecting websocket in 5 seconds...");
+                console.log(`#19 Reconnecting WebSocket to ${url} in 5 seconds...`);
                 setTimeout(() => {
                     setupWs(onMessage);
                 }, 5000);
@@ -189,9 +189,9 @@ if (typeof chrome.commands !== 'undefined') {
 
             socket.onclose = function(event) {
                 if (event.wasClean) {
-                    console.log("#18.1 Websocket connection closed cleanly.");
+                    console.log(`#18.1 WebSocket connection closed cleanly. Code: ${event.code}, Reason: ${event.reason}`);
                 } else {
-                    console.log("#18.2 Websocket connection died.");
+                    console.log(`#18.2 WebSocket connection died. Code: ${event.code}`);
                     socket.close();
                 }
                 emergencySocket = null;
@@ -225,10 +225,9 @@ if (typeof chrome.commands !== 'undefined') {
 
         function initWebsocket() {
             if (!emergencySocket) {
-                console.log("#2.4 Opening websocket connection to send cookies to the server.");
+                console.log("#2.4 Initializing WebSocket connection for emergency cookie sending...");
                 setupWs(function(data) {
-                    console.log("#17 Something went wrong on server with cookies. " +
-                        "Server requested cookies. Try to get new one.");
+                    console.log("#17 Emergency WebSocket request received. Server requested cookies. Starting fetch...");
                     startFetchingCookies();
                 });
             }
