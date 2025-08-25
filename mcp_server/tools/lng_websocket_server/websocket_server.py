@@ -199,6 +199,13 @@ class WebSocketServerManager:
         try:
             # Get path from websocket request
             path = getattr(websocket, 'path', '/ws')  # Default to /ws if no path
+            
+            # Parse query parameters from WebSocket URL
+            url_parts = urlparse(path)
+            query_params = parse_qs(url_parts.query)
+            # Flatten query params (take first value if multiple)
+            query_params = {k: v[0] if v else '' for k, v in query_params.items()}
+            
             # Generate unique client ID
             self.client_counter += 1
             client_id = f"ws_client_{self.client_counter:06d}"
@@ -223,6 +230,8 @@ class WebSocketServerManager:
                 "remote_ip": websocket.remote_address[0] if websocket.remote_address else "unknown",
                 "user_agent": getattr(websocket, 'request_headers', {}).get("User-Agent", "unknown"),
                 "subprotocol": getattr(websocket, 'subprotocol', None),
+                "path": path,
+                "query_params": query_params,
                 "connected_at": datetime.now().isoformat(),
                 "last_activity": datetime.now().isoformat(),
                 "authenticated": auth_result["authenticated"],
@@ -478,6 +487,8 @@ class WebSocketServerManager:
                     "remote_ip": client_info["remote_ip"],
                     "user_agent": client_info["user_agent"],
                     "subprotocol": client_info["subprotocol"],
+                    "path": client_info.get("path", ""),
+                    "query_params": client_info.get("query_params", {}),
                     "authenticated": client_info["authenticated"],
                     "connected_at": client_info["connected_at"],
                     "message_count": client_info["message_count"]
