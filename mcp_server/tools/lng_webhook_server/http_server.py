@@ -43,30 +43,8 @@ class WebhookHTTPServer:
         
     def _setup_logger(self):
         """Setup dedicated logger for this webhook endpoint."""
-        timestamp = datetime.now().strftime("%Y-%m-%dT%H-%M-%S")
-        log_file = f"mcp_server/logs/webhook/{self.name}_{timestamp}.log"
-        
-        # Create endpoint-specific logger
-        endpoint_logger = logging.getLogger(f'webhook.{self.name}')
-        endpoint_logger.setLevel(logging.INFO)
-        
-        # Remove existing handlers to avoid duplicates
-        for handler in endpoint_logger.handlers[:]:
-            endpoint_logger.removeHandler(handler)
-        
-        # File handler
-        import os
-        os.makedirs(os.path.dirname(log_file), exist_ok=True)
-        file_handler = logging.FileHandler(log_file, encoding='utf-8')
-        file_handler.setLevel(logging.INFO)
-        
-        # Formatter for human-readable logs
-        formatter = logging.Formatter(
-            '%(asctime)s [%(levelname)s] %(message)s',
-            datefmt='%Y-%m-%d %H:%M:%S'
-        )
-        file_handler.setFormatter(formatter)
-        endpoint_logger.addHandler(file_handler)
+        from ...logging_config import setup_instance_logger
+        return setup_instance_logger(self.name, 'webhook')
         
         return endpoint_logger
     

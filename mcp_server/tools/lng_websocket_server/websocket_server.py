@@ -14,13 +14,6 @@ from ...logging_config import setup_logging
 
 logger = setup_logging('mcp_server', logging.DEBUG)
 
-# Also configure websockets library logger to write to file
-websockets_logger = logging.getLogger('websockets')
-websockets_logger.setLevel(logging.WARNING)  # Only warnings and errors
-websockets_logger.handlers.clear()
-websockets_logger.addHandler(logger.handlers[0])  # Use the same file handler
-websockets_logger.propagate = False
-
 class WebSocketServerManager:
     """WebSocket Server Manager with pipeline integration."""
     
@@ -46,6 +39,9 @@ class WebSocketServerManager:
         self.event_handlers = config.get("event_handlers", {})
         self.auto_responses = config.get("auto_responses", {})
         
+        # Setup dedicated logger for this WebSocket endpoint
+        self.logger = self._setup_logger()
+        
         # Metrics
         self.metrics = {
             "total_connections": 0,
@@ -56,6 +52,20 @@ class WebSocketServerManager:
         }
         
         # Expression evaluation - use function instead of class
+        
+    def _setup_logger(self):
+        """Setup dedicated logger for this WebSocket endpoint."""
+        from ...logging_config import setup_instance_logger
+        instance_logger = setup_instance_logger(self.name, 'websocket')
+        
+        # Also configure websockets library logger to write to the same file
+        websockets_logger = logging.getLogger('websockets')
+        websockets_logger.setLevel(logging.WARNING)  # Only warnings and errors
+        websockets_logger.handlers.clear()
+        websockets_logger.addHandler(instance_logger.handlers[0])  # Use the same file handler
+        websockets_logger.propagate = False
+        
+        return instance_logger
         
     def _safe_parse_datetime(self, date_value, fallback=None):
         """
@@ -96,7 +106,7 @@ class WebSocketServerManager:
                     certfile=self.ssl_config["cert_file"],
                     keyfile=self.ssl_config["key_file"]
                 )
-                logger.info(f"SSL enabled for WebSocket server '{self.name}'")
+                self.logger.info(f"SSL enabled for WebSocket server '{self.name}'")
             
             # Start WebSocket server
             self.server = await websockets.serve(
@@ -120,7 +130,7 @@ class WebSocketServerManager:
             protocol = "wss" if ssl_context else "ws"
             endpoint = f"{protocol}://{self.bind_host}:{self.port}{self.path}"
             
-            logger.info(f"WebSocket server '{self.name}' started on {endpoint}")
+            self.logger.info(f"WebSocket server '{self.name}' started on {endpoint}")
             
             return {
                 "started": True,
@@ -131,7 +141,7 @@ class WebSocketServerManager:
             }
             
         except Exception as e:
-            logger.error(f"Failed to start WebSocket server '{self.name}': {e}")
+            self.logger.error(f"Failed to start WebSocket server '{self.name}': {e}")
             raise
     
     async def stop(self):
@@ -169,10 +179,10 @@ class WebSocketServerManager:
                 self.server.close()
                 await self.server.wait_closed()
                 
-            logger.info(f"WebSocket server '{self.name}' stopped")
+            self.logger.info(f"WebSocket server '{self.name}' stopped")
             
         except Exception as e:
-            logger.error(f"Error stopping WebSocket server '{self.name}': {e}")
+            self.logger.error(f"Error stopping WebSocket server '{self.name}': {e}")
     
     async def process_request(self, path: str, request_headers):
         """Process WebSocket upgrade request (for custom paths)."""
@@ -196,14 +206,14 @@ class WebSocketServerManager:
             # Check connection limit
             if len(self.clients) >= self.max_connections:
                 await websocket.close(code=1013, reason="Server overloaded")
-                logger.warning(f"Connection limit reached, rejected client {client_id}")
+                self.logger.warning(f"Connection limit reached, rejected client {client_id}")
                 return
             
             # Authenticate client
             auth_result = await self.authenticate_client(websocket, client_id)
             if not auth_result["authenticated"]:
                 await websocket.close(code=1008, reason=auth_result["reason"])
-                logger.warning(f"Authentication failed for client {client_id}: {auth_result['reason']}")
+                self.logger.warning(f"Authentication failed for client {client_id}: {auth_result['reason']}")
                 return
             
             # Create client info
@@ -237,7 +247,7 @@ class WebSocketServerManager:
                     "authenticated": client_info["authenticated"]
                 }
             
-            logger.info(f"Client {client_id} connected from {client_info['remote_ip']}")
+            self.logger.info(f"Client {client_id} connected from {client_info['remote_ip']}")
             
             # Execute on_connect handlers
             await self.execute_event_handlers("on_connect", client_info)
@@ -247,14 +257,14 @@ class WebSocketServerManager:
                 try:
                     await self.handle_message(client_id, message)
                 except Exception as e:
-                    logger.error(f"Error handling message from client {client_id}: {e}")
-                    logger.error(traceback.format_exc())
+                    self.logger.error(f"Error handling message from client {client_id}: {e}")
+                    self.logger.error(traceback.format_exc())
         
         except websockets.exceptions.ConnectionClosed:
-            logger.info(f"Client {client_id} disconnected normally")
+            self.logger.info(f"Client {client_id} disconnected normally")
         except Exception as e:
-            logger.error(f"Error handling client {client_id}: {e}")
-            logger.error(traceback.format_exc())
+            self.logger.error(f"Error handling client {client_id}: {e}")
+            self.logger.error(traceback.format_exc())
         finally:
             # Clean up client
             if client_id and client_id in self.clients:
@@ -267,7 +277,7 @@ class WebSocketServerManager:
                 if hasattr(self.config, 'clients') and client_id in self.config["clients"]:
                     del self.config["clients"][client_id]
                 
-                logger.info(f"Client {client_id} cleaned up")
+                self.logger.info(f"Client {client_id} cleaned up")
     
     async def authenticate_client(self, websocket, client_id: str) -> dict:
         """Authenticate WebSocket client."""
@@ -329,7 +339,7 @@ class WebSocketServerManager:
                 return {"authenticated": False, "reason": f"Unknown auth type: {auth_type}"}
             
         except Exception as e:
-            logger.error(f"Authentication error for client {client_id}: {e}")
+            self.logger.error(f"Authentication error for client {client_id}: {e}")
             return {"authenticated": False, "reason": "Authentication error"}
     
     async def handle_message(self, client_id: str, message):
@@ -378,8 +388,8 @@ class WebSocketServerManager:
             await self.execute_event_handlers("on_message", client_info, message_data)
             
         except Exception as e:
-            logger.error(f"Error handling message from client {client_id}: {e}")
-            logger.error(traceback.format_exc())
+            self.logger.error(f"Error handling message from client {client_id}: {e}")
+            self.logger.error(traceback.format_exc())
     
     async def check_rate_limit(self, client_id: str) -> dict:
         """Check rate limiting for client."""
@@ -416,7 +426,7 @@ class WebSocketServerManager:
             return {"allowed": True}
             
         except Exception as e:
-            logger.error(f"Rate limiting error for client {client_id}: {e}")
+            self.logger.error(f"Rate limiting error for client {client_id}: {e}")
             return {"allowed": True}  # Allow on error to prevent blocking
     
     async def check_auto_responses(self, message_data: dict, client_info: dict) -> Optional[dict]:
@@ -448,7 +458,7 @@ class WebSocketServerManager:
             return None
             
         except Exception as e:
-            logger.error(f"Auto response check error: {e}")
+            self.logger.error(f"Auto response check error: {e}")
             return None
     
     async def execute_event_handlers(self, event_type: str, client_info: dict, message_data: dict = None):
@@ -506,12 +516,12 @@ class WebSocketServerManager:
                         await run_batch_tool("lng_batch_run", pipeline_params)
                         
                 except Exception as e:
-                    logger.error(f"Error executing {event_type} handler: {e}")
-                    logger.error(traceback.format_exc())
+                    self.logger.error(f"Error executing {event_type} handler: {e}")
+                    self.logger.error(traceback.format_exc())
         
         except Exception as e:
-            logger.error(f"Error in event handler execution: {e}")
-            logger.error(traceback.format_exc())
+            self.logger.error(f"Error in event handler execution: {e}")
+            self.logger.error(traceback.format_exc())
     
     async def execute_single_handler(self, handler: dict, context: dict):
         """Execute a single handler tool."""
@@ -528,13 +538,13 @@ class WebSocketServerManager:
             try:
                 await run_tool(tool_name, evaluated_params)
             except ValueError as e:
-                logger.warning(f"Tool '{tool_name}' not found for handler execution: {e}")
+                self.logger.warning(f"Tool '{tool_name}' not found for handler execution: {e}")
             except Exception as e:
-                logger.error(f"Error running tool '{tool_name}': {e}")
+                self.logger.error(f"Error running tool '{tool_name}': {e}")
                 
         except Exception as e:
-            logger.error(f"Error executing single handler: {e}")
-            logger.error(traceback.format_exc())
+            self.logger.error(f"Error executing single handler: {e}")
+            self.logger.error(traceback.format_exc())
     
     async def send_to_client(self, client_id: str, message: Any) -> bool:
         """Send message to specific client."""
@@ -562,7 +572,7 @@ class WebSocketServerManager:
             return True
             
         except Exception as e:
-            logger.error(f"Error sending message to client {client_id}: {e}")
+            self.logger.error(f"Error sending message to client {client_id}: {e}")
             return False
     
     async def broadcast_message(self, message: Any, filter_config: dict = None) -> dict:
@@ -584,10 +594,10 @@ class WebSocketServerManager:
                     else:
                         failed_count += 1
                 except Exception as e:
-                    logger.error(f"Failed to send to client {client_id}: {e}")
+                    self.logger.error(f"Failed to send to client {client_id}: {e}")
                     failed_count += 1
             
-            logger.info(f"Broadcast completed: {sent_count} sent, {failed_count} failed, {total_clients} total")
+            self.logger.info(f"Broadcast completed: {sent_count} sent, {failed_count} failed, {total_clients} total")
             
             return {
                 "sent_count": sent_count,
@@ -597,7 +607,7 @@ class WebSocketServerManager:
             }
             
         except Exception as e:
-            logger.error(f"Error in broadcast: {e}")
+            self.logger.error(f"Error in broadcast: {e}")
             return {"sent_count": 0, "failed_count": total_clients, "total_clients": total_clients}
     
     async def filter_clients(self, filter_config: dict = None) -> List[str]:
@@ -653,7 +663,7 @@ class WebSocketServerManager:
             return target_clients
             
         except Exception as e:
-            logger.error(f"Error filtering clients: {e}")
+            self.logger.error(f"Error filtering clients: {e}")
             return list(self.clients.keys())
     
     async def close_client_connection(self, client_id: str, reason: str = "Connection closed"):
@@ -662,9 +672,9 @@ class WebSocketServerManager:
             client_info = self.clients.get(client_id)
             if client_info and "websocket" in client_info:
                 await client_info["websocket"].close(code=1000, reason=reason)
-                logger.info(f"Closed connection for client {client_id}: {reason}")
+                self.logger.info(f"Closed connection for client {client_id}: {reason}")
         except Exception as e:
-            logger.error(f"Error closing client {client_id}: {e}")
+            self.logger.error(f"Error closing client {client_id}: {e}")
     
     async def heartbeat_loop(self):
         """Background task for sending heartbeats to clients."""
@@ -681,7 +691,7 @@ class WebSocketServerManager:
                         if "websocket" in client_info:
                             await client_info["websocket"].ping()
                     except Exception as e:
-                        logger.warning(f"Heartbeat failed for client {client_id}: {e}")
+                        self.logger.warning(f"Heartbeat failed for client {client_id}: {e}")
                         disconnected_clients.append(client_id)
                 
                 # Clean up disconnected clients
@@ -689,9 +699,9 @@ class WebSocketServerManager:
                     await self.close_client_connection(client_id, "Heartbeat failed")
                 
         except asyncio.CancelledError:
-            logger.info("Heartbeat loop cancelled")
+            self.logger.info("Heartbeat loop cancelled")
         except Exception as e:
-            logger.error(f"Heartbeat loop error: {e}")
+            self.logger.error(f"Heartbeat loop error: {e}")
     
     async def cleanup_loop(self):
         """Background task for cleaning up stale connections."""
@@ -717,13 +727,13 @@ class WebSocketServerManager:
                         if (now - last_activity_dt).seconds > timeout_seconds:
                             stale_clients.append(client_id)
                     except Exception as e:
-                        logger.warning(f"Error checking client {client_id} activity: {e}")
+                        self.logger.warning(f"Error checking client {client_id} activity: {e}")
                         stale_clients.append(client_id)
                 
                 # Clean up stale clients
                 for client_id in stale_clients:
                     await self.close_client_connection(client_id, "Connection timeout")
-                    logger.info(f"Cleaned up stale client {client_id}")
+                    self.logger.info(f"Cleaned up stale client {client_id}")
                 
                 # Update metrics
                 started_at = self.metrics.get("started_at", now.isoformat())
@@ -737,6 +747,6 @@ class WebSocketServerManager:
                 self.metrics["uptime_seconds"] = (now - started_at_dt).seconds
                 
         except asyncio.CancelledError:
-            logger.info("Cleanup loop cancelled")
+            self.logger.info("Cleanup loop cancelled")
         except Exception as e:
-            logger.error(f"Cleanup loop error: {e}")
+            self.logger.error(f"Cleanup loop error: {e}")
