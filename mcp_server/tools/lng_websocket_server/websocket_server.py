@@ -117,7 +117,8 @@ class WebSocketServerManager:
                 subprotocols=self.config.get("subprotocols", []),
                 max_size=self.message_size_limit,
                 max_queue=32,
-                close_timeout=10
+                close_timeout=10,
+                process_request=self.process_request
             )
             
             # Start background tasks
@@ -184,9 +185,18 @@ class WebSocketServerManager:
         except Exception as e:
             self.logger.error(f"Error stopping WebSocket server '{self.name}': {e}")
     
-    async def process_request(self, path: str, request_headers):
+    async def process_request(self, connection, request):
         """Process WebSocket upgrade request (for custom paths)."""
-        if path == self.path:
+        # Extract path from request object
+        path = getattr(request, 'path', '/ws')
+        
+        # Store path using connection ID (thread-safe approach)
+        connection_id = id(connection)
+        if not hasattr(self, '_connection_paths'):
+            self._connection_paths = {}
+        self._connection_paths[connection_id] = path
+        
+        if path.startswith(self.path):
             return None  # Accept the request
         else:
             # Return HTTP response for rejected paths
@@ -196,9 +206,13 @@ class WebSocketServerManager:
     async def handle_client(self, websocket):
         """Handle new WebSocket client connection."""
         client_id = None
+    async def handle_client(self, websocket):
+        """Handle new WebSocket client connection."""
+        client_id = None
         try:
-            # Get path from websocket request
-            path = getattr(websocket, 'path', '/ws')  # Default to /ws if no path
+            # Get path from stored request using connection ID (thread-safe)
+            connection_id = id(websocket)
+            path = getattr(self, '_connection_paths', {}).pop(connection_id, None) or getattr(websocket, 'path', '/ws')
             
             # Parse query parameters from WebSocket URL
             url_parts = urlparse(path)
