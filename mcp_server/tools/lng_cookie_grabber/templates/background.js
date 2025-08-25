@@ -41,6 +41,10 @@ if (typeof chrome.commands !== 'undefined') {
         let pageUrl = urls.shift();
 
         console.log("#5 Opening new tab with #plugin hash for the  URL: " + pageUrl);
+        // Add #plugin hash to URL if not already present
+        if (!pageUrl.includes('#plugin')) {
+            pageUrl += '#plugin';
+        }
         chrome.tabs.create({ url: pageUrl, active: false });
     }
 
@@ -114,10 +118,11 @@ if (typeof chrome.commands !== 'undefined') {
             return document.getElementsByClassName(PLUGIN_STATUS_CLASS)[0];
         }
 
-        function changeStatus(elements, message, color) {
+        function changeStatus(elements, message, color, textColor = 'white') {
             elements.forEach(element => {
                 element.innerHTML = message;
                 element.style.backgroundColor = color;
+                element.style.setProperty('color', textColor, 'important');
             });
         }
 
@@ -131,12 +136,12 @@ if (typeof chrome.commands !== 'undefined') {
             let isWrongVersion = expectedPluginVersion != null && expectedPluginVersion !== PLUGIN_VERSION;
 
             if (isWrongVersion) {
-                changeStatus([element], "[please run `add` command, download new version of plugin and reinstall it]", "#ff7137");
+                changeStatus([element], "[please run `add` command, download new version of plugin and reinstall it]", "#ff7137", "white");
             } else {
                 if (isConnected) {
-                    changeStatus([element], "[plugin connected]", "#ac59e4");
+                    changeStatus([element], "[plugin connected]", "#ac59e4", "white");
                 } else {
-                    changeStatus([element], "[plugin installed]", "#75df78");
+                    changeStatus([element], "[plugin installed]", "#75df78", "black");
                 }
             }
         }

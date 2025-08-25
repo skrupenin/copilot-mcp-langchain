@@ -9,7 +9,7 @@
       "template": "mcp_server/tools/lng_cookie_grabber/status.html",
       "mapping": {
         "SESSION_ID": "{! url.sessionId !}",
-        "PORTALS": "[\"https://google.com\", \"https://deepl.com\"]"
+        "PORTALS": "[\"https://next.telescope.epam.com\", \"https://heroes.epam.com\", \"https://staffing.epam.com\"]"
       }
     },
     {
