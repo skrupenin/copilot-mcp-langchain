@@ -3,7 +3,7 @@
   "name": "cookie-websocket-server",
   "port": 9001,
   "path": "/ws",
-  "bind_host": "localhost",
+  "bind_host": "127.0.0.1",
   "protocol": "ws",
   "max_connections": 100,
   "connection_handling": {
@@ -29,11 +29,11 @@
     ],
     "on_message": [
       {
-        "tool": "lng_file_write",
+        "tool": "lng_cookie_grabber",
         "params": {
-          "file_path": "mcp_server/logs/websocket/cookie-websocket-server.log",
-          "content": "[{! new Date().toISOString() !}] MESSAGE: Client={! websocket.client_id !} Type={! typeof websocket.message.content !} Length={! websocket.message.content.length !} Content:\n============================\n{! websocket.message.content !}\n============================\n",
-          "mode": "append"
+          "operation": "process",
+          "cookies": "{! websocket.message.content !}",
+          "session": "{! websocket.query_params.sessionId !}"
         }
       }
     ],

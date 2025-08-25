@@ -9,6 +9,7 @@ mcp_server/logs/websocket
 mcp_server/logs/multi_agent/*
 !mcp_server/logs/multi_agent/readme.md
 mcp_server/logs/webhook
+mcp_server/config/cookies/*
 mcp_server/config/prompt/*
 mcp_server/config/http_client/*
 mcp_server/config/email_client/*

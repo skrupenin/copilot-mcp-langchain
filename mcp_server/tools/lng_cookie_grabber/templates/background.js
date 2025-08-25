@@ -308,9 +308,8 @@ if (typeof chrome.commands !== 'undefined') {
 
             console.log("#13 Processing the result (all cookies) from the plugin.");
             let result = message.data.map(data => {
-                let domainOnly = `https://${data.href.split("/")[2]}`;
-                return "GET " + domainOnly + " HTTP/3\n" +
-                    "Cookie: " + data.cookies.join("; ");
+                let domainOnly = new URL(data.href).hostname;
+                return domainOnly + "\n" + data.cookies.join("; ");
             }).join("\n");
 
             // if result not contains all of listPortals, show alert
