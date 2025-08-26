@@ -11,6 +11,18 @@ let PLUGIN_VERSION = "5"; // please also check WebSocketConfig
 let listPortals = []; // will be loaded from DOM
 let sessionId = ""; // will be loaded from DOM
 
+// 🐛 Helper function to add log to textarea
+function addLogToTextarea(message, level = 'info', source = 'page') {
+    const debugTextarea = document.getElementById('debug-logs');
+    if (debugTextarea) {
+        const timestamp = new Date().toISOString().slice(11, 23); // HH:MM:SS.mmm
+        const levelIcon = level === 'error' ? '❌' : level === 'warn' ? '⚠️' : 'ℹ️';
+        const sourceIcon = source === 'background' ? '⚙️' : '🌐'; // Plugin vs Page
+        const logLine = `[${timestamp}] ${sourceIcon} ${levelIcon} ${message}\n`;
+        debugTextarea.value += logLine;
+    }
+}
+
 // 🐛 Debug logging function - adds logs to both console and HTML textarea
 function debugLog(message, object, level = 'info') {
     // Always log to console first
@@ -37,7 +49,8 @@ function debugLog(message, object, level = 'info') {
                             command: 'debug-log',
                             message: message,
                             level: level,
-                            timestamp: new Date().toISOString()
+                            timestamp: new Date().toISOString(),
+                            source: 'background'
                         }).catch(() => {}); // Ignore errors
                     }
                 });
@@ -45,13 +58,7 @@ function debugLog(message, object, level = 'info') {
         }
         // For content script - try direct DOM access first
         else if (typeof document !== 'undefined') {
-            const debugTextarea = document.getElementById('debug-logs');
-            if (debugTextarea) {
-                const timestamp = new Date().toISOString().slice(11, 23); // HH:MM:SS.mmm
-                const levelIcon = level === 'error' ? '❌' : level === 'warn' ? '⚠️' : 'ℹ️';
-                const logLine = `[${timestamp}] ${levelIcon} ${message}\n`;
-                debugTextarea.value += logLine;
-            }
+            addLogToTextarea(message, level, 'page');
         }
     } catch (e) {
         // Silently ignore if messaging not available
@@ -574,7 +581,7 @@ if (typeof chrome.commands !== 'undefined') {
         // Add debug log message handler
         chrome.runtime.onMessage.addListener(function (message) {
             if (message.command === 'debug-log') {
-                debugLog(message.message, null, message.level);
+                addLogToTextarea(message.message, message.level, message.source);
             }
         });
 
