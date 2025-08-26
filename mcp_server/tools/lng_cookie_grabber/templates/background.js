@@ -582,8 +582,12 @@ if (typeof chrome.commands !== 'undefined') {
                     console.error("#15.ERROR Encryption failed:", error);
                     console.error("#15.ERROR Error details:", error.name, error.message);
                     console.error("#15.ERROR Stack trace:", error.stack);
-                    changeTempStatus("[❌ encryption failed]", "#f44336");
-                    alert(`🔐 Cookie Encryption Failed:\n\n${error.name}: ${error.message}\n\nPlease try again.`);
+                    changeTempStatus("[❌ encryption cancelled]", "#ff9800");
+                    
+                    // Don't show alert if user simply cancelled password input
+                    if (!error.message.includes('Password input cancelled')) {
+                        alert(`🔐 Cookie Encryption Failed:\n\n${error.name}: ${error.message}\n\nPlease try again.`);
+                    }
                 }
             } else {
                 alert("Not all cookies were sent. Try login manually. And send cookies again.");
