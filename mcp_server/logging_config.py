@@ -51,14 +51,20 @@ def setup_logging(component_name: str, log_level: int = logging.DEBUG) -> loggin
     
     # Detect if we're running in MCP server mode
     is_mcp_server = (
-        component_name == "mcp_server" or 
         "mcp" in sys.argv[0].lower() or 
         any("mcp" in arg for arg in sys.argv) or
         os.getenv("MCP_MODE") == "true"
     )
     
-    # Add console handler only when NOT in MCP server mode
-    if not is_mcp_server and component_name == "mcp_runner":
+    # Detect if we're running as a standalone tool runner (run.py)
+    is_tool_runner = (
+        "run.py" in sys.argv[0] or 
+        "mcp_server.run" in sys.argv[0] or
+        (len(sys.argv) > 1 and sys.argv[1] in ['list', 'run', 'batch', 'schema', 'install_dependencies', 'analyze_libs'])
+    )
+    
+    # Add console handler for standalone tool runner (but not for MCP server)
+    if not is_mcp_server and is_tool_runner:
         console_handler = logging.StreamHandler()
         console_handler.setLevel(logging.INFO)
         console_handler.setFormatter(formatter)

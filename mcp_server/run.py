@@ -17,7 +17,7 @@ from mcp_server.tools.tool_registry import tool_definitions, run_tool, get_tool_
 
 # Setup logging for server
 from mcp_server.logging_config import setup_logging
-logger = setup_logging("mcp_runner", logging.DEBUG)
+logger = setup_logging("mcp_server", logging.DEBUG)
 
 async def test_tool(tool_name: str, arguments: Optional[Dict[str, Any]] = None) -> Any:
     """
