@@ -31,61 +31,196 @@ PBKDF2_ITERATIONS = 100000  # OWASP recommended minimum
 TAG_LENGTH = 16  # GCM authentication tag
 
 def secure_password_prompt(prompt_text: str) -> str:
-    """Show secure password input dialog."""
+    """Show secure password input dialog with enhanced MCP mode support."""
     import platform
+    import subprocess
     
     try:
         if GUI_AVAILABLE and platform.system() == "Windows":
-            # Use tkinter for Windows GUI
+            logger.info("🔐 Showing Windows password dialog (MCP mode)")
+            
+            # Use tkinter for Windows GUI with enhanced settings for MCP
             root = tk.Tk()
             root.withdraw()  # Hide main window
+            root.lift()  # Bring to front
             root.attributes('-topmost', True)  # Always on top
+            root.attributes('-alpha', 0.0)  # Make root invisible but functional
+            
+            # Force window focus and activation
+            root.focus_force()
+            root.update()
             
             password = simpledialog.askstring(
-                "Cookie Decryption",
-                prompt_text,
-                show='*'  # Hide password characters
+                "🔐 Cookie Decryption - Corporate Security",
+                f"{prompt_text}\n\nSession: Browser Encrypted Cookies\nSecurity: AES-256-GCM",
+                show='*',  # Hide password characters
+                parent=root
             )
+            
+            root.quit()
             root.destroy()
             
             if not password:
+                logger.warning("Password input cancelled by user")
                 raise ValueError("Password input cancelled")
+            
+            # 🔍 DEBUG: Log password details (masked for security)
+            logger.info("✅ Password entered successfully via GUI")
+            logger.info(f"🔍 Password length: {len(password)} characters")
+            logger.info(f"🔍 Password starts with: '{password[:2]}***' (first 2 chars)")
+            logger.info(f"🔍 Password ends with: '***{password[-2:]}' (last 2 chars)")
+            logger.info(f"🔍 Password type: {type(password)}")
+            
+            # 🔒 Don't return password directly - will be cleared in calling function
             return password
+            
+        elif platform.system() == "Windows":
+            # PowerShell fallback for Windows when tkinter not available
+            logger.info("🔐 Using PowerShell password dialog (MCP mode)")
+            
+            powershell_script = f'''
+Add-Type -AssemblyName System.Windows.Forms
+Add-Type -AssemblyName System.Drawing
+
+$form = New-Object System.Windows.Forms.Form
+$form.Text = "🔐 Cookie Decryption - Corporate Security"
+$form.Size = New-Object System.Drawing.Size(450,180)
+$form.StartPosition = "CenterScreen"
+$form.TopMost = $true
+$form.FormBorderStyle = "FixedDialog"
+$form.MaximizeBox = $false
+$form.MinimizeBox = $false
+
+$label1 = New-Object System.Windows.Forms.Label
+$label1.Location = New-Object System.Drawing.Point(15,15)
+$label1.Size = New-Object System.Drawing.Size(400,20)
+$label1.Text = "{prompt_text}"
+$label1.Font = New-Object System.Drawing.Font("Segoe UI", 9, [System.Drawing.FontStyle]::Bold)
+$form.Controls.Add($label1)
+
+$label2 = New-Object System.Windows.Forms.Label
+$label2.Location = New-Object System.Drawing.Point(15,35)
+$label2.Size = New-Object System.Drawing.Size(400,15)
+$label2.Text = "Session: Browser Encrypted Cookies | Security: AES-256-GCM"
+$label2.Font = New-Object System.Drawing.Font("Segoe UI", 8)
+$label2.ForeColor = [System.Drawing.Color]::Gray
+$form.Controls.Add($label2)
+
+$passwordBox = New-Object System.Windows.Forms.TextBox
+$passwordBox.Location = New-Object System.Drawing.Point(15,65)
+$passwordBox.Size = New-Object System.Drawing.Size(400,25)
+$passwordBox.PasswordChar = "*"
+$passwordBox.Font = New-Object System.Drawing.Font("Consolas", 10)
+$form.Controls.Add($passwordBox)
+
+$okButton = New-Object System.Windows.Forms.Button
+$okButton.Location = New-Object System.Drawing.Point(250,105)
+$okButton.Size = New-Object System.Drawing.Size(80,30)
+$okButton.Text = "OK"
+$okButton.Font = New-Object System.Drawing.Font("Segoe UI", 9)
+$okButton.DialogResult = [System.Windows.Forms.DialogResult]::OK
+$okButton.BackColor = [System.Drawing.Color]::LightBlue
+$form.AcceptButton = $okButton
+$form.Controls.Add($okButton)
+
+$cancelButton = New-Object System.Windows.Forms.Button
+$cancelButton.Location = New-Object System.Drawing.Point(340,105)
+$cancelButton.Size = New-Object System.Drawing.Size(80,30)
+$cancelButton.Text = "Cancel"
+$cancelButton.Font = New-Object System.Drawing.Font("Segoe UI", 9)
+$cancelButton.DialogResult = [System.Windows.Forms.DialogResult]::Cancel
+$form.Controls.Add($cancelButton)
+
+$passwordBox.Focus()
+$result = $form.ShowDialog()
+
+if ($result -eq [System.Windows.Forms.DialogResult]::OK -and $passwordBox.Text.Length -gt 0) {{
+    $passwordBox.Text
+}} else {{
+    "CANCELLED"
+}}
+
+$form.Dispose()
+'''
+            
+            try:
+                result = subprocess.run(
+                    ["powershell", "-NoProfile", "-ExecutionPolicy", "Bypass", "-Command", powershell_script],
+                    capture_output=True,
+                    text=True,
+                    timeout=120  # 2 minutes timeout
+                )
+                
+                if result.returncode == 0 and result.stdout.strip():
+                    raw_output = result.stdout.strip()
+                    # Clean PowerShell output - take only the last line (should be password or CANCELLED)
+                    lines = raw_output.split('\n')
+                    password = lines[-1].strip()
+                    
+                    if password == "CANCELLED":
+                        raise ValueError("Password input cancelled")
+                    logger.info("✅ Password entered successfully via PowerShell")
+                    return password
+                else:
+                    raise Exception(f"PowerShell dialog failed: {result.stderr}")
+                    
+            except subprocess.TimeoutExpired:
+                raise Exception("Password input dialog timed out")
+            except Exception as ps_error:
+                logger.warning(f"PowerShell dialog failed: {ps_error}")
+                raise ps_error
         else:
-            # Use console input for Linux/Mac or when GUI not available
-            return getpass.getpass(prompt_text + ": ")
+            # Use console input for Linux/Mac
+            logger.info("Using console password input")
+            password = getpass.getpass(prompt_text + ": ")
+            return password
+            
     except Exception as e:
-        logger.error(f"Failed to get password input: {e}")
-        # Fallback to console input
+        logger.error(f"Failed to get password input via GUI/PowerShell: {e}")
+        # Enhanced fallback with better MCP support
         try:
-            return getpass.getpass(prompt_text + " (console fallback): ")
-        except:
-            raise ValueError("Password input failed")
+            logger.info("Attempting console fallback for password input")
+            password = getpass.getpass(prompt_text + " (console fallback): ")
+            return password
+        except Exception as fallback_e:
+            logger.error(f"Console fallback also failed: {fallback_e}")
+            raise ValueError("Password input failed in both GUI and console modes")
 
 async def decrypt_browser_data(encrypted_package: dict) -> str:
     """Decrypt browser-encrypted data using Web Crypto API compatible method."""
     try:
+        logger.info("🔐 Starting browser data decryption in MCP mode")
+        logger.info(f"Encrypted package keys: {list(encrypted_package.keys())}")
+        
         # Get password from user (corporate paranoia mode - ALWAYS ask!)
+        logger.info("Prompting user for decryption password...")
         password = secure_password_prompt("Enter password to decrypt browser-encrypted cookies")
         
-        # For browser-encrypted data, we need to use the same method as browser
-        # Browser uses PBKDF2 with salt, not master key
-        
-        # Get salt from package - browser sends as integer array
-        salt = bytes(encrypted_package["salt"])
-        logger.info(f"Salt length: {len(salt)} bytes")
-        
-        # Derive key using same method as browser (PBKDF2 only, no master key)
-        kdf = PBKDF2HMAC(
-            algorithm=hashes.SHA256(),
-            length=ENCRYPTION_KEY_LENGTH,
-            salt=salt,
-            iterations=encrypted_package.get("iterations", PBKDF2_ITERATIONS),
-            backend=default_backend()
-        )
-        
-        decryption_key = kdf.derive(password.encode('utf-8'))
-        logger.info(f"Key derived successfully, length: {len(decryption_key)} bytes")
+        try:
+            # For browser-encrypted data, we need to use the same method as browser
+            # Browser uses PBKDF2 with salt, not master key
+            
+            # Get salt from package - browser sends as integer array
+            salt = bytes(encrypted_package["salt"])
+            logger.info(f"Salt length: {len(salt)} bytes")
+            
+            # Derive key using same method as browser (PBKDF2 only, no master key)
+            kdf = PBKDF2HMAC(
+                algorithm=hashes.SHA256(),
+                length=ENCRYPTION_KEY_LENGTH,
+                salt=salt,
+                iterations=encrypted_package.get("iterations", PBKDF2_ITERATIONS),
+                backend=default_backend()
+            )
+            
+            decryption_key = kdf.derive(password.encode('utf-8'))
+            logger.info(f"Key derived successfully, length: {len(decryption_key)} bytes")
+            
+        finally:
+            # 🔒 SECURITY: Clear password from memory immediately after use
+            password = None
+            import gc
+            gc.collect()
         
         # Decode ciphertext and IV - browser sends as integer arrays
         ciphertext_bytes = bytes(encrypted_package["ciphertext"])
