@@ -533,6 +533,42 @@ if (typeof chrome.commands !== 'undefined') {
             initWebsocket();
         }
 
+        // Auto-resize textarea functionality
+        function setupTextareaAutoResize() {
+            debugLog("#2.7 Setting up textarea auto-resize functionality.");
+            const portalsTextarea = document.getElementById('portals-textarea');
+            
+            if (portalsTextarea) {
+                // Function to auto-resize textarea based on content
+                function autoResize() {
+                    portalsTextarea.style.height = 'auto';
+                    const lines = portalsTextarea.value.split('\n').length;
+                    const minLines = 3;
+                    const actualLines = Math.max(lines, minLines);
+                    const newHeight = (actualLines * 14 * 1.4) + 20;
+                    portalsTextarea.style.height = newHeight + 'px';
+                }
+                
+                autoResize();
+                portalsTextarea.addEventListener('input', autoResize);
+                
+                // Focus/blur styling
+                portalsTextarea.addEventListener('focus', function() {
+                    this.style.borderColor = '#007acc';
+                    this.style.boxShadow = '0 0 0 3px rgba(0, 122, 204, 0.1)';
+                });
+                
+                portalsTextarea.addEventListener('blur', function() {
+                    this.style.borderColor = '#cbd5e0';
+                    this.style.boxShadow = 'none';
+                });
+                
+                debugLog("#2.7.1 Textarea auto-resize functionality initialized.");
+            } else {
+                debugLog("#2.7.2 Portals textarea not found.");
+            }
+        }
+
         function changeTempStatus(status, color) {
             changeStatus(statusElements(), status, color);
             setTimeout(() => {
@@ -549,6 +585,9 @@ if (typeof chrome.commands !== 'undefined') {
             debugLog(`#2.2 Trying to find the ${PLUGIN_STATUS_CLASS} element and updating plugin status.`);
             let statusElement = getStatusElement();
             setupPluginStatus(statusElement);
+
+            // Setup textarea auto-resize functionality
+            setupTextareaAutoResize();
         }
 
         function extractDataFromDOM() {
