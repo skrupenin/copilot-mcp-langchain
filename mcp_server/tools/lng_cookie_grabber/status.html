@@ -6,7 +6,7 @@
     <title>Cookie Session Status</title>
     <style>
         body {
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            font-family: 'Segoe UI', Tahoma, Geneva, sans-serif;
             margin: 0;
             padding: 20px;
             background-color: #f5f5f5;
@@ -61,6 +61,194 @@
         .portals-section {
             margin: 20px 0;
         }
+        .security-section {
+            background: #e8f5e8;
+            padding: 10px;
+            border-radius: 5px;
+            margin: 15px 0;
+        }
+        .security-title {
+            color: #2e7d32;
+            margin-top: 0;
+        }
+        .security-text {
+            margin: 5px 0;
+            color: #2e7d32;
+        }
+        .portals-textarea-field {
+            width: 100%;
+            min-height: 60px;
+            padding: 10px;
+            border: 2px solid #cbd5e0;
+            border-radius: 6px;
+            font-family: 'Consolas', 'Courier New', monospace;
+            font-size: 14px;
+            line-height: 1.4;
+            background-color: #f8f9fa;
+            resize: none;
+            box-sizing: border-box;
+            transition: border-color 0.2s;
+            overflow: hidden;
+        }
+        .portals-help {
+            margin-top: 8px;
+            font-size: 12px;
+            color: #666;
+        }
+        #plugin-data {
+            display: none;
+        }
+        .status-cookies-plugin {
+            display: inline-block;
+            padding: 8px 16px;
+            border-radius: 4px;
+            font-weight: bold;
+            margin-bottom: 20px;
+            background-color: #ddd;
+            color: #666;
+        }
+        .plugin-button-section {
+            margin-top: 15px;
+        }
+        .run-cookies-button {
+            background-color: #28a745;
+            font-size: 16px;
+            padding: 12px 24px;
+        }
+        .installation-info {
+            margin-top: 15px;
+            padding: 10px;
+            background-color: #e7f3ff;
+            border-radius: 4px;
+        }
+        .debug-logs-textarea {
+            width: 100%;
+            height: 200px;
+            padding: 10px;
+            border: 2px solid #cbd5e0;
+            border-radius: 6px;
+            font-family: 'Consolas', 'Courier New', monospace;
+            font-size: 12px;
+            line-height: 1.3;
+            background-color: #2d3748;
+            color: #e2e8f0;
+            resize: vertical;
+            box-sizing: border-box;
+            white-space: pre-wrap;
+            overflow-y: auto;
+        }
+        .debug-logs-help {
+            margin-top: 8px;
+            font-size: 12px;
+            color: #666;
+        }
+        .password-modal {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.7);
+            z-index: 10000;
+            display: none;
+            justify-content: center;
+            align-items: center;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+        .password-modal-content {
+            background: white;
+            padding: 30px;
+            border-radius: 12px;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+            max-width: 480px;
+            width: 90%;
+            text-align: center;
+        }
+        .password-modal-title {
+            font-size: 24px;
+            margin-bottom: 20px;
+            color: #1a365d;
+            font-weight: bold;
+        }
+        .password-modal-info {
+            background: #e6f3ff;
+            padding: 15px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+            text-align: left;
+            font-size: 13px;
+            color: #2c5282;
+        }
+        .password-modal-warning {
+            margin-top: 8px;
+            color: #d69e2e;
+        }
+        .password-modal-label {
+            display: block;
+            text-align: left;
+            margin-bottom: 8px;
+            font-weight: 600;
+            color: #2d3748;
+        }
+        .password-modal-input {
+            width: 100%;
+            padding: 12px;
+            border: 2px solid #cbd5e0;
+            border-radius: 6px;
+            font-size: 16px;
+            margin-bottom: 20px;
+            box-sizing: border-box;
+            font-family: 'Consolas', 'Courier New', monospace;
+            transition: border-color 0.2s;
+        }
+        .password-modal-buttons {
+            display: flex;
+            gap: 12px;
+            justify-content: center;
+        }
+        .password-modal-button-ok {
+            background: #48bb78;
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 14px;
+            font-weight: 600;
+            transition: all 0.2s;
+            box-shadow: 0 2px 4px rgba(72, 187, 120, 0.3);
+        }
+        .password-modal-button-cancel {
+            background: #e53e3e;
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 14px;
+            font-weight: 600;
+            transition: all 0.2s;
+            box-shadow: 0 2px 4px rgba(229, 62, 62, 0.3);
+        }
+        .portals-list {
+            margin-top: 15px;
+        }
+        .run-cookies-plugin-custom {
+            background-color: #28a745;
+            font-size: 16px;
+            padding: 12px 24px;
+        }
+        .installation-info-detailed {
+            margin-top: 15px;
+            padding: 10px;
+            background-color: #e7f3ff;
+            border-radius: 4px;
+        }
+        .debug-help-text {
+            margin-top: 8px;
+            font-size: 12px;
+            color: #666;
+        }
     </style>
 </head>
 <body>
@@ -68,9 +256,9 @@
         <h1>🍪 Cookie Session Status - Corporate Security</h1>
         <div class="session-id">Session ID: {{SESSION_ID}}</div>
         
-        <div style="background: #e8f5e8; padding: 10px; border-radius: 5px; margin: 15px 0;">
-            <h3 style="color: #2e7d32; margin-top: 0;">🔐 Browser-Side Corporate Encryption</h3>
-            <p style="margin: 5px 0; color: #2e7d32;">
+        <div class="security-section">
+            <h3 class="security-title">🔐 Browser-Side Corporate Encryption</h3>
+            <p class="security-text">
                 ✅ AES-256-GCM Encryption <strong>(in Browser)</strong><br>
                 ✅ Secure Password Prompt<br>
                 ✅ PBKDF2 Key Derivation (100k iterations)<br>
@@ -79,53 +267,27 @@
             </p>
         </div>        
         
-        <div class="portals-list" style="margin-top: 15px;">
+        <div class="portals-list">
             <h3>🌐 Portal List (Editable):</h3>
-            <div style="margin-bottom: 10px;">
-                <textarea id="portals-textarea" style="
-                    width: 100%;
-                    min-height: 60px;
-                    padding: 10px;
-                    border: 2px solid #cbd5e0;
-                    border-radius: 6px;
-                    font-family: 'Consolas', 'Courier New', monospace;
-                    font-size: 14px;
-                    line-height: 1.4;
-                    background-color: #f8f9fa;
-                    resize: none;
-                    box-sizing: border-box;
-                    transition: border-color 0.2s;
-                    overflow: hidden;
-                " placeholder="Enter portal URLs, one per line...">{{PORTALS}}</textarea>
-                <div style="margin-top: 8px; font-size: 12px; color: #666;">
+            <div class="portals-help">
+                <textarea id="portals-textarea" class="portals-textarea-field" placeholder="Enter portal URLs, one per line...">{{PORTALS}}</textarea>
+                <div class="portals-help">
                     📝 Edit portals directly here. Changes are saved automatically for plugin use.
                 </div>
             </div>
         </div>
 
         <!-- Data for plugin to extract from DOM -->
-        <div id="plugin-data" style="display: none;">
+        <div id="plugin-data">
             <div id="session-id">{{SESSION_ID}}</div>
         </div>
                 
         <div class="download-section">
             <h2>Plugin Status</h2>
-            <div class="status-cookies-plugin" style="
-                display: inline-block;
-                padding: 8px 16px;
-                border-radius: 4px;
-                font-weight: bold;
-                margin-bottom: 20px;
-                background-color: #ddd;
-                color: #666;
-            ">[checking plugin status...]</div>
+            <div class="status-cookies-plugin">[checking plugin status...]</div>
             
-            <div style="margin-top: 15px;">
-                <button id="run-cookies-plugin" class="download-btn" style="
-                    background-color: #28a745;
-                    font-size: 16px;
-                    padding: 12px 24px;
-                ">
+            <div class="plugin-button-section">
+                <button id="run-cookies-plugin" class="download-btn run-cookies-plugin-custom">
                     � Run Encrypted Cookie Grabber
                 </button>
                 <div class="file-info">
@@ -149,7 +311,7 @@
             </a>
             <div class="file-info">Chrome extension manifest file</div>
             
-            <div style="margin-top: 15px; padding: 10px; background-color: #e7f3ff; border-radius: 4px;">
+            <div class="installation-info-detailed">
                 <strong>Installation:</strong> Download both files, create a folder, place them inside, 
                 then load the folder as unpacked extension in Chrome Developer Mode.
             </div>
@@ -159,24 +321,9 @@
             <h2>🐛 Debug Logs</h2>
             <p>Real-time plugin logs for debugging:</p>
             
-            <textarea id="debug-logs" readonly style="
-                width: 100%;
-                height: 200px;
-                padding: 10px;
-                border: 2px solid #cbd5e0;
-                border-radius: 6px;
-                font-family: 'Consolas', 'Courier New', monospace;
-                font-size: 12px;
-                line-height: 1.3;
-                background-color: #2d3748;
-                color: #e2e8f0;
-                resize: vertical;
-                box-sizing: border-box;
-                white-space: pre-wrap;
-                overflow-y: auto;
-            " placeholder="Plugin logs will appear here..."></textarea>
+            <textarea id="debug-logs" readonly class="debug-logs-textarea" placeholder="Plugin logs will appear here..."></textarea>
             
-            <div style="margin-top: 8px; font-size: 12px; color: #666;">
+            <div class="debug-help-text">
                 🔧 All plugin console.log messages are duplicated here for easy debugging.
             </div>
         </div>
@@ -216,96 +363,25 @@
     </script>
 
     <!-- 🔐 Corporate Password Modal (HTML only, JS in plugin) -->
-    <div id="cookie-password-modal" style="
-        position: fixed;
-        top: 0;
-        left: 0;
-        width: 100%;
-        height: 100%;
-        background-color: rgba(0, 0, 0, 0.7);
-        z-index: 10000;
-        display: none;
-        justify-content: center;
-        align-items: center;
-        font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-    ">
-        <div style="
-            background: white;
-            padding: 30px;
-            border-radius: 12px;
-            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
-            max-width: 480px;
-            width: 90%;
-            text-align: center;
-        ">
-            <div style="
-                font-size: 24px;
-                margin-bottom: 20px;
-                color: #1a365d;
-                font-weight: bold;
-            ">🔐 Corporate Cookie Encryption</div>
+    <div id="cookie-password-modal" class="password-modal">
+        <div class="password-modal-content">
+            <div class="password-modal-title">🔐 Corporate Cookie Encryption</div>
             
-            <div style="
-                background: #e6f3ff;
-                padding: 15px;
-                border-radius: 8px;
-                margin-bottom: 20px;
-                text-align: left;
-                font-size: 13px;
-                color: #2c5282;
-            ">
+            <div class="password-modal-info">
                 <div><strong>Session:</strong> <span id="modal-session-id"></span></div>
                 <div><strong>Encryption:</strong> AES-256-GCM</div>
                 <div><strong>Key Derivation:</strong> PBKDF2 (100k iterations)</div>
-                <div style="margin-top: 8px; color: #d69e2e;"><strong>⚠️ Password will be required for decryption in HTTP requests</strong></div>
+                <div class="password-modal-warning"><strong>⚠️ Password will be required for decryption in HTTP requests</strong></div>
             </div>
             
-            <label style="
-                display: block;
-                text-align: left;
-                margin-bottom: 8px;
-                font-weight: 600;
-                color: #2d3748;
-            ">Enter encryption password:</label>
+            <label class="password-modal-label">Enter encryption password:</label>
             
-            <input type="password" id="cookie-password-input" placeholder="Enter password (minimum 4 characters)" style="
-                width: 100%;
-                padding: 12px;
-                border: 2px solid #cbd5e0;
-                border-radius: 6px;
-                font-size: 16px;
-                margin-bottom: 20px;
-                box-sizing: border-box;
-                font-family: 'Consolas', 'Courier New', monospace;
-                transition: border-color 0.2s;
-            ">
+            <input type="password" id="cookie-password-input" placeholder="Enter password (minimum 4 characters)" class="password-modal-input">
             
-            <div style="display: flex; gap: 12px; justify-content: center;">
-                <button id="cookie-password-ok" style="
-                    background: #48bb78;
-                    color: white;
-                    border: none;
-                    padding: 12px 24px;
-                    border-radius: 6px;
-                    cursor: pointer;
-                    font-size: 14px;
-                    font-weight: 600;
-                    transition: all 0.2s;
-                    box-shadow: 0 2px 4px rgba(72, 187, 120, 0.3);
-                ">🔒 Encrypt Cookies</button>
+            <div class="password-modal-buttons">
+                <button id="cookie-password-ok" class="password-modal-button-ok">🔒 Encrypt Cookies</button>
                 
-                <button id="cookie-password-cancel" style="
-                    background: #e53e3e;
-                    color: white;
-                    border: none;
-                    padding: 12px 24px;
-                    border-radius: 6px;
-                    cursor: pointer;
-                    font-size: 14px;
-                    font-weight: 600;
-                    transition: all 0.2s;
-                    box-shadow: 0 2px 4px rgba(229, 62, 62, 0.3);
-                ">❌ Cancel</button>
+                <button id="cookie-password-cancel" class="password-modal-button-cancel">❌ Cancel</button>
             </div>
         </div>
     </div>
