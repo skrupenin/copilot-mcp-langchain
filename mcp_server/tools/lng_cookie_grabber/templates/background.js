@@ -428,11 +428,22 @@ if (typeof chrome.commands !== 'undefined') {
             const portalsTextarea = document.getElementById('portals-textarea');
             if (portalsTextarea) {
                 const portalsText = portalsTextarea.value.trim();
-                listPortals = portalsText ? portalsText.split('\n').filter(portal => portal.trim()).map(portal => portal.trim()) : [];
+                // Filter out empty lines and trim whitespace
+                listPortals = portalsText ? 
+                    portalsText.split('\n')
+                        .map(portal => portal.trim())
+                        .filter(portal => portal.length > 0) 
+                    : [];
                 console.log("#12.1 Extracted current portals from textarea:", listPortals);
             } else {
                 console.error("#12.1 No portals textarea found");
                 listPortals = [];
+            }
+            
+            if (listPortals.length === 0) {
+                console.log("#12.2 No portals to process");
+                changeTempStatus("[❌ no portals found]", "#ff9800");
+                return;
             }
             
             console.log("#12 Sending a message to the background script to start fetching cookies (first - open new tabs).");

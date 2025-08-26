@@ -84,16 +84,18 @@
             <div style="margin-bottom: 10px;">
                 <textarea id="portals-textarea" style="
                     width: 100%;
-                    height: 120px;
+                    min-height: 60px;
                     padding: 10px;
                     border: 2px solid #cbd5e0;
                     border-radius: 6px;
                     font-family: 'Consolas', 'Courier New', monospace;
                     font-size: 14px;
+                    line-height: 1.4;
                     background-color: #f8f9fa;
-                    resize: vertical;
+                    resize: none;
                     box-sizing: border-box;
                     transition: border-color 0.2s;
+                    overflow: hidden;
                 " placeholder="Enter portal URLs, one per line...">{{PORTALS}}</textarea>
                 <div style="margin-top: 8px; font-size: 12px; color: #666;">
                     📝 Edit portals directly here. Changes are saved automatically for plugin use.
@@ -155,11 +157,38 @@
     </div>
 
     <script>
-        // Simple textarea focus/blur styling
+        // Auto-resize textarea and styling
         document.addEventListener('DOMContentLoaded', function() {
             const portalsTextarea = document.getElementById('portals-textarea');
             
             if (portalsTextarea) {
+                // Function to auto-resize textarea based on content
+                function autoResize() {
+                    // Reset height to get the correct scrollHeight
+                    portalsTextarea.style.height = 'auto';
+                    
+                    // Count lines and set appropriate height
+                    const lines = portalsTextarea.value.split('\n').length;
+                    const minLines = 3; // minimum 3 lines
+                    const lineHeight = 1.4; // line-height from CSS
+                    const fontSize = 14; // font-size from CSS
+                    const padding = 20; // top + bottom padding
+                    
+                    const actualLines = Math.max(lines, minLines);
+                    const newHeight = (actualLines * fontSize * lineHeight) + padding;
+                    
+                    portalsTextarea.style.height = newHeight + 'px';
+                }
+                
+                // Auto-resize on initial load
+                autoResize();
+                
+                // Auto-resize on input
+                portalsTextarea.addEventListener('input', autoResize);
+                portalsTextarea.addEventListener('paste', function() {
+                    setTimeout(autoResize, 10); // Small delay for paste to complete
+                });
+                
                 // Add focus/blur styling
                 portalsTextarea.addEventListener('focus', function() {
                     this.style.borderColor = '#007acc';
