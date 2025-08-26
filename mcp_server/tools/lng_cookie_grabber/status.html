@@ -149,5 +149,100 @@
             }
         });
     </script>
+
+    <!-- 🔐 Corporate Password Modal (HTML only, JS in plugin) -->
+    <div id="cookie-password-modal" style="
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background-color: rgba(0, 0, 0, 0.7);
+        z-index: 10000;
+        display: none;
+        justify-content: center;
+        align-items: center;
+        font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    ">
+        <div style="
+            background: white;
+            padding: 30px;
+            border-radius: 12px;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+            max-width: 480px;
+            width: 90%;
+            text-align: center;
+        ">
+            <div style="
+                font-size: 24px;
+                margin-bottom: 20px;
+                color: #1a365d;
+                font-weight: bold;
+            ">🔐 Corporate Cookie Encryption</div>
+            
+            <div style="
+                background: #e6f3ff;
+                padding: 15px;
+                border-radius: 8px;
+                margin-bottom: 20px;
+                text-align: left;
+                font-size: 13px;
+                color: #2c5282;
+            ">
+                <div><strong>Session:</strong> <span id="modal-session-id"></span></div>
+                <div><strong>Encryption:</strong> AES-256-GCM</div>
+                <div><strong>Key Derivation:</strong> PBKDF2 (100k iterations)</div>
+                <div style="margin-top: 8px; color: #d69e2e;"><strong>⚠️ Password will be required for decryption in HTTP requests</strong></div>
+            </div>
+            
+            <label style="
+                display: block;
+                text-align: left;
+                margin-bottom: 8px;
+                font-weight: 600;
+                color: #2d3748;
+            ">Enter encryption password:</label>
+            
+            <input type="password" id="cookie-password-input" placeholder="Enter password (minimum 4 characters)" style="
+                width: 100%;
+                padding: 12px;
+                border: 2px solid #cbd5e0;
+                border-radius: 6px;
+                font-size: 16px;
+                margin-bottom: 20px;
+                box-sizing: border-box;
+                font-family: 'Consolas', 'Courier New', monospace;
+                transition: border-color 0.2s;
+            ">
+            
+            <div style="display: flex; gap: 12px; justify-content: center;">
+                <button id="cookie-password-ok" style="
+                    background: #48bb78;
+                    color: white;
+                    border: none;
+                    padding: 12px 24px;
+                    border-radius: 6px;
+                    cursor: pointer;
+                    font-size: 14px;
+                    font-weight: 600;
+                    transition: all 0.2s;
+                    box-shadow: 0 2px 4px rgba(72, 187, 120, 0.3);
+                ">🔒 Encrypt Cookies</button>
+                
+                <button id="cookie-password-cancel" style="
+                    background: #e53e3e;
+                    color: white;
+                    border: none;
+                    padding: 12px 24px;
+                    border-radius: 6px;
+                    cursor: pointer;
+                    font-size: 14px;
+                    font-weight: 600;
+                    transition: all 0.2s;
+                    box-shadow: 0 2px 4px rgba(229, 62, 62, 0.3);
+                ">❌ Cancel</button>
+            </div>
+        </div>
+    </div>
 </body>
 </html>

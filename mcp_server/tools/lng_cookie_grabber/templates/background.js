@@ -98,21 +98,126 @@ async function encryptData(plaintext, password) {
 
 function securePasswordPrompt() {
     return new Promise((resolve, reject) => {
-        // Show password prompt with stars
-        const password = prompt(
-            `🔐 Corporate Cookie Encryption\n\n` +
-            `Enter password to encrypt cookies for session '${sessionId}':\n\n` +
-            `⚠️  Password will be required for decryption in HTTP requests.\n` +
-            `🛡️ Using AES-256-GCM encryption with PBKDF2 (100k iterations).`
-        );
+        // 🔐 Try to use existing modal from status.html
+        let modal = document.getElementById('cookie-password-modal');
         
-        if (!password) {
-            reject(new Error('Password input cancelled'));
-        } else if (password.length < 4) {
-            reject(new Error('Password too short (minimum 4 characters)'));
-        } else {
+        if (!modal) {
+            // Fallback to simple prompt if modal not found
+            console.log('🔐 Using simple prompt fallback - status.html modal not found');
+            const password = prompt('🔐 Enter encryption password for cookies:');
+            
+            if (!password) {
+                reject(new Error('Password input cancelled'));
+                return;
+            }
+            
+            if (password.length < 4) {
+                alert('Password too short (minimum 4 characters)');
+                reject(new Error('Password too short'));
+                return;
+            }
+            
+            resolve(password);
+            return;
+        }
+        
+        console.log('🔐 Using modal from status.html');
+        // Update session ID in existing modal
+        const sessionSpan = document.getElementById('modal-session-id');
+        if (sessionSpan) {
+            sessionSpan.textContent = sessionId;
+        }
+        
+        // Show modal
+        modal.style.display = 'flex';
+        
+        const input = document.getElementById('cookie-password-input');
+        const okBtn = document.getElementById('cookie-password-ok');
+        const cancelBtn = document.getElementById('cookie-password-cancel');
+        
+        // Focus input and clear previous value
+        setTimeout(() => {
+            input.focus();
+            input.value = '';
+            input.style.borderColor = '#cbd5e0';
+            input.placeholder = 'Enter password (minimum 4 characters)';
+        }, 100);
+        
+        // Handle OK button
+        function handleOk() {
+            const password = input.value.trim();
+            
+            if (!password) {
+                input.style.borderColor = '#e53e3e';
+                input.placeholder = 'Password is required!';
+                input.focus();
+                return;
+            }
+            
+            if (password.length < 4) {
+                input.style.borderColor = '#e53e3e';
+                input.value = '';
+                input.placeholder = 'Password too short (minimum 4 characters)!';
+                input.focus();
+                return;
+            }
+            
+            // Hide modal instead of removing it
+            modal.style.display = 'none';
             resolve(password);
         }
+        
+        // Handle Cancel button
+        function handleCancel() {
+            // Hide modal instead of removing it
+            modal.style.display = 'none';
+            reject(new Error('Password input cancelled'));
+        }
+        
+        // Remove existing event listeners by cloning buttons
+        const newOkBtn = okBtn.cloneNode(true);
+        const newCancelBtn = cancelBtn.cloneNode(true);
+        okBtn.parentNode.replaceChild(newOkBtn, okBtn);
+        cancelBtn.parentNode.replaceChild(newCancelBtn, cancelBtn);
+        
+        // Event listeners
+        newOkBtn.addEventListener('click', handleOk);
+        newCancelBtn.addEventListener('click', handleCancel);
+        
+        // Enter key submits
+        input.addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') {
+                handleOk();
+            }
+        });
+        
+        // Reset border color on input
+        input.addEventListener('input', () => {
+            input.style.borderColor = '#cbd5e0';
+        });
+        
+        // Escape key cancels
+        document.addEventListener('keydown', function escapeHandler(e) {
+            if (e.key === 'Escape') {
+                document.removeEventListener('keydown', escapeHandler);
+                handleCancel();
+            }
+        });
+        
+        // Hover effects for buttons
+        newOkBtn.addEventListener('mouseenter', () => {
+            newOkBtn.style.backgroundColor = '#38a169';
+        });
+        newOkBtn.addEventListener('mouseleave', () => {
+            newOkBtn.style.backgroundColor = '#48bb78';
+        });
+        
+        newCancelBtn.addEventListener('mouseenter', () => {
+            newCancelBtn.style.backgroundColor = '#c53030';
+        });
+        newCancelBtn.addEventListener('mouseleave', () => {
+            newCancelBtn.style.backgroundColor = '#e53e3e';
+        });
     });
 }
 
