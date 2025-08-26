@@ -212,6 +212,7 @@ Complete solution for cookie collection with Chrome extension and server managem
 • `stop` - Stop webhook and websocket servers
 • `decrypt` - Decrypt saved cookie data for use in HTTP requests  
 • `store_encrypted` - Store pre-encrypted cookie data from browser
+• `list_sessions` - List all available cookie sessions by scanning the cookies directory
 
 **Features:**
 **Direct Server Management** - Direct Python imports for deterministic control
@@ -264,6 +265,13 @@ Store pre-encrypted cookies:
 }
 ```
 
+List sessions:
+```json
+{
+  "operation": "list_sessions"
+}
+```
+
 Stop servers:
 ```json
 {
@@ -277,7 +285,7 @@ Stop servers:
                 "operation": {
                     "type": "string",
                     "description": "Operation to perform",
-                    "enum": ["start", "stop", "decrypt", "store_encrypted"]
+                    "enum": ["start", "stop", "decrypt", "store_encrypted", "list_sessions"]
                 },
                 "cookies": {
                     "type": "string", 
@@ -330,6 +338,8 @@ async def run_tool(name: str, parameters: dict) -> list[types.Content]:
                 raise ValueError("'session' parameter is required for store_encrypted operation")
                 
             return await store_encrypted_cookies(encrypted_data, session)
+        elif operation == "list_sessions":
+            return await list_sessions()
         else:
             return [types.TextContent(
                 type="text",
@@ -685,5 +695,127 @@ async def store_encrypted_cookies(encrypted_data: str, session: str) -> list[typ
                 "error": str(e),
                 "operation": "store_encrypted",
                 "session": session
+            }, indent=2)
+        )]
+
+async def list_sessions() -> list[types.Content]:
+    """List all available cookie sessions by scanning the cookies directory."""
+    try:
+        logger.info("Scanning for available cookie sessions...")
+        
+        cookies_base_dir = "mcp_server/config/cookies"
+        
+        if not os.path.exists(cookies_base_dir):
+            return [types.TextContent(
+                type="text",
+                text=json.dumps({
+                    "success": True,
+                    "message": "No cookie sessions found - cookies directory does not exist",
+                    "operation": "list_sessions",
+                    "timestamp": datetime.now().isoformat(),
+                    "sessions": []
+                }, indent=2)
+            )]
+        
+        sessions = []
+        
+        # Scan cookies directory for session folders
+        for item in os.listdir(cookies_base_dir):
+            session_path = os.path.join(cookies_base_dir, item)
+            
+            if os.path.isdir(session_path):
+                session_info = {
+                    "session_id": item,
+                    "path": session_path,
+                    "files": [],
+                    "domains": [],
+                    "created_at": None,
+                    "modified_at": None,
+                    "encryption_type": "unknown",
+                    "total_size": 0
+                }
+                
+                # Get directory timestamps
+                stat = os.stat(session_path)
+                session_info["created_at"] = datetime.fromtimestamp(stat.st_ctime).isoformat()
+                session_info["modified_at"] = datetime.fromtimestamp(stat.st_mtime).isoformat()
+                
+                # Scan session directory for cookie files
+                try:
+                    for file_item in os.listdir(session_path):
+                        file_path = os.path.join(session_path, file_item)
+                        
+                        if os.path.isfile(file_path):
+                            file_stat = os.stat(file_path)
+                            file_size = file_stat.st_size
+                            session_info["total_size"] += file_size
+                            
+                            file_info = {
+                                "name": file_item,
+                                "size": file_size,
+                                "modified_at": datetime.fromtimestamp(file_stat.st_mtime).isoformat()
+                            }
+                            
+                            session_info["files"].append(file_info)
+                            
+                            # Determine encryption type and extract domains
+                            if file_item == "all_domains.encrypted":
+                                session_info["encryption_type"] = "browser_encrypted"
+                                
+                                # Try to extract metadata from encrypted file
+                                try:
+                                    with open(file_path, 'r', encoding='utf-8') as f:
+                                        storage_package = json.load(f)
+                                        
+                                    metadata = storage_package.get("metadata", {})
+                                    domains_count = metadata.get("domains_count", 0)
+                                    
+                                    session_info["domains_count"] = domains_count
+                                    session_info["encryption_method"] = metadata.get("encryption_method", "AES-256-GCM + PBKDF2")
+                                    session_info["encrypted_by"] = metadata.get("encrypted_by", "browser")
+                                    session_info["version"] = metadata.get("version", "unknown")
+                                    
+                                except Exception as e:
+                                    logger.warning(f"Could not read metadata from {file_path}: {e}")
+                                    session_info["metadata_error"] = str(e)
+                            
+                            elif file_item.endswith(".txt"):
+                                # Legacy plain text format
+                                session_info["encryption_type"] = "plaintext"
+                                domain = file_item.replace(".txt", "")
+                                session_info["domains"].append(domain)
+                
+                except Exception as e:
+                    logger.warning(f"Could not scan session directory {session_path}: {e}")
+                    session_info["scan_error"] = str(e)
+                
+                sessions.append(session_info)
+        
+        # Sort sessions by modified date (newest first)
+        sessions.sort(key=lambda x: x.get("modified_at", ""), reverse=True)
+        
+        logger.info(f"Found {len(sessions)} cookie sessions")
+        
+        return [types.TextContent(
+            type="text",
+            text=json.dumps({
+                "success": True,
+                "message": f"Found {len(sessions)} cookie sessions",
+                "operation": "list_sessions",
+                "timestamp": datetime.now().isoformat(),
+                "cookies_directory": cookies_base_dir,
+                "sessions_count": len(sessions),
+                "sessions": sessions
+            }, indent=2)
+        )]
+        
+    except Exception as e:
+        logger.error(f"Failed to list cookie sessions: {e}")
+        return [types.TextContent(
+            type="text",
+            text=json.dumps({
+                "success": False,
+                "error": str(e),
+                "operation": "list_sessions"
             }, indent=2)
         )]
