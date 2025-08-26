@@ -11,19 +11,7 @@ from cryptography.hazmat.primitives import hashes
 from cryptography.hazmat.backends import default_backend
 import getpass
 
-# Optional GUI support
-try:
-    import tkinter as tk
-    from tkinter import simpledialog
-    GUI_AVAILABLE = True
-except ImportError:
-    GUI_AVAILABLE = False
-
 logger = logging.getLogger('mcp_server.tools.lng_cookie_grabber')
-
-# Warn about GUI availability after logger is defined
-if not GUI_AVAILABLE:
-    logger.warning("tkinter not available - using console password input only")
 
 # Cryptographic constants for corporate-grade security
 ENCRYPTION_KEY_LENGTH = 32  # AES-256
@@ -36,46 +24,8 @@ def secure_password_prompt(prompt_text: str) -> str:
     import subprocess
     
     try:
-        if GUI_AVAILABLE and platform.system() == "Windows":
-            logger.info("🔐 Showing Windows password dialog (MCP mode)")
-            
-            # Use tkinter for Windows GUI with enhanced settings for MCP
-            root = tk.Tk()
-            root.withdraw()  # Hide main window
-            root.lift()  # Bring to front
-            root.attributes('-topmost', True)  # Always on top
-            root.attributes('-alpha', 0.0)  # Make root invisible but functional
-            
-            # Force window focus and activation
-            root.focus_force()
-            root.update()
-            
-            password = simpledialog.askstring(
-                "🔐 Cookie Decryption - Corporate Security",
-                f"{prompt_text}\n\nSession: Browser Encrypted Cookies\nSecurity: AES-256-GCM",
-                show='*',  # Hide password characters
-                parent=root
-            )
-            
-            root.quit()
-            root.destroy()
-            
-            if not password:
-                logger.warning("Password input cancelled by user")
-                raise ValueError("Password input cancelled")
-            
-            # 🔍 DEBUG: Log password details (masked for security)
-            logger.info("✅ Password entered successfully via GUI")
-            logger.info(f"🔍 Password length: {len(password)} characters")
-            logger.info(f"🔍 Password starts with: '{password[:2]}***' (first 2 chars)")
-            logger.info(f"🔍 Password ends with: '***{password[-2:]}' (last 2 chars)")
-            logger.info(f"🔍 Password type: {type(password)}")
-            
-            # 🔒 Don't return password directly - will be cleared in calling function
-            return password
-            
-        elif platform.system() == "Windows":
-            # PowerShell fallback for Windows when tkinter not available
+        if platform.system() == "Windows":
+            # PowerShell password dialog for Windows
             logger.info("🔐 Using PowerShell password dialog (MCP mode)")
             
             powershell_script = f'''
