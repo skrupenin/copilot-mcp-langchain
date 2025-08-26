@@ -570,7 +570,7 @@ class HTTPClient:
                 
                 # Log cookie usage (without values for security)
                 if len(encrypted_cookies) > 0:
-                    print(f"🔐 Using {len(encrypted_cookies)} encrypted cookies for domain: {domain}")
+                    print(f"Using {len(encrypted_cookies)} encrypted cookies for domain: {domain}")
                     
             except Exception as e:
                 raise ValueError(f"Encrypted cookies error: {str(e)}")

@@ -26,14 +26,14 @@ def secure_password_prompt(prompt_text: str) -> str:
     try:
         if platform.system() == "Windows":
             # PowerShell password dialog for Windows
-            logger.info("🔐 Using PowerShell password dialog (MCP mode)")
+            logger.info("Using PowerShell password dialog (MCP mode)")
             
             powershell_script = f'''
 Add-Type -AssemblyName System.Windows.Forms
 Add-Type -AssemblyName System.Drawing
 
 $form = New-Object System.Windows.Forms.Form
-$form.Text = "🔐 Cookie Decryption - Corporate Security"
+$form.Text = "Cookie Decryption - Corporate Security"
 $form.Size = New-Object System.Drawing.Size(450,180)
 $form.StartPosition = "CenterScreen"
 $form.TopMost = $true
@@ -139,7 +139,7 @@ $form.Dispose()
 async def decrypt_browser_data(encrypted_package: dict) -> str:
     """Decrypt browser-encrypted data using Web Crypto API compatible method."""
     try:
-        logger.info("🔐 Starting browser data decryption in MCP mode")
+        logger.info("Starting browser data decryption in MCP mode")
         logger.info(f"Encrypted package keys: {list(encrypted_package.keys())}")
         
         # Get password from user (corporate paranoia mode - ALWAYS ask!)
@@ -167,7 +167,7 @@ async def decrypt_browser_data(encrypted_package: dict) -> str:
             logger.info(f"Key derived successfully, length: {len(decryption_key)} bytes")
             
         finally:
-            # 🔒 SECURITY: Clear password from memory immediately after use
+            # SECURITY: Clear password from memory immediately after use
             password = None
             import gc
             gc.collect()
