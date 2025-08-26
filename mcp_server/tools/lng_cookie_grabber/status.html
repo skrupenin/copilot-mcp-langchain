@@ -56,8 +56,19 @@
 </head>
 <body>
     <div class="container">
-        <h1>🍪 Cookie Session Status</h1>
-        <div class="session-id">Session ID: {{SESSION_ID}}</div>        
+        <h1>🍪 Cookie Session Status - Corporate Security</h1>
+        <div class="session-id">Session ID: {{SESSION_ID}}</div>
+        
+        <div style="background: #e8f5e8; padding: 10px; border-radius: 5px; margin: 15px 0;">
+            <h3 style="color: #2e7d32; margin-top: 0;">🔐 Browser-Side Corporate Encryption</h3>
+            <p style="margin: 5px 0; color: #2e7d32;">
+                ✅ AES-256-GCM Encryption <strong>(in Browser)</strong><br>
+                ✅ Secure Password Prompt<br>
+                ✅ PBKDF2 Key Derivation (100k iterations)<br>
+                ✅ No plaintext cookies on network/server<br>
+                ✅ Corporate paranoia mode enabled
+            </p>
+        </div>        
         
         <div class="portals-list" style="margin-top: 15px;">
             <h3>🌐 Portal List:</h3>
@@ -90,9 +101,12 @@
                     font-size: 16px;
                     padding: 12px 24px;
                 ">
-                    🚀 Run Cookie Grabber
+                    � Run Encrypted Cookie Grabber
                 </button>
-                <div class="file-info">Click to start collecting cookies from all portals</div>
+                <div class="file-info">
+                    Click to start collecting and encrypting cookies from all portals<br>
+                    <strong>⚠️ You will be prompted for encryption password</strong>
+                </div>
             </div>
         </div>
 

@@ -1,5 +1,5 @@
 enabled: true
-description: "Universal HTTP client with advanced features: requests, pagination, async, batching, auth, browser emulation"
+description: "Universal HTTP client with advanced features: requests, pagination, async, batching, auth, browser emulation, encrypted cookies"
 dependencies:
   - "requests"
   - "aiohttp"  
@@ -7,3 +7,4 @@ dependencies:
   - "beautifulsoup4"
   - "websockets"
   - "jsonpath-ng"
+  - "cryptography"

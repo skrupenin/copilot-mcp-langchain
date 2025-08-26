@@ -30,6 +30,39 @@ from mcp_server.pipeline.expressions import substitute_expressions, parse_substi
 # State management  
 from mcp_server.file_state_manager import FileStateManager
 
+async def decrypt_cookies_for_domain(session_id: str, domain: str) -> str:
+    """Decrypt cookies for specified domain using lng_cookie_grabber."""
+    try:
+        # Import cookie grabber functions
+        from ..lng_cookie_grabber.tool import decrypt_cookies as decrypt_tool
+        
+        # Call decrypt function
+        result = await decrypt_tool(session_id, domain)
+        
+        if result and len(result) > 0:
+            result_data = json.loads(result[0].text)
+            if result_data.get("success"):
+                return result_data.get("cookies", "")
+            else:
+                raise ValueError(f"Decryption failed: {result_data.get('error', 'Unknown error')}")
+        else:
+            raise ValueError("No decryption result returned")
+            
+    except Exception as e:
+        raise ValueError(f"Failed to decrypt cookies: {str(e)}")
+
+def parse_cookie_string(cookie_string: str) -> dict:
+    """Parse cookie string into dictionary format for requests library."""
+    cookies = {}
+    if cookie_string:
+        # Handle both formats: "name=value; name2=value2" and individual cookies
+        cookie_pairs = cookie_string.split(';')
+        for pair in cookie_pairs:
+            if '=' in pair:
+                name, value = pair.strip().split('=', 1)
+                cookies[name.strip()] = value.strip()
+    return cookies
+
 async def tool_info() -> dict:
     """Returns information about the lng_http_client tool."""
     return {
@@ -43,6 +76,7 @@ async def tool_info() -> dict:
 • **Intelligent Batching** - Sequential, parallel, or mixed execution strategies
 • **Advanced Auth** - OAuth 1.0/2.0, JWT, Bearer, API Keys, custom headers
 • **Browser Emulation** - Real User-Agent rotation, cookie management, fingerprinting
+• **Encrypted Cookies** - Corporate-grade AES-256-GCM cookie integration with lng_cookie_grabber
 • **Multi-format Support** - JSON, XML, HTML, CSV, binary data handling
 • **Expression System** - JavaScript/Python expressions for dynamic requests
 • **State Persistence** - Session management across MCP restarts
@@ -143,6 +177,19 @@ All expressions have access to:
     "webhook_url": "http://localhost:8080/webhook"
   }
 }
+```
+
+**Encrypted Cookies (Corporate Security):**
+```json
+{
+  "mode": "request",
+  "url": "https://protected-api.company.com/user/profile",
+  "method": "GET",
+  "use_encrypted_cookies": {
+    "session": "corp_session_123_abc",
+    "domain": "protected-api.company.com"
+  }
+}
 ```""",
         "schema": {
             "type": "object",
@@ -207,6 +254,17 @@ All expressions have access to:
                 "verify_ssl": {"type": "boolean", "default": True},
                 "proxies": {"type": "object", "description": "Proxy configuration"},
                 "cookies": {"type": "object", "description": "Custom cookies"},
+                
+                # Encrypted cookies integration
+                "use_encrypted_cookies": {
+                    "type": "object",
+                    "description": "Use encrypted cookies from lng_cookie_grabber system",
+                    "properties": {
+                        "session": {"type": "string", "description": "Cookie session ID"},
+                        "domain": {"type": "string", "description": "Domain to decrypt cookies for"},
+                        "auto_detect_domain": {"type": "boolean", "description": "Auto-detect domain from request URL", "default": True}
+                    }
+                },
                 
                 # Pagination configuration
                 "pagination": {
@@ -430,6 +488,20 @@ class HTTPClient:
         import random
         return random.choice(self.user_agents)
     
+    def censor_sensitive_headers(self, headers: Dict) -> Dict:
+        """Censor sensitive headers like cookies and authorization for security"""
+        censored_headers = {}
+        sensitive_headers = ['cookie', 'set-cookie', 'authorization', 'x-auth-token', 'api-key']
+        
+        for key, value in headers.items():
+            key_lower = key.lower()
+            if any(sensitive in key_lower for sensitive in sensitive_headers):
+                censored_headers[key] = "<censored>"
+            else:
+                censored_headers[key] = value
+        
+        return censored_headers
+    
     async def make_request(self, config: Dict, session: Dict, context: Dict) -> Dict:
         """Make a single HTTP request"""
         start_time = time.time()
@@ -468,6 +540,40 @@ class HTTPClient:
         # Cookies from session
         cookies = session.get("cookies", {})
         cookies.update(processed_config.get("cookies", {}))
+        
+        # Handle encrypted cookies
+        encrypted_config = processed_config.get("use_encrypted_cookies")
+        if encrypted_config:
+            try:
+                session_id = encrypted_config.get("session")
+                domain = encrypted_config.get("domain")
+                auto_detect = encrypted_config.get("auto_detect_domain", True)
+                
+                if not session_id:
+                    raise ValueError("session parameter is required for use_encrypted_cookies")
+                
+                # Auto-detect domain from URL if not specified
+                if not domain and auto_detect:
+                    parsed_url = urlparse(url)
+                    domain = parsed_url.hostname
+                    if not domain:
+                        raise ValueError("Could not auto-detect domain from URL, please specify domain explicitly")
+                elif not domain:
+                    raise ValueError("domain parameter is required when auto_detect_domain is False")
+                
+                # Decrypt cookies for domain
+                encrypted_cookie_string = await decrypt_cookies_for_domain(session_id, domain)
+                encrypted_cookies = parse_cookie_string(encrypted_cookie_string)
+                
+                # Merge encrypted cookies (they take precedence)
+                cookies.update(encrypted_cookies)
+                
+                # Log cookie usage (without values for security)
+                if len(encrypted_cookies) > 0:
+                    print(f"🔐 Using {len(encrypted_cookies)} encrypted cookies for domain: {domain}")
+                    
+            except Exception as e:
+                raise ValueError(f"Encrypted cookies error: {str(e)}")
         
         try:
             # Make request
@@ -512,7 +618,7 @@ class HTTPClient:
             result = {
                 "success": True,
                 "status_code": response.status_code,
-                "headers": dict(response.headers),
+                "headers": self.censor_sensitive_headers(dict(response.headers)),
                 "data": response_data,
                 "url": response.url,
                 "response_time": response_time,

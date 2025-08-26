@@ -11,6 +11,111 @@ let PLUGIN_VERSION = "5"; // please also check WebSocketConfig
 let listPortals = []; // will be loaded from DOM
 let sessionId = ""; // will be loaded from DOM
 
+// 🔐 Corporate-grade encryption functions
+async function deriveKey(password, salt, iterations = 100000) {
+    try {
+        console.log('🔐 Deriving key with PBKDF2...');
+        const encoder = new TextEncoder();
+        const keyMaterial = await crypto.subtle.importKey(
+            'raw',
+            encoder.encode(password),
+            'PBKDF2',
+            false,
+            ['deriveKey']
+        );
+        console.log('🔐 Key material imported');
+        
+        const derivedKey = await crypto.subtle.deriveKey(
+            {
+                name: 'PBKDF2',
+                salt: salt,
+                iterations: iterations,
+                hash: 'SHA-256'
+            },
+            keyMaterial,
+            {
+                name: 'AES-GCM',
+                length: 256
+            },
+            false,
+            ['encrypt', 'decrypt']
+        );
+        console.log('🔐 Key derived with PBKDF2');
+        return derivedKey;
+    } catch (error) {
+        console.error('🔐 Key derivation failed:', error);
+        throw error;
+    }
+}
+
+async function encryptData(plaintext, password) {
+    try {
+        // Check if Web Crypto API is available
+        if (!crypto || !crypto.subtle) {
+            throw new Error('Web Crypto API not available. Please use HTTPS or localhost.');
+        }
+        
+        console.log('🔐 Starting encryption process...');
+        const encoder = new TextEncoder();
+        const data = encoder.encode(plaintext);
+        console.log(`🔐 Data encoded, length: ${data.length} bytes`);
+        
+        // Generate random salt and IV
+        const salt = crypto.getRandomValues(new Uint8Array(16));
+        const iv = crypto.getRandomValues(new Uint8Array(12));
+        console.log('🔐 Salt and IV generated');
+        
+        // Derive encryption key from password
+        console.log('🔐 Deriving key from password...');
+        const key = await deriveKey(password, salt);
+        console.log('🔐 Key derived successfully');
+        
+        // Encrypt data using AES-GCM
+        console.log('🔐 Encrypting data...');
+        const encrypted = await crypto.subtle.encrypt(
+            {
+                name: 'AES-GCM',
+                iv: iv
+            },
+            key,
+            data
+        );
+        console.log('🔐 Data encrypted successfully');
+        
+        // Return encrypted package
+        return {
+            ciphertext: Array.from(new Uint8Array(encrypted)),
+            iv: Array.from(iv),
+            salt: Array.from(salt),
+            algorithm: 'AES-256-GCM',
+            iterations: 100000
+        };
+    } catch (error) {
+        console.error('🔐 Encryption failed:', error);
+        throw new Error('Encryption failed: ' + error.message);
+    }
+}
+
+function securePasswordPrompt() {
+    return new Promise((resolve, reject) => {
+        // Show password prompt with stars
+        const password = prompt(
+            `🔐 Corporate Cookie Encryption\n\n` +
+            `Enter password to encrypt cookies for session '${sessionId}':\n\n` +
+            `⚠️  Password will be required for decryption in HTTP requests.\n` +
+            `🛡️ Using AES-256-GCM encryption with PBKDF2 (100k iterations).`
+        );
+        
+        if (!password) {
+            reject(new Error('Password input cancelled'));
+        } else if (password.length < 4) {
+            reject(new Error('Password too short (minimum 4 characters)'));
+        } else {
+            resolve(password);
+        }
+    });
+}
+
 async function processInjection() {
     console.log("#30 Processing injection of the plugin elements.");
 
@@ -302,7 +407,7 @@ if (typeof chrome.commands !== 'undefined') {
             await processInjection();
         });
 
-        chrome.runtime.onMessage.addListener(function (message) {
+        chrome.runtime.onMessage.addListener(async function (message) {
             if (message.command !== MESSAGE__STEP3__TO_MAIN_PAGE__PROCESS_RESULT) return;
             if (!message.data) return;
 
@@ -330,10 +435,50 @@ if (typeof chrome.commands !== 'undefined') {
                 }
                 foundAll = true;
             }
+            
             if (foundAll) {
-                changeTempStatus("[cookies were sent by plugin]", "#dfda75");
-                console.log("#15.1 Sending the result to the server.");
-                emergencySocket.send(result);
+                try {
+                    changeTempStatus("[🔐 encrypting cookies...]", "#ff9800");
+                    console.log("#15.0 All cookies collected, starting encryption...");
+                    
+                    // Get password from user with secure prompt
+                    let password = await securePasswordPrompt();
+                    console.log("#15.1 Password obtained, encrypting cookies...");
+                    
+                    // Encrypt cookies data
+                    const encryptedPackage = await encryptData(result, password);
+                    console.log("#15.2 Cookies encrypted successfully");
+                    
+                    // Clear password from memory (create new variable to avoid const issues)
+                    let clearPassword = password;
+                    clearPassword = null;
+                    password = undefined;
+                    
+                    // Create encrypted message format for server
+                    const encryptedMessage = JSON.stringify({
+                        type: 'encrypted_cookies',
+                        sessionId: sessionId,
+                        encrypted: encryptedPackage,
+                        timestamp: new Date().toISOString(),
+                        domains_count: message.data.length
+                    });
+                    
+                    // Send encrypted data to WebSocket server
+                    changeTempStatus("[🚀 sending encrypted cookies...]", "#2196f3");
+                    console.log("#15.3 Sending encrypted cookies to server");
+                    emergencySocket.send(encryptedMessage);
+                    
+                    // Success status
+                    changeTempStatus("[✅ cookies encrypted and sent]", "#4caf50");
+                    console.log("#15.4 Encrypted cookies sent successfully");
+                    
+                } catch (error) {
+                    console.error("#15.ERROR Encryption failed:", error);
+                    console.error("#15.ERROR Error details:", error.name, error.message);
+                    console.error("#15.ERROR Stack trace:", error.stack);
+                    changeTempStatus("[❌ encryption failed]", "#f44336");
+                    alert(`🔐 Cookie Encryption Failed:\n\n${error.name}: ${error.message}\n\nPlease try again.`);
+                }
             } else {
                 alert("Not all cookies were sent. Try login manually. And send cookies again.");
                 console.log("#15.2 Not all cookies were sent. Try login manually. And send cookies again.");
