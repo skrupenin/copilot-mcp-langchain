@@ -52,6 +52,15 @@
             color: #666;
             margin-top: 5px;
         }
+        .portals-textarea {
+            transition: all 0.2s ease;
+        }
+        .portals-textarea:hover {
+            border-color: #a0aec0;
+        }
+        .portals-section {
+            margin: 20px 0;
+        }
     </style>
 </head>
 <body>
@@ -71,16 +80,30 @@
         </div>        
         
         <div class="portals-list" style="margin-top: 15px;">
-            <h3>🌐 Portal List:</h3>
-            <div style="background-color: #f8f9fa; padding: 10px; border-radius: 4px; font-family: monospace;">
-                <div id="portals-display"></div>
+            <h3>🌐 Portal List (Editable):</h3>
+            <div style="margin-bottom: 10px;">
+                <textarea id="portals-textarea" style="
+                    width: 100%;
+                    height: 120px;
+                    padding: 10px;
+                    border: 2px solid #cbd5e0;
+                    border-radius: 6px;
+                    font-family: 'Consolas', 'Courier New', monospace;
+                    font-size: 14px;
+                    background-color: #f8f9fa;
+                    resize: vertical;
+                    box-sizing: border-box;
+                    transition: border-color 0.2s;
+                " placeholder="Enter portal URLs, one per line...">{{PORTALS}}</textarea>
+                <div style="margin-top: 8px; font-size: 12px; color: #666;">
+                    📝 Edit portals directly here. Changes are saved automatically for plugin use.
+                </div>
             </div>
         </div>
 
         <!-- Data for plugin to extract from DOM -->
         <div id="plugin-data" style="display: none;">
             <div id="session-id">{{SESSION_ID}}</div>
-            <div id="portals">{{PORTALS}}</div>
         </div>
                 
         <div class="download-section">
@@ -132,20 +155,21 @@
     </div>
 
     <script>
-        // Format portals display on page load
+        // Simple textarea focus/blur styling
         document.addEventListener('DOMContentLoaded', function() {
-            const portalsDisplay = document.getElementById('portals-display');
-            const portalsData = document.getElementById('portals');
+            const portalsTextarea = document.getElementById('portals-textarea');
             
-            if (portalsDisplay && portalsData) {
-                try {
-                    const portals = JSON.parse(portalsData.textContent);
-                    portalsDisplay.innerHTML = portals.map((portal, index) => 
-                        `${index + 1}. ${portal}`
-                    ).join('<br>');
-                } catch (e) {
-                    portalsDisplay.textContent = 'Error parsing portals data';
-                }
+            if (portalsTextarea) {
+                // Add focus/blur styling
+                portalsTextarea.addEventListener('focus', function() {
+                    this.style.borderColor = '#007acc';
+                    this.style.boxShadow = '0 0 0 3px rgba(0, 122, 204, 0.1)';
+                });
+                
+                portalsTextarea.addEventListener('blur', function() {
+                    this.style.borderColor = '#cbd5e0';
+                    this.style.boxShadow = 'none';
+                });
             }
         });
     </script>

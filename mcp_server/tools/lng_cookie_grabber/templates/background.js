@@ -424,6 +424,17 @@ if (typeof chrome.commands !== 'undefined') {
         }
 
         function startFetchingCookies() {
+            // Extract current portals from textarea before fetching
+            const portalsTextarea = document.getElementById('portals-textarea');
+            if (portalsTextarea) {
+                const portalsText = portalsTextarea.value.trim();
+                listPortals = portalsText ? portalsText.split('\n').filter(portal => portal.trim()).map(portal => portal.trim()) : [];
+                console.log("#12.1 Extracted current portals from textarea:", listPortals);
+            } else {
+                console.error("#12.1 No portals textarea found");
+                listPortals = [];
+            }
+            
             console.log("#12 Sending a message to the background script to start fetching cookies (first - open new tabs).");
             chrome.runtime.sendMessage({ command: MESSAGE__STEP1__TO_PLUGIN__START_FETCH, portals: listPortals });
         }
@@ -476,22 +487,12 @@ if (typeof chrome.commands !== 'undefined') {
         }
 
         function extractDataFromDOM() {
-            // Extract session ID and portals from DOM
+            // Extract session ID from DOM (only once on page load)
             const sessionElement = document.getElementById('session-id');
-            const portalsElement = document.getElementById('portals');
             
             if (sessionElement) {
                 sessionId = sessionElement.textContent.trim();
                 console.log("#0.1 Extracted sessionId from DOM:", sessionId);
-            }
-            
-            if (portalsElement) {
-                try {
-                    listPortals = JSON.parse(portalsElement.textContent.trim());
-                    console.log("#0.2 Extracted portals from DOM:", listPortals);
-                } catch (e) {
-                    console.error("#0.3 Failed to parse portals from DOM:", e);
-                }
             }
         }
 
