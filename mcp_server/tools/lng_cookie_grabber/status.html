@@ -154,42 +154,54 @@
                 then load the folder as unpacked extension in Chrome Developer Mode.
             </div>
         </div>
+
+        <div class="download-section">
+            <h2>🐛 Debug Logs</h2>
+            <p>Real-time plugin logs for debugging:</p>
+            
+            <textarea id="debug-logs" readonly style="
+                width: 100%;
+                height: 200px;
+                padding: 10px;
+                border: 2px solid #cbd5e0;
+                border-radius: 6px;
+                font-family: 'Consolas', 'Courier New', monospace;
+                font-size: 12px;
+                line-height: 1.3;
+                background-color: #2d3748;
+                color: #e2e8f0;
+                resize: vertical;
+                box-sizing: border-box;
+                white-space: pre-wrap;
+                overflow-y: auto;
+            " placeholder="Plugin logs will appear here..."></textarea>
+            
+            <div style="margin-top: 8px; font-size: 12px; color: #666;">
+                🔧 All plugin console.log messages are duplicated here for easy debugging.
+            </div>
+        </div>
     </div>
 
     <script>
-        // Auto-resize textarea and styling
+        // Auto-resize textarea
         document.addEventListener('DOMContentLoaded', function() {
             const portalsTextarea = document.getElementById('portals-textarea');
             
             if (portalsTextarea) {
                 // Function to auto-resize textarea based on content
                 function autoResize() {
-                    // Reset height to get the correct scrollHeight
                     portalsTextarea.style.height = 'auto';
-                    
-                    // Count lines and set appropriate height
                     const lines = portalsTextarea.value.split('\n').length;
-                    const minLines = 3; // minimum 3 lines
-                    const lineHeight = 1.4; // line-height from CSS
-                    const fontSize = 14; // font-size from CSS
-                    const padding = 20; // top + bottom padding
-                    
+                    const minLines = 3;
                     const actualLines = Math.max(lines, minLines);
-                    const newHeight = (actualLines * fontSize * lineHeight) + padding;
-                    
+                    const newHeight = (actualLines * 14 * 1.4) + 20;
                     portalsTextarea.style.height = newHeight + 'px';
                 }
                 
-                // Auto-resize on initial load
                 autoResize();
-                
-                // Auto-resize on input
                 portalsTextarea.addEventListener('input', autoResize);
-                portalsTextarea.addEventListener('paste', function() {
-                    setTimeout(autoResize, 10); // Small delay for paste to complete
-                });
                 
-                // Add focus/blur styling
+                // Focus/blur styling
                 portalsTextarea.addEventListener('focus', function() {
                     this.style.borderColor = '#007acc';
                     this.style.boxShadow = '0 0 0 3px rgba(0, 122, 204, 0.1)';

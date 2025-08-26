@@ -11,10 +11,57 @@ let PLUGIN_VERSION = "5"; // please also check WebSocketConfig
 let listPortals = []; // will be loaded from DOM
 let sessionId = ""; // will be loaded from DOM
 
+// 🐛 Debug logging function - adds logs to both console and HTML textarea
+function debugLog(message, object, level = 'info') {
+    // Always log to console first
+    const consoleMsg = `[PLUGIN] ${message}`;
+    switch (level) {
+        case 'error':
+            console.error(consoleMsg, object);
+            break;
+        case 'warn':
+            console.warn(consoleMsg, object);
+            break;
+        default:
+            console.log(consoleMsg, object);
+    }
+    
+    // Try to send log to main page via Chrome messaging
+    try {
+        // For background script - send to all tabs
+        if (typeof chrome !== 'undefined' && chrome.tabs && chrome.tabs.query) {
+            chrome.tabs.query({}, function(tabs) {
+                tabs.forEach(tab => {
+                    if (tab.url && tab.url.includes('localhost:9000/cookies/')) {
+                        chrome.tabs.sendMessage(tab.id, {
+                            command: 'debug-log',
+                            message: message,
+                            level: level,
+                            timestamp: new Date().toISOString()
+                        }).catch(() => {}); // Ignore errors
+                    }
+                });
+            });
+        }
+        // For content script - try direct DOM access first
+        else if (typeof document !== 'undefined') {
+            const debugTextarea = document.getElementById('debug-logs');
+            if (debugTextarea) {
+                const timestamp = new Date().toISOString().slice(11, 23); // HH:MM:SS.mmm
+                const levelIcon = level === 'error' ? '❌' : level === 'warn' ? '⚠️' : 'ℹ️';
+                const logLine = `[${timestamp}] ${levelIcon} ${message}\n`;
+                debugTextarea.value += logLine;
+            }
+        }
+    } catch (e) {
+        // Silently ignore if messaging not available
+    }
+}
+
 // 🔐 Corporate-grade encryption functions
 async function deriveKey(password, salt, iterations = 100000) {
     try {
-        console.log('🔐 Deriving key with PBKDF2...');
+        debugLog('🔐 Deriving key with PBKDF2...');
         const encoder = new TextEncoder();
         const keyMaterial = await crypto.subtle.importKey(
             'raw',
@@ -23,7 +70,7 @@ async function deriveKey(password, salt, iterations = 100000) {
             false,
             ['deriveKey']
         );
-        console.log('🔐 Key material imported');
+        debugLog('🔐 Key material imported');
         
         const derivedKey = await crypto.subtle.deriveKey(
             {
@@ -40,10 +87,10 @@ async function deriveKey(password, salt, iterations = 100000) {
             false,
             ['encrypt', 'decrypt']
         );
-        console.log('🔐 Key derived with PBKDF2');
+        debugLog('🔐 Key derived with PBKDF2');
         return derivedKey;
     } catch (error) {
-        console.error('🔐 Key derivation failed:', error);
+        debugLog('🔐 Key derivation failed:', error, 'error');
         throw error;
     }
 }
@@ -55,23 +102,23 @@ async function encryptData(plaintext, password) {
             throw new Error('Web Crypto API not available. Please use HTTPS or localhost.');
         }
         
-        console.log('🔐 Starting encryption process...');
+        debugLog('🔐 Starting encryption process...');
         const encoder = new TextEncoder();
         const data = encoder.encode(plaintext);
-        console.log(`🔐 Data encoded, length: ${data.length} bytes`);
+        debugLog(`🔐 Data encoded, length: ${data.length} bytes`);
         
         // Generate random salt and IV
         const salt = crypto.getRandomValues(new Uint8Array(16));
         const iv = crypto.getRandomValues(new Uint8Array(12));
-        console.log('🔐 Salt and IV generated');
+        debugLog('🔐 Salt and IV generated');
         
         // Derive encryption key from password
-        console.log('🔐 Deriving key from password...');
+        debugLog('🔐 Deriving key from password...');
         const key = await deriveKey(password, salt);
-        console.log('🔐 Key derived successfully');
+        debugLog('🔐 Key derived successfully');
         
         // Encrypt data using AES-GCM
-        console.log('🔐 Encrypting data...');
+        debugLog('🔐 Encrypting data...');
         const encrypted = await crypto.subtle.encrypt(
             {
                 name: 'AES-GCM',
@@ -80,7 +127,7 @@ async function encryptData(plaintext, password) {
             key,
             data
         );
-        console.log('🔐 Data encrypted successfully');
+        debugLog('🔐 Data encrypted successfully');
         
         // Return encrypted package
         return {
@@ -91,7 +138,7 @@ async function encryptData(plaintext, password) {
             iterations: 100000
         };
     } catch (error) {
-        console.error('🔐 Encryption failed:', error);
+        debugLog('🔐 Encryption failed:', error, 'error');
         throw new Error('Encryption failed: ' + error.message);
     }
 }
@@ -103,7 +150,7 @@ function securePasswordPrompt() {
         
         if (!modal) {
             // Fallback to simple prompt if modal not found
-            console.log('🔐 Using simple prompt fallback - status.html modal not found');
+            debugLog('🔐 Using simple prompt fallback - status.html modal not found');
             const password = prompt('🔐 Enter encryption password for cookies:');
             
             if (!password) {
@@ -121,7 +168,7 @@ function securePasswordPrompt() {
             return;
         }
         
-        console.log('🔐 Using modal from status.html');
+        debugLog('🔐 Using modal from status.html');
         // Update session ID in existing modal
         const sessionSpan = document.getElementById('modal-session-id');
         if (sessionSpan) {
@@ -222,11 +269,11 @@ function securePasswordPrompt() {
 }
 
 async function processInjection() {
-    console.log("#30 Processing injection of the plugin elements.");
+    debugLog("#30 Processing injection of the plugin elements.");
 
 // <OTHER_PAGES_INJECTION>
 
-    console.log("#40 Injection of the plugin elements is done.");
+    debugLog("#40 Injection of the plugin elements is done.");
 }
 
 if (typeof chrome.commands !== 'undefined') {
@@ -238,7 +285,7 @@ if (typeof chrome.commands !== 'undefined') {
     let originalTabId = null;
 
     chrome.runtime.onMessage.addListener(function (message, sender) {
-        console.log("#4 Start fetching cookies. Setting all urls and starting opening new tabs.");
+        debugLog("#4 Start fetching cookies. Setting all urls and starting opening new tabs.");
         if (message.command === MESSAGE__STEP1__TO_PLUGIN__START_FETCH) {
             originalTabId = sender.tab.id;
             urls = message.portals
@@ -250,7 +297,7 @@ if (typeof chrome.commands !== 'undefined') {
         // get next URL
         let pageUrl = urls.shift();
 
-        console.log("#5 Opening new tab with #plugin hash for the  URL: " + pageUrl);
+        debugLog("#5 Opening new tab with #plugin hash for the  URL: " + pageUrl);
         // Add #plugin hash to URL if not already present
         if (!pageUrl.includes('#plugin')) {
             pageUrl += '#plugin';
@@ -261,31 +308,31 @@ if (typeof chrome.commands !== 'undefined') {
     chrome.runtime.onMessage.addListener(function (message, sender) {
         if (message.command !== MESSAGE__STEP2__TO_PLUGIN__SAVE_COOKIES) return;
 
-        console.log("#7 Saving all cookies from the page.");
+        debugLog("#7 Saving all cookies from the page.");
         chrome.cookies.getAll({
             domain: message.domain
         }, function (cookies) {
-            console.log("#8 Cookies data for the page with the page url: " + message.href);
+            debugLog("#8 Cookies data for the page with the page url: " + message.href);
             let cookieData = [];
             for (var i = 0; i < cookies.length; i++) {
                 cookieData.push(cookies[i].name + "=" + cookies[i].value);
             }
             sitesCookies.push({ cookies: cookieData, href: message.href });
 
-            console.log("#8.2 Close the tab we opened.");
+            debugLog("#8.2 Close the tab we opened.");
             closeTab(sender);
 
             if (urls && urls.length) {
-                console.log("#10 We have more urls to process, open the next tab.");
+                debugLog("#10 We have more urls to process, open the next tab.");
                 fetchNext();
             } else {
-                console.log("#11 Processed all urls, send the result to the main page.");
+                debugLog("#11 Processed all urls, send the result to the main page.");
                 chrome.tabs.sendMessage(originalTabId, {
                     command: MESSAGE__STEP3__TO_MAIN_PAGE__PROCESS_RESULT,
                     data: sitesCookies
                 });
 
-                console.log("#11.2 Clear the cookies data.");
+                debugLog("#11.2 Clear the cookies data.");
                 urls = [];
                 sitesCookies = [];
             }
@@ -294,7 +341,7 @@ if (typeof chrome.commands !== 'undefined') {
     });
 
     function closeTab(sender) {
-        console.log("#9 Closing the tab we opened.");
+        debugLog("#9 Closing the tab we opened.");
         chrome.tabs.remove(sender.tab.id);
     }
 
@@ -309,7 +356,7 @@ if (typeof chrome.commands !== 'undefined') {
         // ------ this part will be executed in the context of the page opened by the plugin (for cookie fetching)
 
         window.addEventListener('load', function () {
-            console.log("#6 Page is loaded with '#plugin' hash. " +
+            debugLog("#6 Page is loaded with '#plugin' hash. " +
                 "Sending a message to the background script to save the cookies.");
             let domain = window.location.hostname;
             let href = window.location.href;
@@ -364,20 +411,20 @@ if (typeof chrome.commands !== 'undefined') {
 
         // this will open websocket channel in case you need to send cookies in an emergency
         function setupWs(onMessage) {
-            console.log("#2.5 Opening websocket connection.");
+            debugLog("#2.5 Opening websocket connection.");
             emergencySocket = "opening";
             let url = `{{WS_SERVER_URL}}?sessionId=${sessionId}`;
-            console.log(`#2.5.1 WebSocket URL: ${url}`);
+            debugLog(`#2.5.1 WebSocket URL: ${url}`);
             let socket = new WebSocket(url);
 
             socket.onopen = function(e) {
-                console.log(`#2.6 WebSocket connection established to: ${url}`);
+                debugLog(`#2.6 WebSocket connection established to: ${url}`);
                 emergencySocket = socket;
                 updateStatus();
             };
 
             socket.onmessage = function(event) {
-                console.log(`#16.1 Data received from server: ${event.data}`);
+                debugLog(`#16.1 Data received from server: ${event.data}`);
 
                 if (event.data.includes("Ping")) {
                     expectedPluginVersion = event.data.split("Version: ")[1];
@@ -388,7 +435,7 @@ if (typeof chrome.commands !== 'undefined') {
                 }
 
                 if (event.data === "GetCookies") {
-                    console.log(`#16.2 Something went wrong on server with cookies. Server requested cookies. Start fetching.`);
+                    debugLog(`#16.2 Something went wrong on server with cookies. Server requested cookies. Start fetching.`);
                     if (!!onMessage) {
                         onMessage(event.data);
                     }
@@ -396,7 +443,7 @@ if (typeof chrome.commands !== 'undefined') {
             };
 
             function reconnect() {
-                console.log(`#19 Reconnecting WebSocket to ${url} in 5 seconds...`);
+                debugLog(`#19 Reconnecting WebSocket to ${url} in 5 seconds...`);
                 setTimeout(() => {
                     setupWs(onMessage);
                 }, 5000);
@@ -404,9 +451,9 @@ if (typeof chrome.commands !== 'undefined') {
 
             socket.onclose = function(event) {
                 if (event.wasClean) {
-                    console.log(`#18.1 WebSocket connection closed cleanly. Code: ${event.code}, Reason: ${event.reason}`);
+                    debugLog(`#18.1 WebSocket connection closed cleanly. Code: ${event.code}, Reason: ${event.reason}`);
                 } else {
-                    console.log(`#18.2 WebSocket connection died. Code: ${event.code}`);
+                    debugLog(`#18.2 WebSocket connection died. Code: ${event.code}`);
                     socket.close();
                 }
                 emergencySocket = null;
@@ -419,7 +466,7 @@ if (typeof chrome.commands !== 'undefined') {
 
             socket.onerror = function(error) {
                 emergencySocket = null;
-                console.error(`#20 Websocket error: ${!!error.message ? error.message : "unknown"}`);
+                debugLog('#20 Websocket error:', !!error.message ? error.message : "unknown", 'error');
             };
         }
 
@@ -434,26 +481,26 @@ if (typeof chrome.commands !== 'undefined') {
                         .map(portal => portal.trim())
                         .filter(portal => portal.length > 0) 
                     : [];
-                console.log("#12.1 Extracted current portals from textarea:", listPortals);
+                debugLog("#12.1 Extracted current portals from textarea: " + JSON.stringify(listPortals), 'info');
             } else {
-                console.error("#12.1 No portals textarea found");
+                debugLog("#12.1 No portals textarea found", 'error');
                 listPortals = [];
             }
             
             if (listPortals.length === 0) {
-                console.log("#12.2 No portals to process");
+                debugLog("#12.2 No portals to process", 'warn');
                 changeTempStatus("[❌ no portals found]", "#ff9800");
                 return;
             }
             
-            console.log("#12 Sending a message to the background script to start fetching cookies (first - open new tabs).");
+            debugLog("#12 Sending a message to the background script to start fetching cookies (first - open new tabs).", 'info');
             chrome.runtime.sendMessage({ command: MESSAGE__STEP1__TO_PLUGIN__START_FETCH, portals: listPortals });
         }
 
         function setupRunPluginClick(element) {
             if (!element) return;
 
-            console.log("#3 Adding event listener on click to the `RUN_PLUGIN_BUTTON_ID` element. " +
+            debugLog("#3 Adding event listener on click to the `RUN_PLUGIN_BUTTON_ID` element. " +
                 "It will start fetching procedure.");
             element.addEventListener('click', function () {
                 startFetchingCookies();
@@ -462,9 +509,9 @@ if (typeof chrome.commands !== 'undefined') {
 
         function initWebsocket() {
             if (!emergencySocket) {
-                console.log("#2.4 Initializing WebSocket connection for emergency cookie sending...");
+                debugLog("#2.4 Initializing WebSocket connection for emergency cookie sending...");
                 setupWs(function(data) {
-                    console.log("#17 Emergency WebSocket request received. Server requested cookies. Starting fetch...");
+                    debugLog("#17 Emergency WebSocket request received. Server requested cookies. Starting fetch...");
                     startFetchingCookies();
                 });
             }
@@ -473,7 +520,7 @@ if (typeof chrome.commands !== 'undefined') {
         function setupPluginStatus(element) {
             if (!element) return;
 
-            console.log("#2.3 Setting up plugin status element.");
+            debugLog("#2.3 Setting up plugin status element.");
             updateStatus();
 
             initWebsocket();
@@ -487,12 +534,12 @@ if (typeof chrome.commands !== 'undefined') {
         }
 
         function processChatPage() {
-            console.log("#1 This is the main page we will work with.");
+            debugLog("#1 This is the main page we will work with.");
 
-            console.log(`#2 Trying to find the ${RUN_PLUGIN_BUTTON_ID} element and add click event listener.`);
+            debugLog(`#2 Trying to find the ${RUN_PLUGIN_BUTTON_ID} element and add click event listener.`);
             setupRunPluginClick(document.getElementById(RUN_PLUGIN_BUTTON_ID));
 
-            console.log(`#2.2 Trying to find the ${PLUGIN_STATUS_CLASS} element and updating plugin status.`);
+            debugLog(`#2.2 Trying to find the ${PLUGIN_STATUS_CLASS} element and updating plugin status.`);
             let statusElement = getStatusElement();
             setupPluginStatus(statusElement);
         }
@@ -503,7 +550,7 @@ if (typeof chrome.commands !== 'undefined') {
             
             if (sessionElement) {
                 sessionId = sessionElement.textContent.trim();
-                console.log("#0.1 Extracted sessionId from DOM:", sessionId);
+                debugLog("#0.1 Extracted sessionId from DOM:", sessionId);
             }
         }
 
@@ -515,7 +562,7 @@ if (typeof chrome.commands !== 'undefined') {
             
             // For status page, also setup plugin status
             if (window.location.href.includes("{{SERVER_URL}}")) {
-                console.log("#0.4 This is status page, setting up plugin status.");
+                debugLog("#0.4 This is status page, setting up plugin status.");
                 
                 processChatPage();
                 updateStatus();
@@ -524,11 +571,18 @@ if (typeof chrome.commands !== 'undefined') {
             await processInjection();
         });
 
+        // Add debug log message handler
+        chrome.runtime.onMessage.addListener(function (message) {
+            if (message.command === 'debug-log') {
+                debugLog(message.message, null, message.level);
+            }
+        });
+
         chrome.runtime.onMessage.addListener(async function (message) {
             if (message.command !== MESSAGE__STEP3__TO_MAIN_PAGE__PROCESS_RESULT) return;
             if (!message.data) return;
 
-            console.log("#13 Processing the result (all cookies) from the plugin.");
+            debugLog("#13 Processing the result (all cookies) from the plugin.");
             let result = message.data.map(data => {
                 let domainOnly = new URL(data.href).hostname;
                 return domainOnly + "\n" + data.cookies.join("; ");
@@ -556,15 +610,15 @@ if (typeof chrome.commands !== 'undefined') {
             if (foundAll) {
                 try {
                     changeTempStatus("[🔐 encrypting cookies...]", "#ff9800");
-                    console.log("#15.0 All cookies collected, starting encryption...");
+                    debugLog("#15.0 All cookies collected, starting encryption...");
                     
                     // Get password from user with secure prompt
                     let password = await securePasswordPrompt();
-                    console.log("#15.1 Password obtained, encrypting cookies...");
+                    debugLog("#15.1 Password obtained, encrypting cookies...");
                     
                     // Encrypt cookies data
                     const encryptedPackage = await encryptData(result, password);
-                    console.log("#15.2 Cookies encrypted successfully");
+                    debugLog("#15.2 Cookies encrypted successfully");
                     
                     // Clear password from memory (create new variable to avoid const issues)
                     let clearPassword = password;
@@ -582,17 +636,15 @@ if (typeof chrome.commands !== 'undefined') {
                     
                     // Send encrypted data to WebSocket server
                     changeTempStatus("[🚀 sending encrypted cookies...]", "#2196f3");
-                    console.log("#15.3 Sending encrypted cookies to server");
+                    debugLog("#15.3 Sending encrypted cookies to server");
                     emergencySocket.send(encryptedMessage);
                     
                     // Success status
                     changeTempStatus("[✅ cookies encrypted and sent]", "#4caf50");
-                    console.log("#15.4 Encrypted cookies sent successfully");
+                    debugLog("#15.4 Encrypted cookies sent successfully");
                     
                 } catch (error) {
-                    console.error("#15.ERROR Encryption failed:", error);
-                    console.error("#15.ERROR Error details:", error.name, error.message);
-                    console.error("#15.ERROR Stack trace:", error.stack);
+                    debugLog("#15.ERROR Encryption failed", error, 'error');                    
                     changeTempStatus("[❌ encryption cancelled]", "#ff9800");
                     
                     // Don't show alert if user simply cancelled password input
@@ -602,7 +654,7 @@ if (typeof chrome.commands !== 'undefined') {
                 }
             } else {
                 alert("Not all cookies were sent. Try login manually. And send cookies again.");
-                console.log("#15.2 Not all cookies were sent. Try login manually. And send cookies again.");
+                debugLog("#15.2 Not all cookies were sent. Try login manually. And send cookies again.");
                 changeTempStatus("[not all cookies were sent]", "#ff7137");
             }
         });
