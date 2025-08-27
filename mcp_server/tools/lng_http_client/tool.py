@@ -374,6 +374,7 @@ All expressions have access to:
                 "debug": {"type": "boolean", "default": False},
                 "log_requests": {"type": "boolean", "default": True},
                 "log_responses": {"type": "boolean", "default": False},
+                "show_headers": {"type": "boolean", "default": False, "description": "Include response headers in output"},
                 
                 # Pipeline integration
                 "pipeline": {
@@ -518,6 +519,7 @@ class HTTPClient:
         json_data = processed_config.get("json")
         files = processed_config.get("files", {})
         timeout = processed_config.get("timeout", 30)
+        show_headers = processed_config.get("show_headers", False)  # Get show_headers parameter
         
         # Browser emulation
         browser_config = processed_config.get("browser_emulation", {})
@@ -618,12 +620,15 @@ class HTTPClient:
             result = {
                 "success": True,
                 "status_code": response.status_code,
-                "headers": self.censor_sensitive_headers(dict(response.headers)),
                 "data": response_data,
                 "url": response.url,
                 "response_time": response_time,
                 "timestamp": datetime.now().isoformat()
             }
+            
+            # Include headers only if requested
+            if show_headers:
+                result["headers"] = self.censor_sensitive_headers(dict(response.headers))
             
             # Update metrics
             session["metrics"]["total_requests"] += 1
