@@ -14,6 +14,12 @@ I have EPMXYZ-6369 ticket. Please process it.
 - Required environment variables: `JIRA_URL`, `JIRA_AUTH` (Bearer token) in `.env` file.
 - Everytime print link to the ticket.
 
+## PreProcessing steps
+- We dont have any `lng_pdf_extract_images` tool,
+so please create it before run main scenario. 
+- Please follow `create-tool.agent.md`, `tool-requirements-gathering.agent.md` and after `assign-issue-to-coding-agent.agent.md` instructions.
+- After issue is implemented ask user to merge pull request and do the following.
+
 ## Processing steps
 - **Get ticket info**: Use `lng_jira_get_description` to extract ticket details and identify PDF attachments
 - **Download PDFs**: Use `lng_jira_download_attachments` to download all attachments to `./work/{ticket_id}/`
