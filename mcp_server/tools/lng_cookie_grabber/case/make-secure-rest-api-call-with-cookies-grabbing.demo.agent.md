@@ -36,24 +36,27 @@ Ask user to follow this instructions:
 3. Then enter `master password` in the popup to encode your cookies and make this more secure.
 4. Cookies will be stored securely in folder `mcp_server/config/cookies/YOUR_SESSION_ID/all_domains.encrypted`
 
-When user is ready, continue with following.
+#### 5. Wait for user
+1. Please stop and wait till user doing `#### 3.` and `#### 4.`
+2. When user is ready, continue with following.
 
-#### 5. Use the System
+#### 6. Use the System
 1. You can check all session with `lng_cookies_grabber` tool
 ```json
 {
   "operation": "list_sessions"
 }
 ```
-2. Or just use the `lng_http_server` tool to access the restricted Rest API.
-For example, this will get page without cookies:
+2. Then just use the `lng_http_server` tool to access the restricted Rest API. 
+3. For example, this will get page without cookies. Show this to user.
 ```json
 {
   "mode": "request",
   "url": "https://next.telescope.epam.com/apps/menu/api/users/me",
   "method": "GET"
 }
-And this will get page with cookies:
+```
+4. And this will get page with cookies. Show this to user.
 ```json
 {
   "mode": "request",
@@ -66,3 +69,4 @@ And this will get page with cookies:
   }
 }
 ```
+5. Make some conclusions about the differences between the two requests and how the cookies affect the response.
