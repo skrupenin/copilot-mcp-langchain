@@ -17,7 +17,7 @@ I have EPMXYZ-6369 ticket. Please process it.
 ## Processing steps
 1. Track all these steps in your tasklist.
 2. **Create newtool**: For now we dont have any `lng_pdf_extract_images` tool, so please create it before run main scenario. Please follow instructions to create the tool.
-3. **Restart the MCP**: Follow the instructions on how to restart the MCP.
+3. **Restart the MCP**: Follow the instructions on how to restart the MCP. If tool not appear as avaliable please stop and ask user to restart MCP in manual.
 4. **Get ticket info**: Use `lng_jira_get_description` to extract ticket details and identify PDF attachments.
 5. **Download PDFs**: Use `lng_jira_download_attachments` to download all attachments to `./work/{ticket_id}/`.
 6. **Extract images**: Use `lng_pdf_extract_images` for each PDF found.
