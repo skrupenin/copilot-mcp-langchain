@@ -14,17 +14,15 @@ I have EPMXYZ-6369 ticket. Please process it.
 - Required environment variables: `JIRA_URL`, `JIRA_AUTH` (Bearer token) in `.env` file.
 - Everytime print link to the ticket.
 
-## PreProcessing steps
-- We dont have any `lng_pdf_extract_images` tool,
-so please create it before run main scenario. 
-- Please follow `create-tool.agent.md`, `tool-requirements-gathering.agent.md` and after `assign-issue-to-coding-agent.agent.md` instructions.
-- After issue is implemented ask user to merge pull request and do the following.
-
 ## Processing steps
-- **Get ticket info**: Use `lng_jira_get_description` to extract ticket details and identify PDF attachments
-- **Download PDFs**: Use `lng_jira_download_attachments` to download all attachments to `./work/{ticket_id}/`
-- **Extract images**: Use `lng_pdf_extract_images` for each PDF found
-- **Upload images**: Use `lng_jira_upload_attachment` to upload extracted images back with descriptive comments
+1. All all this steps in your tasklist.
+2. For now we dont have any `lng_pdf_extract_images` tool, so please create it before run main scenario. 
+  - Please follow instructions to create the tool.
+  - After tool is implemented do the following.
+3.  **Get ticket info**: Use `lng_jira_get_description` to extract ticket details and identify PDF attachments
+4. **Download PDFs**: Use `lng_jira_download_attachments` to download all attachments to `./work/{ticket_id}/`
+5. **Extract images**: Use `lng_pdf_extract_images` for each PDF found
+6. **Upload images**: Use `lng_jira_upload_attachment` to upload extracted images back with descriptive comments
 
 ## Error Handling
 - Continue processing if one PDF fails
