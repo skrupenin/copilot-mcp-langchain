@@ -92,9 +92,16 @@ def run_test(tool_name: str, arguments: Optional[Dict[str, Any]] = None) -> Any:
     """
     return asyncio.run(test_tool(tool_name, arguments))
 
-def install_dependencies():
-    """Install dependencies for all enabled tools based on their settings.yaml files."""
-    print("🔍 Scanning for tool dependencies...")
+def install_dependencies(specific_tools: Optional[list] = None):
+    """Install dependencies for specific tools or all enabled tools based on their settings.yaml files.
+    
+    Args:
+        specific_tools: List of specific tool names to install dependencies for. If None, installs for all enabled tools.
+    """
+    if specific_tools:
+        print(f"🔍 Scanning dependencies for specific tools: {', '.join(specific_tools)}")
+    else:
+        print("🔍 Scanning for tool dependencies...")
     
     # Get the tools directory path
     tools_dir = Path(__file__).parent / "tools"
@@ -114,6 +121,10 @@ def install_dependencies():
                 
                 # If this directory contains a tool.py, it's an actual tool
                 if tool_file.exists():
+                    # Check if we should skip this tool due to specific_tools filter
+                    if specific_tools and current_prefix not in specific_tools:
+                        continue
+                        
                     # Check for settings.yaml in this directory or parent directories
                     tool_enabled = True
                     tool_dependencies = []
@@ -156,7 +167,27 @@ def install_dependencies():
     # Scan the tools directory
     scan_directory(tools_dir)
     
+    # If specific tools were requested, check if they were found
+    if specific_tools:
+        found_tools = {tool_name for tool_name, _, _ in enabled_tools}
+        found_tools.update({tool_name for tool_name, _ in disabled_tools})
+        missing_tools = set(specific_tools) - found_tools
+        
+        if missing_tools:
+            print(f"\n❌ Warning: The following specified tools were not found: {', '.join(missing_tools)}")
+            
+            # Show available tools
+            all_found_tools = found_tools
+            if all_found_tools:
+                print(f"📋 Available tools: {', '.join(sorted(all_found_tools))}")
+            
+            if len(missing_tools) == len(specific_tools):
+                print("❌ No valid tools specified. Exiting.")
+                return
+    
     print("\n📋 Tool Status Report:")
+    if specific_tools:
+        print(f"🎯 Focusing on specific tools: {', '.join(specific_tools)}")
     print("=" * 60)
     
     if enabled_tools:
@@ -303,6 +334,7 @@ def main():
         print("  python -m mcp_server.run run <tool_name> 'args'                  # Run tool")
         print("  python -m mcp_server.run batch tool1 'args1' tool2 'args2'       # Run multiple tools")
         print("  python -m mcp_server.run install_dependencies                    # Install tool dependencies")
+        print("  python -m mcp_server.run install_dependencies tool1 tool2 ...    # Install dependencies for specific tools")
         print("  python -m mcp_server.run analyze_libs <lib1> [lib2] ...          # Analyze Python libraries")
         print("")
         print("Examples:")
@@ -310,6 +342,7 @@ def main():
         print("  python -m mcp_server.run run lng_math_calculator '{\\\"expression\\\":\\\"2+3*4\\\"}'")
         print("  python -m mcp_server.run run lng_get_tools_info")
         print("  python -m mcp_server.run batch lng_count_words '{\\\"input_text\\\":\\\"Hello\\\"}' lng_math_calculator '{\\\"expression\\\":\\\"2+3\\\"}'")
+        print("  python -m mcp_server.run install_dependencies lng_email_client")
         print("  python -m mcp_server.run analyze_libs langchain requests numpy")
         print("")
         print("📋 Quick tool list:")
@@ -323,7 +356,12 @@ def main():
         list_tools()
     
     elif command == 'install_dependencies':
-        install_dependencies()
+        # Check if specific tools are provided
+        specific_tools = None
+        if len(sys.argv) > 2:
+            specific_tools = sys.argv[2:]
+            
+        install_dependencies(specific_tools)
     
     elif command == 'schema':
         if len(sys.argv) < 3:
