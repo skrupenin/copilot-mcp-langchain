@@ -3,6 +3,46 @@
 
 Write-Host "Starting MCP Tools Web Interface (Dual Server Mode)..." -ForegroundColor Green
 
+# Функция для освобождения портов
+function Clear-Ports {
+    param([int[]]$Ports)
+    
+    foreach ($Port in $Ports) {
+        Write-Host "Checking port $Port..." -ForegroundColor Yellow
+        
+        try {
+            # Находим процессы, использующие порт
+            $NetstatResult = netstat -ano | Select-String ":$Port " | Where-Object { $_ -match "LISTENING" }
+            
+            if ($NetstatResult) {
+                foreach ($Line in $NetstatResult) {
+                    $Parts = $Line -split '\s+'
+                    $ProcessId = $Parts[-1]  # Используем ProcessId вместо PID
+                    
+                    if ($ProcessId -match '^\d+$') {
+                        try {
+                            $Process = Get-Process -Id $ProcessId -ErrorAction SilentlyContinue
+                            if ($Process) {
+                                Write-Host "Found process blocking port $Port : $($Process.ProcessName) (PID: $ProcessId)" -ForegroundColor Red
+                                Write-Host "Stopping process $ProcessId..." -ForegroundColor Yellow
+                                Stop-Process -Id $ProcessId -Force -ErrorAction SilentlyContinue
+                                Start-Sleep -Seconds 1
+                                Write-Host "Process $ProcessId stopped" -ForegroundColor Green
+                            }
+                        } catch {
+                            Write-Host "Could not stop process $ProcessId : $($_.Exception.Message)" -ForegroundColor Yellow
+                        }
+                    }
+                }
+            } else {
+                Write-Host "Port $Port is free" -ForegroundColor Green
+            }
+        } catch {
+            Write-Host "Error checking port $Port : $($_.Exception.Message)" -ForegroundColor Yellow
+        }
+    }
+}
+
 # Получаем путь к корню проекта (ищем hello-langchain директорию)
 $ScriptDir = Split-Path -Parent $MyInvocation.MyCommand.Path
 
@@ -78,6 +118,10 @@ if (Test-Path $VenvPath) {
     Write-Host "Continuing without virtual environment..." -ForegroundColor Yellow
 }
 
+# Очищаем порты перед запуском серверов
+Write-Host "Clearing ports 8080 and 8081..." -ForegroundColor Yellow
+Clear-Ports -Ports @(8080, 8081)
+
 # Check if lng_webhook_server tool is available
 Write-Host "Checking MCP server availability..." -ForegroundColor Yellow
 
@@ -139,6 +183,10 @@ try {
     } catch {
         Write-Host "Note: Some servers may still be running" -ForegroundColor Yellow
     }
+    
+    # Принудительно очищаем порты после остановки
+    Write-Host "Force clearing ports 8080 and 8081..." -ForegroundColor Yellow
+    Clear-Ports -Ports @(8080, 8081)
 }
 
 Write-Host "Web interface shutdown complete" -ForegroundColor Green
