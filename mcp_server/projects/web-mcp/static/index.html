@@ -426,6 +426,38 @@
     </div>
 
     <script>
+        // URL hash navigation functions
+        function updateURL(toolName) {
+            if (toolName) {
+                window.history.pushState(null, null, `#${toolName}`);
+            } else {
+                window.history.pushState(null, null, window.location.pathname);
+            }
+        }
+
+        function scrollToTool(toolName) {
+            const toolCard = document.querySelector(`[onclick="toggleToolDetails('${toolName}')"]`);
+            if (toolCard) {
+                toolCard.scrollIntoView({ behavior: 'smooth', block: 'start' });
+            }
+        }
+
+        function loadToolFromHash() {
+            const hash = window.location.hash.substring(1); // Remove the '#'
+            if (hash) {
+                console.log(`Loading tool from hash: ${hash}`);
+                const detailsElement = document.getElementById(`details-${hash}`);
+                if (detailsElement) {
+                    // Expand the tool
+                    detailsElement.classList.add('show');
+                    // Scroll to the tool
+                    scrollToTool(hash);
+                } else {
+                    console.log(`Tool not found: ${hash}`);
+                }
+            }
+        }
+
         // Phase 2: Tool Discovery and Display
         document.addEventListener('DOMContentLoaded', function() {
             console.log('{{TITLE}} - Phase 2 loaded');
@@ -435,6 +467,11 @@
             
             // Load and display tools
             loadMCPTools();
+        });
+
+        // Handle hash changes (back/forward browser buttons)
+        window.addEventListener('hashchange', function() {
+            loadToolFromHash();
         });
         
         async function loadMCPTools() {
@@ -520,6 +557,9 @@
             
             toolsContainer.innerHTML = html;
             console.log(`Displayed ${tools.length} tools in compact layout`);
+            
+            // Check if we need to load a tool from URL hash
+            loadToolFromHash();
         }
         
         function generateParametersHTML(parameters, toolName) {
@@ -590,8 +630,33 @@
         
         function toggleToolDetails(toolName) {
             const detailsElement = document.getElementById(`details-${toolName}`);
+            const cardElement = document.querySelector(`[onclick="toggleToolDetails('${toolName}')"]`);
+            
             if (detailsElement) {
-                detailsElement.classList.toggle('show');
+                const isCurrentlyOpen = detailsElement.classList.contains('show');
+                
+                if (isCurrentlyOpen) {
+                    // Closing tool - remove hash
+                    detailsElement.classList.remove('show');
+                    if (window.location.hash === `#${toolName}`) {
+                        history.replaceState(null, null, window.location.pathname);
+                    }
+                } else {
+                    // Opening tool - add hash and scroll
+                    detailsElement.classList.add('show');
+                    window.location.hash = `#${toolName}`;
+                    
+                    // Scroll to tool after a brief delay to allow rendering
+                    setTimeout(() => {
+                        if (cardElement) {
+                            cardElement.scrollIntoView({ 
+                                behavior: 'smooth', 
+                                block: 'start',
+                                inline: 'nearest'
+                            });
+                        }
+                    }, 100);
+                }
             }
         }
         
@@ -632,7 +697,7 @@
                 
                 console.log('🚀 Sending request:', requestBody);
                 
-                const response = await fetch('http://localhost:8081/execute', {
+                const response = await fetch('{{EXECUTION_API}}', {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json'

@@ -12,7 +12,8 @@
         "VERSION": "1.0.0 - Phase 3",
         "BASE_URL": "http://localhost:8080",
         "CURRENT_PHASE": "Phase 3: Universal Tool Execution",
-        "PHASE_DESCRIPTION": "Full MCP tool execution with interactive web forms"
+        "PHASE_DESCRIPTION": "Full MCP tool execution with interactive web forms",
+        "EXECUTION_API": "{! 'http://' + webhook.bind_host + ':' + (webhook.port + 1) + '/execute' !}"
       }
     },
     {
