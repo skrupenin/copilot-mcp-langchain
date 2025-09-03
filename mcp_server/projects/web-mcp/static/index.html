@@ -383,8 +383,8 @@
             margin-top: 0;
         }
         .parameter-field {
-            margin-bottom: 16px;
-            padding: 12px;
+            margin-bottom: 12px;
+            padding: 10px;
             background: #f8f9fa;
             border-radius: 6px;
             border-left: 3px solid #dee2e6;
@@ -393,7 +393,7 @@
             display: flex;
             align-items: center;
             gap: 8px;
-            margin-bottom: 4px;
+            margin-bottom: 6px;
         }
         .parameter-name {
             font-weight: bold;
@@ -433,7 +433,7 @@
         .parameter-field input,
         .parameter-field textarea {
             width: 100%;
-            padding: 8px 12px;
+            padding: 6px 10px;
             border: 1px solid #ced4da;
             border-radius: 4px;
             font-family: 'Consolas', 'Monaco', 'Courier New', monospace;
@@ -448,9 +448,29 @@
             box-shadow: 0 0 0 2px rgba(25, 118, 210, 0.2);
         }
         .execute-button-container {
-            margin-top: 16px;
-            padding-top: 16px;
+            margin-top: 12px;
+            padding-top: 12px;
             border-top: 1px solid #dee2e6;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 15px;
+        }
+        
+        .execute-button {
+            order: 2;
+            margin-left: auto;
+        }
+        
+        .validation-checkbox-inline {
+            order: 1;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-weight: 500;
+            cursor: pointer;
+            font-size: 0.85em;
+            position: relative;
         }
         .parameter-item {
             margin: 8px 0;
@@ -479,6 +499,182 @@
             color: #666;
             font-size: 0.85em;
             margin-top: 4px;
+        }
+
+        /* Phase 7: Enhanced Form Generation Styles */
+        .parameter-field.parameter-error {
+            border-left-color: #dc3545;
+            background: #fff5f5;
+        }
+        
+        .parameter-type {
+            background: #007bff;
+            color: white;
+        }
+        
+        .parameter-enum {
+            background: #28a745;
+            color: white;
+            font-size: 0.75em;
+            padding: 2px 6px;
+            border-radius: 4px;
+            font-weight: 500;
+        }
+        
+        .parameter-field select {
+            width: 100%;
+            padding: 6px 10px;
+            border: 1px solid #ced4da;
+            border-radius: 4px;
+            font-family: 'Consolas', 'Monaco', 'Courier New', monospace;
+            font-size: 13px;
+            background: #fff;
+            box-sizing: border-box;
+        }
+        
+        .parameter-field select:focus {
+            outline: none;
+            border-color: #1976D2;
+            box-shadow: 0 0 0 2px rgba(25, 118, 210, 0.2);
+        }
+        
+        .boolean-input-container {
+            display: flex;
+            gap: 12px;
+            flex-wrap: wrap;
+        }
+        
+        .boolean-option {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            cursor: pointer;
+            padding: 6px 10px;
+            border: 1px solid #ced4da;
+            border-radius: 4px;
+            background: white;
+            transition: all 0.2s ease;
+        }
+        
+        .boolean-option:hover {
+            background: #f8f9fa;
+            border-color: #1976D2;
+        }
+        
+        .boolean-option input[type="radio"] {
+            width: auto;
+            margin: 0;
+        }
+        
+        .array-input-container,
+        .object-input-container {
+            position: relative;
+        }
+        
+        .input-helper {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-top: 6px;
+            gap: 8px;
+        }
+        
+        .input-helper small {
+            color: #666;
+            font-style: italic;
+            font-size: 0.8em;
+        }
+        
+        .add-array-item-btn,
+        .format-json-btn {
+            background: #28a745;
+            color: white;
+            border: none;
+            padding: 4px 8px;
+            border-radius: 3px;
+            font-size: 11px;
+            cursor: pointer;
+            transition: background-color 0.2s ease;
+        }
+        
+        .add-array-item-btn:hover,
+        .format-json-btn:hover {
+            background: #218838;
+        }
+        
+        .validation-controls {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            margin: 0;
+            padding: 0;
+        }
+        
+        .force-validation-checkbox {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            font-weight: 500;
+            cursor: pointer;
+            font-size: 0.85em;
+            position: relative;
+            color: #666;
+            white-space: nowrap;
+        }
+        
+        .force-validation-checkbox input[type="checkbox"] {
+            width: 14px;
+            height: 14px;
+            margin: 0;
+            cursor: pointer;
+        }
+        
+        .validation-tooltip {
+            background: #6c757d;
+            color: white;
+            padding: 8px 12px;
+            border-radius: 4px;
+            font-size: 0.8em;
+            position: absolute;
+            bottom: 100%;
+            left: 0;
+            margin-bottom: 8px;
+            white-space: nowrap;
+            opacity: 0;
+            visibility: hidden;
+            transition: all 0.2s ease;
+            z-index: 1000;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.15);
+        }
+        
+        .validation-tooltip::after {
+            content: '';
+            position: absolute;
+            top: 100%;
+            left: 20px;
+            border: 6px solid transparent;
+            border-top-color: #6c757d;
+        }
+        
+        .force-validation-checkbox:hover .validation-tooltip {
+            opacity: 1;
+            visibility: visible;
+        }
+        
+        .parameter-validation-message {
+            margin-top: 6px;
+            font-size: 11px;
+            min-height: 14px;
+            transition: all 0.2s ease;
+        }
+        
+        .parameter-validation-message.invalid {
+            color: #dc3545;
+            font-weight: 500;
+        }
+        
+        .parameter-validation-message.valid {
+            color: #28a745;
         }
     </style>
 </head>
@@ -852,6 +1048,7 @@
             loadToolFromHash();
         }
         
+        // JSON Schema to HTML Form Converter - Phase 7: Dynamic Form Generation
         function generateParametersHTML(parameters, toolName) {
             if (!parameters || parameters.length === 0) {
                 return `
@@ -859,7 +1056,18 @@
                         <p><em>No parameters required</em></p>
                         <div class="execute-section" onclick="event.stopPropagation()">
                             <form class="execute-form" onsubmit="executeTool('${toolName}', event)">
-                                <button type="submit" class="execute-button" onclick="event.stopPropagation()">Execute ${toolName}</button>
+                                <div class="execute-button-container">
+                                    <button type="submit" class="execute-button" onclick="event.stopPropagation()">Execute ${toolName}</button>
+                                    <div class="validation-controls">
+                                        <label class="force-validation-checkbox">
+                                            <input type="checkbox" id="force-validation-${toolName}" checked> 
+                                            Enable validation
+                                            <div class="validation-tooltip">
+                                                Uncheck to bypass validation for testing with incomplete data
+                                            </div>
+                                        </label>
+                                    </div>
+                                </div>
                             </form>
                             <div id="result-${toolName}" class="result-section" style="display: none;"></div>
                         </div>
@@ -871,44 +1079,22 @@
             html += '<div class="execute-section" onclick="event.stopPropagation()">';
             html += `<form class="execute-form" onsubmit="executeTool('${toolName}', event)">`;
             
-            parameters.forEach(param => {
-                const required = param.required ? 'required' : '';
-                const requiredLabel = param.required ? 
-                    '<span class="parameter-required">required</span>' : 
-                    '<span class="parameter-optional">optional</span>';
-                const placeholder = param.description || `Enter ${param.name}`;
-                
-                if (param.type === 'string' && param.description && param.description.length > 100) {
-                    // Use textarea for long descriptions
-                    html += `
-                        <div class="parameter-field">
-                            <div class="parameter-header">
-                                <label class="parameter-name">${param.name}</label>
-                                ${requiredLabel}
-                                <span class="parameter-type">${param.type}</span>
-                            </div>
-                            <div class="parameter-description">${param.description || 'No description provided'}</div>
-                            <textarea id="${toolName}-${param.name}" placeholder="${placeholder}" ${required} onclick="event.stopPropagation()" rows="3"></textarea>
-                        </div>
-                    `;
-                } else {
-                    html += `
-                        <div class="parameter-field">
-                            <div class="parameter-header">
-                                <label class="parameter-name">${param.name}</label>
-                                ${requiredLabel}
-                                <span class="parameter-type">${param.type}</span>
-                            </div>
-                            <div class="parameter-description">${param.description || 'No description provided'}</div>
-                            <input type="text" id="${toolName}-${param.name}" placeholder="${placeholder}" ${required} onclick="event.stopPropagation()" />
-                        </div>
-                    `;
-                }
+            parameters.forEach((param, index) => {
+                html += generateParameterField(param, toolName, index);
             });
             
             html += `
                         <div class="execute-button-container">
                             <button type="submit" class="execute-button" onclick="event.stopPropagation()">Execute ${toolName}</button>
+                            <div class="validation-controls">
+                                <label class="force-validation-checkbox">
+                                    <input type="checkbox" id="force-validation-${toolName}" checked> 
+                                    Enable validation
+                                    <div class="validation-tooltip">
+                                        Uncheck to bypass validation for testing with incomplete data
+                                    </div>
+                                </label>
+                            </div>
                         </div>
                     </form>
                     <div id="result-${toolName}" class="result-section" style="display: none;"></div>
@@ -916,6 +1102,212 @@
             </div>`;
             
             return html;
+        }
+        
+        // Generate individual parameter field based on JSON Schema
+        function generateParameterField(param, toolName, index) {
+            const fieldId = `${toolName}-${param.name}`;
+            const required = param.required ? 'required' : '';
+            const requiredLabel = param.required ? 
+                '<span class="parameter-required">required</span>' : 
+                '<span class="parameter-optional">optional</span>';
+            
+            let typeInfo = '';
+            let inputHtml = '';
+            
+            // Handle type information (can be string or array)
+            const types = Array.isArray(param.type) ? param.type : [param.type];
+            const primaryType = types[0];
+            
+            // Generate type badges
+            types.forEach(type => {
+                typeInfo += `<span class="parameter-type">${type}</span>`;
+            });
+            
+            // Add enum badge if present
+            if (param.enum) {
+                typeInfo += `<span class="parameter-enum">enum(${param.enum.length})</span>`;
+            }
+            
+            // Generate appropriate input based on type
+            switch (primaryType) {
+                case 'string':
+                    inputHtml = generateStringInput(param, fieldId, required);
+                    break;
+                case 'integer':
+                case 'number':
+                    inputHtml = generateNumberInput(param, fieldId, required, primaryType);
+                    break;
+                case 'boolean':
+                    inputHtml = generateBooleanInput(param, fieldId);
+                    break;
+                case 'array':
+                    inputHtml = generateArrayInput(param, fieldId, required);
+                    break;
+                case 'object':
+                    inputHtml = generateObjectInput(param, fieldId, required);
+                    break;
+                default:
+                    inputHtml = generateGenericInput(param, fieldId, required);
+            }
+            
+            return `
+                <div class="parameter-field" data-type="${primaryType}" data-required="${param.required || false}">
+                    <div class="parameter-header">
+                        <label class="parameter-name" for="${fieldId}">${param.name}</label>
+                        ${requiredLabel}
+                        ${typeInfo}
+                    </div>
+                    ${inputHtml}
+                    <div class="parameter-validation-message" id="validation-${fieldId}"></div>
+                </div>
+            `;
+        }
+        
+        // String input generator
+        function generateStringInput(param, fieldId, required) {
+            // Use description as placeholder, fallback to parameter name
+            const placeholder = param.description || `Enter ${param.name}`;
+            
+            // Handle enum values
+            if (param.enum) {
+                let options = '<option value="">Select an option...</option>';
+                param.enum.forEach(value => {
+                    options += `<option value="${escapeHtml(value)}">${escapeHtml(value)}</option>`;
+                });
+                return `
+                    <select id="${fieldId}" ${required} onclick="event.stopPropagation()" onchange="validateParameter('${fieldId}')">
+                        ${options}
+                    </select>
+                `;
+            }
+            
+            // Handle long text (textarea for long descriptions)
+            if (param.description && param.description.length > 100) {
+                return `
+                    <textarea id="${fieldId}" 
+                              placeholder="${escapeHtml(placeholder)}" 
+                              ${required} 
+                              onclick="event.stopPropagation()" 
+                              oninput="validateParameter('${fieldId}')"
+                              rows="4"></textarea>
+                `;
+            }
+            
+            // Regular text input
+            return `
+                <input type="text" 
+                       id="${fieldId}" 
+                       placeholder="${escapeHtml(placeholder)}" 
+                       ${required} 
+                       onclick="event.stopPropagation()" 
+                       oninput="validateParameter('${fieldId}')" />
+            `;
+        }
+        
+        // Number input generator
+        function generateNumberInput(param, fieldId, required, type) {
+            const inputType = type === 'integer' ? 'number' : 'number';
+            const step = type === 'integer' ? '1' : 'any';
+            // Use description as placeholder, fallback to parameter name with type hint
+            const placeholder = param.description || `Enter ${param.name} (${type})`;
+            
+            let attributes = `step="${step}"`;
+            if (param.minimum !== undefined) attributes += ` min="${param.minimum}"`;
+            if (param.maximum !== undefined) attributes += ` max="${param.maximum}"`;
+            
+            return `
+                <input type="${inputType}" 
+                       id="${fieldId}" 
+                       placeholder="${escapeHtml(placeholder)}" 
+                       ${attributes}
+                       ${required} 
+                       onclick="event.stopPropagation()" 
+                       oninput="validateParameter('${fieldId}')" />
+            `;
+        }
+        
+        // Boolean input generator
+        function generateBooleanInput(param, fieldId) {
+            return `
+                <div class="boolean-input-container">
+                    <label class="boolean-option">
+                        <input type="radio" name="${fieldId}" value="true" onclick="event.stopPropagation()" onchange="validateParameter('${fieldId}')">
+                        True
+                    </label>
+                    <label class="boolean-option">
+                        <input type="radio" name="${fieldId}" value="false" onclick="event.stopPropagation()" onchange="validateParameter('${fieldId}')">
+                        False
+                    </label>
+                    <label class="boolean-option">
+                        <input type="radio" name="${fieldId}" value="" checked onclick="event.stopPropagation()" onchange="validateParameter('${fieldId}')">
+                        Default
+                    </label>
+                </div>
+            `;
+        }
+        
+        // Array input generator
+        function generateArrayInput(param, fieldId, required) {
+            // Use description as placeholder with array hint
+            const placeholder = param.description || `Enter JSON array for ${param.name} - e.g., ["item1", "item2"]`;
+            
+            return `
+                <div class="array-input-container">
+                    <textarea id="${fieldId}" 
+                              placeholder="${escapeHtml(placeholder)}" 
+                              ${required} 
+                              onclick="event.stopPropagation()" 
+                              oninput="validateParameter('${fieldId}')"
+                              rows="4"
+                              data-json-type="array"></textarea>
+                    <div class="input-helper">
+                        <small>Enter JSON array: ["item1", "item2"] or click + to add items</small>
+                        <button type="button" class="add-array-item-btn" onclick="addArrayItem('${fieldId}', event)">+ Add Item</button>
+                    </div>
+                    <div class="array-visual-editor" id="array-editor-${fieldId}" style="display: none;"></div>
+                </div>
+            `;
+        }
+        
+        // Object input generator
+        function generateObjectInput(param, fieldId, required) {
+            // Use description as placeholder with object hint
+            const placeholder = param.description || `Enter JSON object for ${param.name} - e.g., {"key": "value", "key2": 123}`;
+            
+            return `
+                <div class="object-input-container">
+                    <textarea id="${fieldId}" 
+                              placeholder="${escapeHtml(placeholder)}" 
+                              ${required} 
+                              onclick="event.stopPropagation()" 
+                              oninput="validateParameter('${fieldId}')"
+                              rows="6"
+                              data-json-type="object"></textarea>
+                    <div class="input-helper">
+                        <small>Enter JSON object: {"key": "value", "key2": 123}</small>
+                        <button type="button" class="format-json-btn" onclick="formatJSON('${fieldId}', event)">Format JSON</button>
+                    </div>
+                </div>
+            `;
+        }
+        
+        // Generic input generator (fallback)
+        function generateGenericInput(param, fieldId, required) {
+            // Use description as placeholder with generic hint
+            const placeholder = param.description || `Enter ${param.name} as text or JSON`;
+            
+            return `
+                <textarea id="${fieldId}" 
+                          placeholder="${escapeHtml(placeholder)}" 
+                          ${required} 
+                          onclick="event.stopPropagation()" 
+                          oninput="validateParameter('${fieldId}')"
+                          rows="3"></textarea>
+                <div class="input-helper">
+                    <small>Enter value as text or JSON</small>
+                </div>
+            `;
         }
         
         function toggleToolDetails(toolName, shouldScroll = false) {
@@ -952,11 +1344,194 @@
             }
         }
         
+        // Parameter validation functions
+        function validateParameter(fieldId) {
+            const field = document.getElementById(fieldId);
+            const validationDiv = document.getElementById(`validation-${fieldId}`);
+            
+            if (!field || !validationDiv) return true;
+            
+            const paramField = field.closest('.parameter-field');
+            const isRequired = paramField?.dataset.required === 'true';
+            const dataType = paramField?.dataset.type;
+            
+            let isValid = true;
+            let message = '';
+            
+            const value = getFieldValue(field);
+            
+            // Check required fields
+            if (isRequired && (value === '' || value === null || value === undefined)) {
+                isValid = false;
+                message = 'This field is required';
+            }
+            // Validate data types
+            else if (value !== '' && value !== null && value !== undefined) {
+                const validation = validateDataType(value, dataType);
+                isValid = validation.valid;
+                message = validation.message;
+            }
+            
+            // Update UI
+            validationDiv.textContent = message;
+            validationDiv.className = `parameter-validation-message ${isValid ? 'valid' : 'invalid'}`;
+            paramField.classList.toggle('parameter-error', !isValid);
+            
+            return isValid;
+        }
+        
+        function validateDataType(value, dataType) {
+            try {
+                switch (dataType) {
+                    case 'integer':
+                        const intVal = parseInt(value);
+                        if (isNaN(intVal) || intVal.toString() !== value.toString()) {
+                            return { valid: false, message: 'Must be a valid integer' };
+                        }
+                        break;
+                    case 'number':
+                        const numVal = parseFloat(value);
+                        if (isNaN(numVal)) {
+                            return { valid: false, message: 'Must be a valid number' };
+                        }
+                        break;
+                    case 'boolean':
+                        if (value !== 'true' && value !== 'false' && value !== '') {
+                            return { valid: false, message: 'Must be true, false, or empty' };
+                        }
+                        break;
+                    case 'array':
+                        if (value.trim() !== '') {
+                            JSON.parse(value);
+                            const parsed = JSON.parse(value);
+                            if (!Array.isArray(parsed)) {
+                                return { valid: false, message: 'Must be a valid JSON array' };
+                            }
+                        }
+                        break;
+                    case 'object':
+                        if (value.trim() !== '') {
+                            JSON.parse(value);
+                            const parsed = JSON.parse(value);
+                            if (Array.isArray(parsed) || typeof parsed !== 'object') {
+                                return { valid: false, message: 'Must be a valid JSON object' };
+                            }
+                        }
+                        break;
+                }
+                return { valid: true, message: '' };
+            } catch (e) {
+                if (dataType === 'array' || dataType === 'object') {
+                    return { valid: false, message: 'Invalid JSON format' };
+                }
+                return { valid: false, message: 'Invalid value format' };
+            }
+        }
+        
+        function getFieldValue(field) {
+            if (field.type === 'radio') {
+                const form = field.closest('form');
+                const checked = form.querySelector(`input[name="${field.name}"]:checked`);
+                return checked ? checked.value : '';
+            }
+            return field.value;
+        }
+        
+        // Array helper functions
+        function addArrayItem(fieldId, event) {
+            event.preventDefault();
+            event.stopPropagation();
+            
+            const textarea = document.getElementById(fieldId);
+            const currentValue = textarea.value.trim();
+            
+            let newItem = '';
+            const itemType = prompt('Enter new item (string, number, or JSON object):');
+            if (itemType === null) return;
+            
+            try {
+                // Try to parse as JSON first
+                JSON.parse(itemType);
+                newItem = itemType;
+            } catch {
+                // Treat as string
+                newItem = JSON.stringify(itemType);
+            }
+            
+            if (currentValue === '') {
+                textarea.value = `[${newItem}]`;
+            } else {
+                try {
+                    const currentArray = JSON.parse(currentValue);
+                    if (Array.isArray(currentArray)) {
+                        currentArray.push(JSON.parse(newItem));
+                        textarea.value = JSON.stringify(currentArray, null, 2);
+                    } else {
+                        textarea.value = `[${currentValue}, ${newItem}]`;
+                    }
+                } catch {
+                    textarea.value = `[${currentValue}, ${newItem}]`;
+                }
+            }
+            
+            validateParameter(fieldId);
+        }
+        
+        // JSON formatting helper
+        function formatJSON(fieldId, event) {
+            event.preventDefault();
+            event.stopPropagation();
+            
+            const textarea = document.getElementById(fieldId);
+            try {
+                const parsed = JSON.parse(textarea.value);
+                textarea.value = JSON.stringify(parsed, null, 2);
+                validateParameter(fieldId);
+            } catch (e) {
+                alert('Invalid JSON format. Please check your syntax.');
+            }
+        }
+        
+        // HTML escaping utility
+        function escapeHtml(text) {
+            const div = document.createElement('div');
+            div.textContent = text;
+            return div.innerHTML;
+        }
+        
+        // Process parameter value based on its type
+        function processParameterValue(value, dataType) {
+            if (value === '' || value === null || value === undefined) {
+                return undefined;
+            }
+            
+            switch (dataType) {
+                case 'integer':
+                    return parseInt(value);
+                case 'number':
+                    return parseFloat(value);
+                case 'boolean':
+                    if (value === '') return undefined;
+                    return value === 'true';
+                case 'array':
+                    return JSON.parse(value);
+                case 'object':
+                    return JSON.parse(value);
+                default:
+                    return value;
+            }
+        }
+        
         async function executeTool(toolName, event) {
             event.preventDefault();
             
             const resultDiv = document.getElementById(`result-${toolName}`);
             const button = event.target.querySelector('.execute-button');
+            const form = event.target;
+            
+            // Check if validation is enabled
+            const forceValidationCheckbox = document.getElementById(`force-validation-${toolName}`);
+            const validationEnabled = forceValidationCheckbox ? forceValidationCheckbox.checked : true;
             
             // Show loading state
             button.disabled = true;
@@ -966,20 +1541,72 @@
             resultDiv.className = 'result-section';
             
             try {
-                // Collect form parameters
+                // Collect form parameters with improved logic
                 const params = {};
-                const inputs = event.target.querySelectorAll('input, textarea');
-                inputs.forEach(input => {
-                    const paramName = input.id.split('-').slice(1).join('-'); // Remove toolName prefix
-                    if (input.value.trim()) {
-                        // Try to parse as JSON, fallback to string
-                        try {
-                            params[paramName] = JSON.parse(input.value);
-                        } catch (e) {
-                            params[paramName] = input.value;
+                let hasValidationErrors = false;
+                
+                // Find all parameter fields in this form
+                const parameterFields = form.querySelectorAll('.parameter-field');
+                
+                parameterFields.forEach(paramField => {
+                    const nameLabel = paramField.querySelector('.parameter-name');
+                    const input = paramField.querySelector('input, textarea, select');
+                    
+                    if (nameLabel && input) {
+                        const paramName = nameLabel.textContent.trim();
+                        const fieldId = input.id;
+                        
+                        // Validate if validation is enabled
+                        if (validationEnabled) {
+                            const isValid = validateParameter(fieldId);
+                            if (!isValid) {
+                                hasValidationErrors = true;
+                            }
+                        }
+                        
+                        // Collect parameter value
+                        const value = getFieldValue(input);
+                        const dataType = paramField.dataset.type;
+                        
+                        // Process the value based on type
+                        if (value !== '' && value !== null && value !== undefined) {
+                            try {
+                                params[paramName] = processParameterValue(value, dataType);
+                            } catch (e) {
+                                if (validationEnabled) {
+                                    hasValidationErrors = true;
+                                    const validationDiv = document.getElementById(`validation-${fieldId}`);
+                                    if (validationDiv) {
+                                        validationDiv.textContent = `Error processing value: ${e.message}`;
+                                        validationDiv.className = 'parameter-validation-message invalid';
+                                    }
+                                } else {
+                                    // In force mode, try JSON parse, then fallback to string
+                                    try {
+                                        params[paramName] = JSON.parse(value);
+                                    } catch {
+                                        params[paramName] = value;
+                                    }
+                                }
+                            }
                         }
                     }
                 });
+                
+                // Stop execution if validation errors and validation is enabled
+                if (validationEnabled && hasValidationErrors) {
+                    resultDiv.className = 'result-section result-error';
+                    resultDiv.innerHTML = `
+                        <div class="result-header">
+                            <span>❌ Validation Error</span>
+                        </div>
+                        <div class="result-content">
+                            <p>Please fix the parameter errors above before executing.</p>
+                            <p><em>Tip: Uncheck "Enable validation" to bypass validation for testing.</em></p>
+                        </div>
+                    `;
+                    return;
+                }
                 
                 // Make API call
                 const requestBody = {
