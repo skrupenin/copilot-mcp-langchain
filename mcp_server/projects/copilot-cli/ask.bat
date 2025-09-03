@@ -9,36 +9,6 @@ REM   ask.bat help                       - Show help
 
 setlocal enabledelayedexpansion
 
-REM Function to find project root directory
-:find_project_root
-set "current_path=%~dp0"
-set "project_root="
-
-REM Loop to find project root by looking for mcp_server\server.py
-:find_loop
-REM Remove trailing backslash for consistent comparison
-if "!current_path:~-1!"=="\" set "current_path=!current_path:~0,-1!"
-
-REM Check for project indicator
-if exist "!current_path!\mcp_server" (
-    set "project_root=!current_path!"
-    goto :found_root
-)
-
-REM Move up one directory
-for %%F in ("!current_path!") do set "parent_path=%%~dpF"
-if "!parent_path:~0,-1!"=="!current_path!" (
-    REM Reached root, use current script directory
-    set "project_root=%~dp0"
-    goto :found_root
-)
-set "current_path=!parent_path:~0,-1!"
-goto :find_loop
-
-:found_root
-REM REM echo Found project root at: !project_root!
-goto :eof
-
 REM Check for special commands first
 if "%~1"=="install" goto :install_ask
 if "%~1"=="uninstall" goto :uninstall_ask
@@ -100,6 +70,7 @@ if "%~2"=="" (
     )
     
     del "%TEMP%\gpt_result.txt" >nul 2>&1
+    exit /b 0
     
 ) else (
     REM Command analysis mode
@@ -172,6 +143,7 @@ if "%~2"=="" (
     )
     
     del "%TEMP%\gpt_result.txt" >nul 2>&1
+    exit /b 0
 )
 
 :install_ask
@@ -366,4 +338,33 @@ REM Escape backslashes for JSON
 set "current_dir=!current_dir:\=\\!"
 
 set "system_info=System Context: - OS: %OS% %PROCESSOR_ARCHITECTURE% - Command Prompt: Windows Batch - Current Directory: !current_dir!"
+goto :eof
+
+REM Function to find project root directory
+:find_project_root
+set "current_path=%~dp0"
+set "project_root="
+
+REM Loop to find project root by looking for mcp_server
+:find_loop
+REM Remove trailing backslash for consistent comparison
+if "!current_path:~-1!"=="\" set "current_path=!current_path:~0,-1!"
+
+REM Check for project indicator
+if exist "!current_path!\mcp_server" (
+    set "project_root=!current_path!"
+    goto :found_root
+)
+
+REM Move up one directory
+for %%F in ("!current_path!") do set "parent_path=%%~dpF"
+if "!parent_path:~0,-1!"=="!current_path!" (
+    REM Reached root, use current script directory
+    set "project_root=%~dp0"
+    goto :found_root
+)
+set "current_path=!parent_path:~0,-1!"
+goto :find_loop
+
+:found_root
 goto :eof

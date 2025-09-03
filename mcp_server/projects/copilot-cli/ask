@@ -9,7 +9,13 @@ get_system_info() {
     
     # Detect OS
     if [[ "$OSTYPE" == "linux-gnu"* ]]; then
-        os_info="Linux"
+## color stuff
+
+green="[92m"
+blue="[94m"
+yellow="[93m"
+red="[91m"
+end="[0m"_info="Linux"
         if command -v lsb_release >/dev/null 2>&1; then
             os_info="$(lsb_release -d -s 2>/dev/null || echo "Linux")"
         fi
@@ -182,8 +188,9 @@ uninstall_ask_alias() {
 
 # Function to ensure virtual environment is activated
 ensure_virtual_env() {
-    local script_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-    local venv_path="$script_dir/../.virtualenv"
+    # Find project root and use it for virtual environment path
+    local project_root=$(find_project_root)
+    local venv_path="$project_root/.virtualenv"
     
     # On Windows (Git Bash), activation script is in Scripts directory
     # On Unix, it's in bin directory
@@ -305,6 +312,9 @@ elif [ "$1" = "help" ] || [ $# -eq 0 ]; then
     show_usage_examples
     exit 0
 fi
+
+# Ensure virtual environment is activated (only for normal operation)
+ensure_virtual_env
 
 # Check number of arguments
 if [ $# -eq 1 ]; then
