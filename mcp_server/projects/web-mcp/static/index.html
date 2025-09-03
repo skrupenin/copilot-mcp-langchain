@@ -1,0 +1,143 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{{TITLE}}</title>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;
+            margin: 0;
+            padding: 20px;
+            background-color: #f5f5f5;
+            line-height: 1.6;
+        }
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        header {
+            text-align: center;
+            padding-bottom: 20px;
+            border-bottom: 2px solid #e0e0e0;
+            margin-bottom: 30px;
+        }
+        .version {
+            color: #666;
+            font-size: 0.9em;
+            margin-top: 5px;
+        }
+        .phase-status {
+            background: #e8f5e8;
+            padding: 15px;
+            border-radius: 6px;
+            margin: 20px 0;
+            border-left: 4px solid #4CAF50;
+        }
+        .phase-title {
+            color: #2E7D32;
+            font-weight: bold;
+            margin-bottom: 10px;
+        }
+        .main-content {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 30px;
+            margin-top: 30px;
+        }
+        .card {
+            background: #fafafa;
+            padding: 20px;
+            border-radius: 6px;
+            border: 1px solid #e0e0e0;
+        }
+        .card h3 {
+            margin-top: 0;
+            color: #1976D2;
+        }
+        ul {
+            padding-left: 20px;
+        }
+        li {
+            margin: 5px 0;
+        }
+        .footer {
+            text-align: center;
+            margin-top: 40px;
+            padding-top: 20px;
+            border-top: 1px solid #e0e0e0;
+            color: #666;
+            font-size: 0.9em;
+        }
+        @media (max-width: 768px) {
+            .main-content {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>🚀 {{TITLE}}</h1>
+            <div class="version">Version {{VERSION}}</div>
+            <div class="phase-status">
+                <div class="phase-title">✅ Phase 1: Project Structure Setup</div>
+                <p>Web interface is initializing... This is a minimal HTML structure for testing.</p>
+            </div>
+        </header>
+
+        <main>
+            <section>
+                <h2>🚀 MCP Tools Web Interface</h2>
+                <p>This is the beginning of a Swagger-like web interface for MCP tools.</p>
+                <p><strong>Base URL:</strong> {{BASE_URL}}</p>
+            </section>
+
+            <div class="main-content">
+                <div class="card">
+                    <h3>📋 Current Phase Tasks:</h3>
+                    <ul>
+                        <li>✅ Create project directory structure</li>
+                        <li>✅ Create webhook_config.json</li>
+                        <li>✅ Create minimal HTML structure</li>
+                        <li>✅ Create readme.md</li>
+                        <li>✅ Create run.ps1 script</li>
+                        <li>✅ Test server startup</li>
+                    </ul>
+                </div>
+
+                <div class="card">
+                    <h3>🔧 Next Steps:</h3>
+                    <ul>
+                        <li>⏳ Implement tool discovery API</li>
+                        <li>⏳ Create dynamic tool forms</li>
+                        <li>⏳ Add tool execution functionality</li>
+                        <li>⏳ Implement response handling</li>
+                    </ul>
+                </div>
+            </div>
+        </main>
+
+        <footer class="footer">
+            <p>MCP Tools Web Interface - Universal browser-based access to MCP tools</p>
+        </footer>
+    </div>
+
+    <script>
+        // Phase 1: Basic initialization
+        document.addEventListener('DOMContentLoaded', function() {
+            console.log('{{TITLE}} - Phase 1 loaded');
+            console.log('Version: {{VERSION}}');
+            console.log('Base URL: {{BASE_URL}}');
+            
+            // Future: Tool discovery and form generation will be added here
+            console.log('Phase 1: Basic HTML structure ready');
+        });
+    </script>
+</body>
+</html>
