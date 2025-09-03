@@ -13,6 +13,7 @@
 - Follow `./read-debug-info.agent.md` when there are some problems.
 - Follow `./testing-tool.agent.md` if you need to test the tool after creation or modification. What json escaping quotes strategy you should use is also described in the file.
 - Follow `./create-tool.agent.md` when you create a new tool.
+- Follow `./decompose-complex-task-to-task-list.agent.md` when you need to break down a complex task into smaller, manageable tasks.
 - Follow `./creating-unit-tests.agent.md` when you need to create/run unit tests for the tool.
 - Follow `./creating-instructions.agent.md` when you need to create new instruction files for the project.
 - Follow demo instructions with a pattern `**/*.demo.agent.md` to find all cases around tools (`./mcp_server/` folder) when you are asked to show a demonstration (with wording: `demo`, `демо`, `демка` and so on) of existing cases. **Important** Don't look for other files to search for demo cases.
