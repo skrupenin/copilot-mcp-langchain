@@ -209,6 +209,37 @@ ensure_virtual_env() {
     fi
 }
 
+# Function to find project root directory
+find_project_root() {
+    local current_path="$(dirname "$(realpath "$0")")"
+    local max_depth=10
+    local depth=0
+    
+    while [[ $depth -lt $max_depth ]]; do
+        # Look for indicator of project root (mcp_server directory)
+        if [[ -d "$current_path/mcp_server" ]]; then
+            # echo "Found project root at: $current_path"
+            echo "$current_path"
+            return 0
+        fi
+        
+        # Move up one directory
+        local parent_path="$(dirname "$current_path")"
+        if [[ "$parent_path" == "$current_path" ]]; then
+            # Reached filesystem root, use script directory
+            echo "$(dirname "$(realpath "$0")")"
+            return 1
+        fi
+        
+        current_path="$parent_path"
+        ((depth++))
+    done
+    
+    # Max depth reached, use script directory
+    echo "$(dirname "$(realpath "$0")")"
+    return 1
+}
+
 # Ensure virtual environment is activated
 ensure_virtual_env
 
@@ -282,8 +313,9 @@ if [ $# -eq 1 ]; then
     
     color "Question: $question" $yellow
     
-    # Change to parent directory to find mcp_server module
-    cd "$(dirname "$0")/.."
+    # Find and change to project root directory
+    project_root=$(find_project_root)
+    cd "$project_root"
     
     # Get system information
     system_info=$(get_system_info)
@@ -333,8 +365,9 @@ elif [ $# -eq 2 ]; then
     # Display command output
     color "$output" $white
     
-    # Change to parent directory to find mcp_server module
-    cd "$(dirname "$0")/.."
+    # Find and change to project root directory
+    project_root=$(find_project_root)
+    cd "$project_root"
     
     # Get system information
     system_info=$(get_system_info)

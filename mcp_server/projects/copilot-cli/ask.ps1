@@ -34,6 +34,41 @@ function Show-UsageExamples {
     Write-Host "  ask uninstall" -NoNewline -ForegroundColor Cyan; Write-Host "                         " -NoNewline -ForegroundColor Cyan; Write-Host "# Remove global command" -ForegroundColor Green
 }
 
+# Function to find project root directory
+function Find-ProjectRoot {
+    param([string]$StartPath = $PSScriptRoot)
+    
+    $currentPath = $StartPath
+    $maxDepth = 10 # Prevent infinite loop
+    $depth = 0
+    
+    while ($depth -lt $maxDepth) {
+        # Look for indicators of project root
+        $indicators = @("mcp_server")
+        
+        foreach ($indicator in $indicators) {
+            $testPath = Join-Path $currentPath $indicator
+            if (Test-Path $testPath) {
+                # Write-Host "Found project root at: $currentPath" -ForegroundColor Cyan
+                return $currentPath
+            }
+        }
+        
+        # Move up one directory
+        $parentPath = Split-Path $currentPath -Parent
+        if ($parentPath -eq $currentPath) {
+            # Reached root drive, stop
+            break
+        }
+        $currentPath = $parentPath
+        $depth++
+    }
+    
+    # If not found, try current script directory as fallback
+    Write-Host "Project root not found, using script directory: $PSScriptRoot" -ForegroundColor Yellow
+    return $PSScriptRoot
+}
+
 # Function to get system information
 function Get-SystemInfo {
     # Disable progress bar for system info gathering
@@ -225,7 +260,8 @@ if (-not $Question) {
     
     # Change to the project root directory to find mcp_server module
     $originalLocation = Get-Location
-    Set-Location "$PSScriptRoot\.."
+    $projectRoot = Find-ProjectRoot
+    Set-Location $projectRoot
     
     # Create a temporary file with simple question for LLM
     $tempFile = [System.IO.Path]::GetTempFileName()
@@ -247,7 +283,7 @@ if (-not $Question) {
     $pythonTempFile = $tempFile -replace '\\', '/'
     
     # Call MCP tool by reading JSON from temp file (using utf-8-sig to handle BOM)
-    $response = & python -c "import json; import sys; data=json.load(open('$pythonTempFile', 'r', encoding='utf-8-sig')); import subprocess; result=subprocess.run([sys.executable, '-m', 'mcp_server.run', 'run', 'lng_terminal_chat', json.dumps(data)], capture_output=True, text=True, encoding='utf-8'); print(result.stdout); sys.exit(result.returncode)" 2>&1
+    $response = & python -c "import json; import sys; data=json.load(open('$pythonTempFile', 'r', encoding='utf-8-sig')); import subprocess; result=subprocess.run([sys.executable, '-m', 'mcp_server.run', 'run', 'lng_terminal_chat', json.dumps(data)], capture_output=True, text=True, encoding='utf-8'); print(result.stdout); print(result.stderr, file=sys.stderr); sys.exit(result.returncode)" 2>&1
     $mcpExitCode = $LASTEXITCODE
     
     # Cleanup temp file and return to original location
@@ -315,7 +351,8 @@ try {
     
     # Change to the project root directory to find mcp_server module
     $originalLocation = Get-Location
-    Set-Location "$PSScriptRoot\.."
+    $projectRoot = Find-ProjectRoot
+    Set-Location $projectRoot
     
     # Create a temporary file with JSON parameters to avoid escaping issues
     $tempFile = [System.IO.Path]::GetTempFileName()
@@ -337,7 +374,7 @@ try {
     $pythonTempFile = $tempFile -replace '\\', '/'
     
     # Call MCP tool by reading JSON from temp file (using utf-8-sig to handle BOM)
-    $response = & python -c "import json; import sys; data=json.load(open('$pythonTempFile', 'r', encoding='utf-8-sig')); import subprocess; result=subprocess.run([sys.executable, '-m', 'mcp_server.run', 'run', 'lng_terminal_chat', json.dumps(data)], capture_output=True, text=True, encoding='utf-8'); print(result.stdout); sys.exit(result.returncode)" 2>&1
+    $response = & python -c "import json; import sys; data=json.load(open('$pythonTempFile', 'r', encoding='utf-8-sig')); import subprocess; result=subprocess.run([sys.executable, '-m', 'mcp_server.run', 'run', 'lng_terminal_chat', json.dumps(data)], capture_output=True, text=True, encoding='utf-8'); print(result.stdout); print(result.stderr, file=sys.stderr); sys.exit(result.returncode)" 2>&1
     $mcpExitCode = $LASTEXITCODE
     
     # Cleanup temp file and return to original location
