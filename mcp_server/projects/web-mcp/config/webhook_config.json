@@ -2,26 +2,40 @@
   "name": "web-mcp-interface",
   "port": 8080,
   "bind_host": "localhost",
+  "thread_mode": true,
   "html_routes": [
     {
       "pattern": "/",
       "template": "mcp_server/projects/web-mcp/static/index.html",
       "mapping": {
         "TITLE": "MCP Tools Web Interface",
-        "VERSION": "1.0.0",
-        "BASE_URL": "http://localhost:8080"
+        "VERSION": "1.0.0 - Phase 2",
+        "BASE_URL": "http://localhost:8080",
+        "CURRENT_PHASE": "Phase 2: Tool Discovery Implementation",
+        "PHASE_DESCRIPTION": "Backend API for tool discovery with /api/tools endpoint"
       }
+    },
+    {
+      "pattern": "/api/tools",
+      "template": "mcp_server/projects/web-mcp/static/api_tools.json",
+      "mapping": {
+        "METHOD": "{! webhook.method !}",
+        "TOOLS_DATA": "[! json.dumps(tools_result) if tools_result else '{}' !]",
+        "TIMESTAMP": "{! new Date().toISOString() !}"
+      },
+      "pipeline": [
+        {
+          "tool": "lng_get_tools_info",
+          "params": {"format": "json", "tools": "lng_file_read,lng_file_write,lng_count_words,lng_math_calculator,lng_http_client"},
+          "output": "tools_result"
+        }
+      ]
     }
   ],
-  "response": {
-    "status": 200,
-    "headers": {"Content-Type": "application/json"},
-    "body": {"status": "MCP Web Interface API - Phase 1"}
-  },
   "pipeline": [
     {
       "tool": "lng_count_words",
-      "params": {"input_text": "MCP Web Interface is starting up!"},
+      "params": {"input_text": "MCP Web Interface Phase 2 - Tool Discovery!"},
       "output": "startup_stats"
     }
   ]
