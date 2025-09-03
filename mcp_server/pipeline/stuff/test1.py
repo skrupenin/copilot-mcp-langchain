@@ -1219,6 +1219,91 @@ async def test_advanced_expressions(results: TestResults):
         return False
 
 
+async def test_string_params_processing(results):
+    """Test JSON and Python dict string parameter processing."""
+    print("\n" + "=" * 70)
+    print("🧪 Test: String Parameters Processing")
+    print("📋 Description: Test JSON string and Python dict string parameter parsing")
+    
+    start_time = time.time()
+    try:
+        executor = StrategyBasedExecutor(run_tool)
+        
+        # Test 1: JSON string format
+        pipeline = {
+            'pipeline': [
+                {
+                    'tool': 'lng_count_words',
+                    'params': '{"input_text": "Testing JSON string parameters"}',
+                    'output': 'json_result'
+                }
+            ]
+        }
+        
+        result = await executor.execute(pipeline)
+        
+        # Check if JSON string was properly parsed
+        json_success = (result.success and 
+                       result.context.get('json_result', {}).get('wordCount') == 4)
+        
+        # Test 2: Python dict string format
+        pipeline2 = {
+            'pipeline': [
+                {
+                    'tool': 'lng_count_words',
+                    'params': "{'input_text': 'Testing Python dict string parameters'}",
+                    'output': 'dict_result'
+                }
+            ]
+        }
+        
+        result2 = await executor.execute(pipeline2)
+        
+        # Check if Python dict string was properly parsed
+        dict_success = (result2.success and 
+                       result2.context.get('dict_result', {}).get('wordCount') == 5)
+        
+        # Test 3: Complex nested structure
+        pipeline3 = {
+            'pipeline': [
+                {
+                    'tool': 'lng_math_calculator',
+                    'params': '{"expression": "10 * 5 + 2"}',
+                    'output': 'calc_result'
+                }
+            ]
+        }
+        
+        result3 = await executor.execute(pipeline3)
+        
+        # Check if complex parameter was properly parsed
+        calc_success = (result3.success and 
+                       result3.context.get('calc_result', {}).get('result') == 52)
+        
+        execution_time = time.time() - start_time
+        
+        overall_success = json_success and dict_success and calc_success
+        
+        print(f"✅ JSON string parsing: {'✓' if json_success else '✗'}")
+        print(f"✅ Python dict parsing: {'✓' if dict_success else '✗'}")
+        print(f"✅ Complex parameter parsing: {'✓' if calc_success else '✗'}")
+        print(f"✅ Overall Success: {overall_success}")
+        print(f"📊 JSON result: {result.context.get('json_result', {}).get('wordCount', 'N/A')} words")
+        print(f"📊 Dict result: {result2.context.get('dict_result', {}).get('wordCount', 'N/A')} words")
+        print(f"📊 Calc result: {result3.context.get('calc_result', {}).get('result', 'N/A')}")
+        print(f"⏱️ Time: {execution_time:.4f}s")
+        print(f"📝 Universal parameter handling: JSON + Python dict strings")
+        
+        results.add_result("String Parameters Processing", overall_success, execution_time)
+        return overall_success
+        
+    except Exception as e:
+        execution_time = time.time() - start_time
+        print(f"❌ Error: {e}")
+        results.add_result("String Parameters Processing", False, execution_time, str(e))
+        return False
+
+
 async def main():
     """Run comprehensive test suite."""
     print("🚀 Comprehensive Strategy Architecture Test Suite")
@@ -1246,7 +1331,8 @@ async def main():
         test_advanced_expressions,
         test_nested_parallel_conditions,
         test_multiple_tools_integration,
-        test_performance_timing
+        test_performance_timing,
+        test_string_params_processing
     ]
     
     for test_func in test_functions:
@@ -1273,6 +1359,7 @@ async def main():
     print(f"✅ Performance: Timing and parallel execution covered")
     print(f"✅ Integration: Multiple tool types covered")
     print(f"✅ Mathematical Functions: pi, sqrt, complex expressions covered")
+    print(f"✅ String Parameters: JSON + Python dict string parsing covered")
     
     if results.failed == 0:
         print(f"\n🎯 ALL TESTS PASSED! Architecture is production-ready! 🚀")

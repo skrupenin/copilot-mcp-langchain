@@ -173,8 +173,8 @@ def test_env_variables():
         js_tests = [
             ("{! env.TEST_VAR !}", "hello_world"),
             ("{! env.TEST_NUMBER !}", "42"),
-            ("{! env.TEST_PASSWORD !}", "secretpassword"),  # Spaces removed
-            ("{! env.TEST_GMAIL_APP_PASSWORD !}", "abcdefghijklmnop"),  # Spaces removed
+            ("{! env.TEST_PASSWORD !}", "secret pass word"),  # Keep spaces as-is
+            ("{! env.TEST_GMAIL_APP_PASSWORD !}", "abcd efgh ijkl mnop"),  # Keep spaces as-is
         ]
         
         print("  JavaScript env.* tests:")
@@ -190,8 +190,8 @@ def test_env_variables():
         py_tests = [
             ("[! env['TEST_VAR'] !]", "hello_world"),
             ("[! env['TEST_NUMBER'] !]", "42"),
-            ("[! env['TEST_PASSWORD'] !]", "secretpassword"),  # Spaces removed
-            ("[! env['TEST_GMAIL_APP_PASSWORD'] !]", "abcdefghijklmnop"),  # Spaces removed
+            ("[! env['TEST_PASSWORD'] !]", "secret pass word"),  # Keep spaces as-is
+            ("[! env['TEST_GMAIL_APP_PASSWORD'] !]", "abcd efgh ijkl mnop"),  # Keep spaces as-is
         ]
         
         print("  Python env[*] tests:")
@@ -223,8 +223,8 @@ def test_env_variables():
 
 
 def test_env_password_cleaning():
-    """Test 7: Environment password cleaning feature"""
-    print("🧪 Test 7: Password cleaning in environment variables")
+    """Test 7: Environment password handling (no automatic cleaning)"""
+    print("🧪 Test 7: Password handling in environment variables (spaces preserved)")
     print("-" * 50)
     
     import os
@@ -247,10 +247,10 @@ def test_env_password_cleaning():
         context = {}
         
         tests = [
-            ("{! env.MY_PASSWORD !}", "passwithspaces"),
-            ("{! env.GMAIL_APP_PASSWORD !}", "abcdefghijklmnop"),
-            ("{! env.API_PASSWORD !}", "nospaceshere"),
-            ("{! env.SECRET_PASS !}", "multiwordpass"),
+            ("{! env.MY_PASSWORD !}", "pass with spaces"),  # Keep spaces as-is
+            ("{! env.GMAIL_APP_PASSWORD !}", "abcd efgh ijkl mnop"),  # Keep spaces as-is
+            ("{! env.API_PASSWORD !}", "no spaces here"),  # Keep spaces as-is
+            ("{! env.SECRET_PASS !}", "multi   word   pass"),  # Keep spaces as-is
             ("{! env.NORMAL_VAR !}", "should not be cleaned"),  # Not cleaned
         ]
         

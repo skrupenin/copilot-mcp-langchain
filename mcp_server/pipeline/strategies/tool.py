@@ -40,6 +40,12 @@ class ToolStrategy(ExecutionStrategy):
             
             # Substitute variables in parameters using unified expression processing
             substituted_params = substitute_in_object(params, context.variables, preserve_objects=preserve_objects)
+            
+            # Special handling for string params - try to parse as JSON if it looks like JSON
+            if isinstance(substituted_params, str):
+                # If the entire params is a JSON string, parse it
+                substituted_params = self._process_single_string_param(substituted_params, tool_name, context.step_number)
+            
             logger.debug(f"Parameters after substitution: {str(substituted_params)[:1000] + '...' if len(str(substituted_params)) > 1000 else str(substituted_params)}")
                         
             # Execute the tool
@@ -177,3 +183,44 @@ class ToolStrategy(ExecutionStrategy):
         except Exception as e:
             logger.error(f"Failed to save output log {filename}: {e}")
             raise
+    
+    def _process_single_string_param(self, params_string: str, tool_name: str, step_number: int) -> Dict[str, Any]:
+        """
+        Process a single string that should be parsed as JSON parameters.
+        
+        This handles the case where entire params field is a JSON string from webhook.
+        """
+        logger.info(f"Step {step_number}: Processing single string param for tool '{tool_name}': {params_string}")
+        logger.info(f"Step {step_number}: String type: {type(params_string)}")
+        
+        if not isinstance(params_string, str):
+            logger.info(f"Step {step_number}: Not a string, returning as-is")
+            return params_string
+            
+        stripped_value = params_string.strip()
+        logger.info(f"Step {step_number}: Stripped value: '{stripped_value}'")
+        
+        # First, try to parse as JSON
+        if (stripped_value.startswith('{') and stripped_value.endswith('}')) or \
+           (stripped_value.startswith('[') and stripped_value.endswith(']')):
+            try:
+                import json
+                parsed_params = json.loads(stripped_value)
+                logger.info(f"Step {step_number}: Successfully parsed as JSON: {parsed_params}")
+                return parsed_params
+            except (json.JSONDecodeError, ValueError) as e:
+                logger.info(f"Step {step_number}: JSON parsing failed: {e}, trying Python eval")
+        
+        # If JSON parsing fails, try Python eval (for string representation of dict)
+        if stripped_value.startswith("{'") and stripped_value.endswith("'}"):
+            try:
+                import ast
+                parsed_params = ast.literal_eval(stripped_value)
+                logger.info(f"Step {step_number}: Successfully parsed as Python dict: {parsed_params}")
+                return parsed_params
+            except (ValueError, SyntaxError) as e:
+                logger.warning(f"Step {step_number}: Python eval parsing failed: {e}")
+                
+        # If both fail, return empty dict (so tool gets no params)
+        logger.info(f"Step {step_number}: Returning empty dict as fallback")
+        return {}
