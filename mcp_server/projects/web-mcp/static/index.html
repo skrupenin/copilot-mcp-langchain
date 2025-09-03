@@ -163,6 +163,119 @@
             }
         }
         
+        /* Search and Filter Styles */
+        .search-filter-section {
+            margin: 20px 0;
+            padding: 20px;
+            background: #f8f9fa;
+            border-radius: 8px;
+            border: 1px solid #e9ecef;
+        }
+        .search-container {
+            position: relative;
+            margin-bottom: 15px;
+        }
+        .search-input {
+            width: 100%;
+            padding: 12px 45px 12px 16px;
+            border: 1px solid #ced4da;
+            border-radius: 6px;
+            font-size: 16px;
+            box-sizing: border-box;
+            background: white;
+        }
+        .search-input:focus {
+            outline: none;
+            border-color: #1976D2;
+            box-shadow: 0 0 0 2px rgba(25, 118, 210, 0.2);
+        }
+        .clear-button {
+            position: absolute;
+            right: 10px;
+            top: 50%;
+            transform: translateY(-50%);
+            background: #6c757d;
+            color: white;
+            border: none;
+            border-radius: 50%;
+            width: 24px;
+            height: 24px;
+            font-size: 12px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        .clear-button:hover {
+            background: #5a6268;
+        }
+        .filter-container {
+            display: flex;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 10px;
+        }
+        .filter-label {
+            font-weight: 600;
+            color: #495057;
+            margin-right: 5px;
+        }
+        .filter-tags {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+            align-items: center;
+        }
+        .filter-tag {
+            background: #e9ecef;
+            color: #495057;
+            padding: 6px 12px;
+            border-radius: 20px;
+            font-size: 0.85em;
+            cursor: pointer;
+            border: 1px solid transparent;
+            transition: all 0.2s ease;
+            user-select: none;
+        }
+        .filter-tag:hover {
+            background: #dee2e6;
+        }
+        .filter-tag.active {
+            background: #1976D2;
+            color: white;
+        }
+        .clear-filters-btn {
+            background: #dc3545;
+            color: white;
+            border: none;
+            padding: 6px 12px;
+            border-radius: 4px;
+            font-size: 0.85em;
+            cursor: pointer;
+            margin-left: 10px;
+        }
+        .clear-filters-btn:hover {
+            background: #c82333;
+        }
+        .results-summary {
+            margin: 15px 0;
+            padding: 10px 15px;
+            background: #e8f4fd;
+            border-radius: 6px;
+            border-left: 4px solid #1976D2;
+            color: #1976D2;
+            font-weight: 500;
+        }
+        .tool-card.hidden {
+            display: none;
+        }
+        .search-highlight {
+            background: #ffeb3b;
+            font-weight: bold;
+            padding: 1px 2px;
+            border-radius: 2px;
+        }
+        
         /* Tool execution styles */
         .execute-section {
             margin-top: 0;
@@ -414,6 +527,26 @@
 
             <section class="tools-section">
                 <h3>🛠️ Available MCP Tools</h3>
+                
+                <!-- Search and Filter Section -->
+                <div class="search-filter-section">
+                    <div class="search-container">
+                        <input type="text" id="search-input" placeholder="🔍 Search tools by name, description, or parameters..." class="search-input">
+                        <button id="clear-search" class="clear-button" style="display: none;">✕</button>
+                    </div>
+                    <div class="filter-container">
+                        <div class="filter-tags" id="filter-tags">
+                            <span class="filter-label">Categories:</span>
+                            <!-- Filter tags will be generated dynamically -->
+                        </div>
+                        <button id="clear-filters" class="clear-filters-btn" style="display: none;">Clear All Filters</button>
+                    </div>
+                </div>
+                
+                <div class="results-summary" id="results-summary" style="display: none;">
+                    <span id="results-count"></span>
+                </div>
+                
                 <div id="tools-container" class="loading">
                     Loading tools...
                 </div>
@@ -426,6 +559,11 @@
     </div>
 
     <script>
+        // Global variables for search and filtering
+        let allTools = [];
+        let currentFilters = new Set();
+        let currentSearchTerm = '';
+
         // URL hash navigation functions
         function updateURL(toolName) {
             if (toolName) {
@@ -438,7 +576,13 @@
         function scrollToTool(toolName) {
             const toolCard = document.querySelector(`[onclick="toggleToolDetails('${toolName}')"]`);
             if (toolCard) {
-                toolCard.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                setTimeout(() => {
+                    toolCard.scrollIntoView({ 
+                        behavior: 'smooth', 
+                        block: 'start',
+                        inline: 'nearest'
+                    });
+                }, 100);
             }
         }
 
@@ -448,7 +592,7 @@
                 console.log(`Loading tool from hash: ${hash}`);
                 const detailsElement = document.getElementById(`details-${hash}`);
                 if (detailsElement) {
-                    // Expand the tool
+                    // Expand the tool with scrolling (from URL hash)
                     detailsElement.classList.add('show');
                     // Scroll to the tool
                     scrollToTool(hash);
@@ -467,7 +611,176 @@
             
             // Load and display tools
             loadMCPTools();
+            
+            // Initialize search and filter functionality
+            initializeSearchAndFilter();
         });
+
+        function initializeSearchAndFilter() {
+            const searchInput = document.getElementById('search-input');
+            const clearSearchBtn = document.getElementById('clear-search');
+            const clearFiltersBtn = document.getElementById('clear-filters');
+            
+            // Search input handler
+            searchInput.addEventListener('input', function(e) {
+                currentSearchTerm = e.target.value.trim();
+                clearSearchBtn.style.display = currentSearchTerm ? 'flex' : 'none';
+                filterAndDisplayTools();
+            });
+            
+            // Clear search button
+            clearSearchBtn.addEventListener('click', function() {
+                searchInput.value = '';
+                currentSearchTerm = '';
+                clearSearchBtn.style.display = 'none';
+                filterAndDisplayTools();
+            });
+            
+            // Clear all filters button
+            clearFiltersBtn.addEventListener('click', function() {
+                currentFilters.clear();
+                currentSearchTerm = '';
+                searchInput.value = '';
+                clearSearchBtn.style.display = 'none';
+                clearFiltersBtn.style.display = 'none';
+                
+                // Reset all filter tags
+                document.querySelectorAll('.filter-tag').forEach(tag => {
+                    tag.classList.remove('active');
+                });
+                
+                filterAndDisplayTools();
+            });
+        }
+
+        function generateFilterTags(tools) {
+            const categories = new Set();
+            tools.forEach(tool => {
+                categories.add(tool.category);
+            });
+            
+            const filterTagsContainer = document.getElementById('filter-tags');
+            filterTagsContainer.innerHTML = '<span class="filter-label">Categories:</span>';
+            
+            Array.from(categories).sort().forEach(category => {
+                const tag = document.createElement('span');
+                tag.className = 'filter-tag';
+                tag.textContent = category;
+                tag.addEventListener('click', function() {
+                    toggleFilter(category, tag);
+                });
+                filterTagsContainer.appendChild(tag);
+            });
+        }
+
+        function toggleFilter(category, tagElement) {
+            if (currentFilters.has(category)) {
+                currentFilters.delete(category);
+                tagElement.classList.remove('active');
+            } else {
+                currentFilters.add(category);
+                tagElement.classList.add('active');
+            }
+            
+            document.getElementById('clear-filters').style.display = 
+                currentFilters.size > 0 || currentSearchTerm ? 'block' : 'none';
+            
+            filterAndDisplayTools();
+        }
+
+        function filterAndDisplayTools() {
+            const filteredTools = allTools.filter(tool => {
+                // Category filter
+                if (currentFilters.size > 0 && !currentFilters.has(tool.category)) {
+                    return false;
+                }
+                
+                // Search filter
+                if (currentSearchTerm) {
+                    const searchLower = currentSearchTerm.toLowerCase();
+                    return tool.name.toLowerCase().includes(searchLower) ||
+                           tool.short_description.toLowerCase().includes(searchLower) ||
+                           (tool.parameters && tool.parameters.some(p => 
+                               p.name.toLowerCase().includes(searchLower) ||
+                               (p.description && p.description.toLowerCase().includes(searchLower))
+                           ));
+                }
+                
+                return true;
+            });
+            
+            displayFilteredTools(filteredTools);
+            updateResultsSummary(filteredTools.length, allTools.length);
+        }
+
+        function displayFilteredTools(tools) {
+            const toolsContainer = document.getElementById('tools-container');
+            
+            if (tools.length === 0) {
+                toolsContainer.innerHTML = `
+                    <div class="card">
+                        <p>🔍 No tools found matching your criteria</p>
+                        <p>Try adjusting your search or filters</p>
+                    </div>
+                `;
+                return;
+            }
+            
+            let html = '<div class="tools-grid">';
+            
+            tools.forEach(tool => {
+                const requiredParams = tool.parameters ? tool.parameters.filter(p => p.required).length : 0;
+                const totalParams = tool.parameters ? tool.parameters.length : 0;
+                
+                // Highlight search terms
+                const highlightedName = highlightSearchTerm(tool.name, currentSearchTerm);
+                const highlightedDescription = highlightSearchTerm(tool.short_description, currentSearchTerm);
+                
+                html += `
+                    <div class="tool-card" onclick="toggleToolDetails('${tool.name}')">
+                        <div class="tool-header">
+                            <div class="tool-info">
+                                <div class="tool-name">${highlightedName}</div>
+                                <div class="tool-category">${tool.category}</div>
+                                <div class="tool-description">${highlightedDescription}</div>
+                            </div>
+                            <div class="tool-parameters">
+                                <span class="parameters-count">${totalParams} params (${requiredParams} required)</span>
+                            </div>
+                        </div>
+                        <div class="tool-details" id="details-${tool.name}">
+                            ${generateParametersHTML(tool.parameters, tool.name)}
+                        </div>
+                    </div>
+                `;
+            });
+            
+            html += '</div>';
+            toolsContainer.innerHTML = html;
+        }
+
+        function highlightSearchTerm(text, searchTerm) {
+            if (!searchTerm) return text;
+            
+            const regex = new RegExp(`(${escapeRegex(searchTerm)})`, 'gi');
+            return text.replace(regex, '<span class="search-highlight">$1</span>');
+        }
+
+        function escapeRegex(string) {
+            return string.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+        }
+
+        function updateResultsSummary(filteredCount, totalCount) {
+            const summaryElement = document.getElementById('results-summary');
+            const countElement = document.getElementById('results-count');
+            
+            if (filteredCount === totalCount) {
+                summaryElement.style.display = 'none';
+            } else {
+                summaryElement.style.display = 'block';
+                countElement.textContent = `Showing ${filteredCount} of ${totalCount} tools`;
+            }
+        }
 
         // Handle hash changes (back/forward browser buttons)
         window.addEventListener('hashchange', function() {
@@ -524,39 +837,16 @@
         }
         
         function displayTools(tools, totalCount) {
-            const toolsContainer = document.getElementById('tools-container');
+            // Store tools globally for filtering
+            allTools = tools;
             
-            let html = `<p><strong>Found ${totalCount} MCP tools</strong></p>`;
-            html += '<div class="tools-grid">';
+            // Generate filter tags
+            generateFilterTags(tools);
             
-            // Display all tools in one list
-            tools.forEach(tool => {
-                const requiredParams = tool.parameters ? tool.parameters.filter(p => p.required).length : 0;
-                const totalParams = tool.parameters ? tool.parameters.length : 0;
-                
-                html += `
-                    <div class="tool-card" onclick="toggleToolDetails('${tool.name}')">
-                        <div class="tool-header">
-                            <div class="tool-info">
-                                <div class="tool-name">${tool.name}</div>
-                                <div class="tool-category">${tool.category}</div>
-                                <div class="tool-description">${tool.short_description}</div>
-                            </div>
-                            <div class="tool-parameters">
-                                <span class="parameters-count">${totalParams} params (${requiredParams} required)</span>
-                            </div>
-                        </div>
-                        <div class="tool-details" id="details-${tool.name}">
-                            ${generateParametersHTML(tool.parameters, tool.name)}
-                        </div>
-                    </div>
-                `;
-            });
+            // Display all tools initially
+            displayFilteredTools(tools);
             
-            html += '</div>';
-            
-            toolsContainer.innerHTML = html;
-            console.log(`Displayed ${tools.length} tools in compact layout`);
+            console.log(`Loaded ${tools.length} tools with search and filtering`);
             
             // Check if we need to load a tool from URL hash
             loadToolFromHash();
@@ -628,7 +918,7 @@
             return html;
         }
         
-        function toggleToolDetails(toolName) {
+        function toggleToolDetails(toolName, shouldScroll = false) {
             const detailsElement = document.getElementById(`details-${toolName}`);
             const cardElement = document.querySelector(`[onclick="toggleToolDetails('${toolName}')"]`);
             
@@ -642,20 +932,22 @@
                         history.replaceState(null, null, window.location.pathname);
                     }
                 } else {
-                    // Opening tool - add hash and scroll
+                    // Opening tool - add hash but only scroll if shouldScroll is true
                     detailsElement.classList.add('show');
                     window.location.hash = `#${toolName}`;
                     
-                    // Scroll to tool after a brief delay to allow rendering
-                    setTimeout(() => {
-                        if (cardElement) {
-                            cardElement.scrollIntoView({ 
-                                behavior: 'smooth', 
-                                block: 'start',
-                                inline: 'nearest'
-                            });
-                        }
-                    }, 100);
+                    // Only scroll if explicitly requested (from URL hash or browser navigation)
+                    if (shouldScroll) {
+                        setTimeout(() => {
+                            if (cardElement) {
+                                cardElement.scrollIntoView({ 
+                                    behavior: 'smooth', 
+                                    block: 'start',
+                                    inline: 'nearest'
+                                });
+                            }
+                        }, 100);
+                    }
                 }
             }
         }
