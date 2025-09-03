@@ -9,10 +9,10 @@
       "template": "mcp_server/projects/web-mcp/static/index.html",
       "mapping": {
         "TITLE": "MCP Tools Web Interface",
-        "VERSION": "1.0.0 - Phase 2",
+        "VERSION": "1.0.0 - Phase 3",
         "BASE_URL": "http://localhost:8080",
-        "CURRENT_PHASE": "Phase 2: Tool Discovery Implementation",
-        "PHASE_DESCRIPTION": "Backend API for tool discovery with /api/tools endpoint"
+        "CURRENT_PHASE": "Phase 3: Universal Tool Execution",
+        "PHASE_DESCRIPTION": "Full MCP tool execution with interactive web forms"
       }
     },
     {
@@ -26,17 +26,10 @@
       "pipeline": [
         {
           "tool": "lng_get_tools_info",
-          "params": {"format": "json", "tools": "lng_file_read,lng_file_write,lng_count_words,lng_math_calculator,lng_http_client"},
+          "params": {"format": "json"},
           "output": "tools_result"
         }
       ]
-    }
-  ],
-  "pipeline": [
-    {
-      "tool": "lng_count_words",
-      "params": {"input_text": "MCP Web Interface Phase 2 - Tool Discovery!"},
-      "output": "startup_stats"
     }
   ]
 }

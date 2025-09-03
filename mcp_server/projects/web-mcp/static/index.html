@@ -77,9 +77,9 @@
             margin-top: 30px;
         }
         .tools-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
-            gap: 20px;
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
             margin-top: 20px;
         }
         .tool-card {
@@ -87,71 +87,70 @@
             border: 1px solid #ddd;
             border-radius: 8px;
             padding: 20px;
-            transition: box-shadow 0.2s;
+            transition: all 0.2s ease;
             cursor: pointer;
+            width: 100%;
+            box-sizing: border-box;
         }
         .tool-card:hover {
-            box-shadow: 0 4px 12px rgba(0,0,0,0.1);
-            transform: translateY(-2px);
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+            border-color: #1976D2;
+        }
+        .tool-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            width: 100%;
+        }
+        .tool-info {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+            flex: 1;
         }
         .tool-name {
             font-weight: bold;
             color: #1976D2;
-            margin-bottom: 10px;
             font-size: 1.1em;
+            margin: 0;
+        }
+        .tool-category {
+            background: #e3f2fd;
+            color: #1565c0;
+            padding: 4px 12px;
+            border-radius: 12px;
+            font-size: 0.8em;
+            white-space: nowrap;
+        }
+        .tool-description {
+            color: #666;
+            font-size: 0.9em;
+            flex: 1;
+            margin: 0 15px;
         }
         .tool-parameters {
-            margin-top: 10px;
             font-size: 0.8em;
             color: #888;
+            white-space: nowrap;
         }
         .parameters-count {
             background: #f0f0f0;
-            padding: 2px 6px;
+            padding: 4px 8px;
             border-radius: 8px;
             display: inline-block;
         }
         .tool-details {
             display: none;
-            margin-top: 15px;
-            padding-top: 15px;
+            margin-top: 20px;
+            padding-top: 20px;
             border-top: 1px solid #eee;
+            background: #fafafa;
+            margin: 20px -20px -20px -20px;
+            padding: 20px;
+            border-radius: 0 0 8px 8px;
         }
         .tool-details.show {
             display: block;
-        }
-        .parameter-item {
-            margin: 8px 0;
-            padding: 8px;
-            background: #f8f9fa;
-            border-radius: 4px;
-            font-size: 0.85em;
-        }
-        .parameter-name {
-            font-weight: bold;
-            color: #333;
-        }
-        .parameter-required {
-            color: #d32f2f;
-            font-size: 0.8em;
-        }
-        .parameter-optional {
-            color: #388e3c;
-            font-size: 0.8em;
-        }
-        .tool-category {
-            background: #e3f2fd;
-            color: #1565c0;
-            padding: 2px 8px;
-            border-radius: 12px;
-            font-size: 0.8em;
-            display: inline-block;
-            margin-bottom: 10px;
-        }
-        .tool-description {
-            color: #666;
-            font-size: 0.9em;
-            line-height: 1.4;
         }
         .loading {
             text-align: center;
@@ -162,6 +161,211 @@
             .main-content {
                 grid-template-columns: 1fr;
             }
+        }
+        
+        /* Tool execution styles */
+        .execute-section {
+            margin-top: 0;
+        }
+        .execute-form {
+            display: flex;
+            flex-direction: column;
+            gap: 0;
+        }
+        .execute-button {
+            padding: 12px 24px;
+            background: #27ae60;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 16px;
+            font-weight: 600;
+        }
+        .execute-button:hover {
+            background: #219a52;
+        }
+        .execute-button:disabled {
+            background: #95a5a6;
+            cursor: not-allowed;
+        }
+        .result-section {
+            margin-top: 20px;
+            background: #fff;
+            border-radius: 8px;
+            border: 1px solid #ddd;
+            overflow: hidden;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        .result-header {
+            padding: 12px 16px;
+            background: #f8f9fa;
+            border-bottom: 1px solid #e9ecef;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            font-weight: 600;
+        }
+        .result-content {
+            position: relative;
+            max-height: 400px;
+            overflow-y: auto;
+            border: 1px solid #e9ecef;
+            border-top: none;
+        }
+        .result-code {
+            padding: 16px;
+            font-family: 'Consolas', 'Monaco', 'Courier New', monospace;
+            font-size: 13px;
+            line-height: 1.4;
+            margin: 0;
+            white-space: pre-wrap;
+            word-wrap: break-word;
+            background: #fff;
+            color: #333;
+            text-align: left;
+            overflow-x: auto;
+            border-radius: 0;
+            tab-size: 2;
+        }
+        .result-code.json-formatted {
+            background: #f8f9fa;
+            border-left: 3px solid #28a745;
+        }
+        .result-code.text-content {
+            background: #fff;
+            border-left: 3px solid #6c757d;
+            font-family: system-ui, -apple-system, sans-serif;
+            white-space: pre-wrap;
+            word-break: break-word;
+            line-height: 1.5;
+        }
+        .copy-button {
+            background: #28a745;
+            color: white;
+            border: none;
+            padding: 6px 12px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 12px;
+            font-weight: 500;
+        }
+        .copy-button:hover {
+            background: #218838;
+        }
+        .copy-button:active {
+            background: #1e7e34;
+        }
+        .result-success .result-header {
+            background: #d4edda;
+            color: #155724;
+            border-bottom-color: #c3e6cb;
+        }
+        .result-error .result-header {
+            background: #f8d7da;
+            color: #721c24;
+            border-bottom-color: #f5c6cb;
+        }
+        .parameters-section {
+            margin-top: 0;
+        }
+        .parameter-field {
+            margin-bottom: 16px;
+            padding: 12px;
+            background: #f8f9fa;
+            border-radius: 6px;
+            border-left: 3px solid #dee2e6;
+        }
+        .parameter-header {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            margin-bottom: 4px;
+        }
+        .parameter-name {
+            font-weight: bold;
+            color: #333;
+            margin: 0;
+        }
+        .parameter-type {
+            background: #e9ecef;
+            color: #6c757d;
+            padding: 2px 6px;
+            border-radius: 4px;
+            font-size: 0.75em;
+            font-weight: 500;
+        }
+        .parameter-required {
+            color: #d32f2f;
+            font-size: 0.8em;
+            font-weight: 500;
+            background: #ffebee;
+            padding: 2px 6px;
+            border-radius: 4px;
+        }
+        .parameter-optional {
+            color: #388e3c;
+            font-size: 0.8em;
+            font-weight: 500;
+            background: #e8f5e8;
+            padding: 2px 6px;
+            border-radius: 4px;
+        }
+        .parameter-description {
+            color: #666;
+            font-size: 0.85em;
+            margin: 4px 0 8px 0;
+            line-height: 1.3;
+        }
+        .parameter-field input,
+        .parameter-field textarea {
+            width: 100%;
+            padding: 8px 12px;
+            border: 1px solid #ced4da;
+            border-radius: 4px;
+            font-family: 'Consolas', 'Monaco', 'Courier New', monospace;
+            font-size: 13px;
+            background: #fff;
+            box-sizing: border-box;
+        }
+        .parameter-field input:focus,
+        .parameter-field textarea:focus {
+            outline: none;
+            border-color: #1976D2;
+            box-shadow: 0 0 0 2px rgba(25, 118, 210, 0.2);
+        }
+        .execute-button-container {
+            margin-top: 16px;
+            padding-top: 16px;
+            border-top: 1px solid #dee2e6;
+        }
+        .parameter-item {
+            margin: 8px 0;
+            padding: 12px;
+            background: #f8f9fa;
+            border-radius: 6px;
+            font-size: 0.9em;
+            border-left: 3px solid #dee2e6;
+        }
+        .parameter-name {
+            font-weight: bold;
+            color: #333;
+            margin-bottom: 4px;
+        }
+        .parameter-required {
+            color: #d32f2f;
+            font-size: 0.8em;
+            font-weight: 500;
+        }
+        .parameter-optional {
+            color: #388e3c;
+            font-size: 0.8em;
+            font-weight: 500;
+        }
+        .parameter-description {
+            color: #666;
+            font-size: 0.85em;
+            margin-top: 4px;
         }
     </style>
 </head>
@@ -285,66 +489,101 @@
         function displayTools(tools, totalCount) {
             const toolsContainer = document.getElementById('tools-container');
             
-            // Group tools by category
-            const categories = {};
-            tools.forEach(tool => {
-                if (!categories[tool.category]) {
-                    categories[tool.category] = [];
-                }
-                categories[tool.category].push(tool);
-            });
-            
             let html = `<p><strong>Found ${totalCount} MCP tools</strong></p>`;
+            html += '<div class="tools-grid">';
             
-            // Display tools by category
-            Object.keys(categories).sort().forEach(category => {
-                html += `<h4>${category} (${categories[category].length})</h4>`;
-                html += '<div class="tools-grid">';
-                
-                categories[category].forEach(tool => {
-                    const requiredParams = tool.parameters ? tool.parameters.filter(p => p.required).length : 0;
-                    const totalParams = tool.parameters ? tool.parameters.length : 0;
-                    
-                    html += `
-                        <div class="tool-card" onclick="toggleToolDetails('${tool.name}')">
-                            <div class="tool-name">${tool.name}</div>
-                            <div class="tool-category">${tool.category}</div>
-                            <div class="tool-description">${tool.short_description}</div>
-                            <div class="tool-parameters">
-                                <span class="parameters-count">${totalParams} parameters (${requiredParams} required)</span>
-                            </div>
-                            <div class="tool-details" id="details-${tool.name}">
-                                ${generateParametersHTML(tool.parameters)}
-                            </div>
-                        </div>
-                    `;
-                });
-                
-                html += '</div>';
-            });
-            
-            toolsContainer.innerHTML = html;
-            console.log(`Displayed ${tools.length} tools in ${Object.keys(categories).length} categories`);
-        }
-        
-        function generateParametersHTML(parameters) {
-            if (!parameters || parameters.length === 0) {
-                return '<p><em>No parameters</em></p>';
-            }
-            
-            let html = '<h5>Parameters:</h5>';
-            parameters.forEach(param => {
-                const requiredLabel = param.required ? 
-                    '<span class="parameter-required">(required)</span>' : 
-                    '<span class="parameter-optional">(optional)</span>';
+            // Display all tools in one list
+            tools.forEach(tool => {
+                const requiredParams = tool.parameters ? tool.parameters.filter(p => p.required).length : 0;
+                const totalParams = tool.parameters ? tool.parameters.length : 0;
                 
                 html += `
-                    <div class="parameter-item">
-                        <div class="parameter-name">${param.name} <em>${param.type}</em> ${requiredLabel}</div>
-                        <div class="parameter-description">${param.description || 'No description provided'}</div>
+                    <div class="tool-card" onclick="toggleToolDetails('${tool.name}')">
+                        <div class="tool-header">
+                            <div class="tool-info">
+                                <div class="tool-name">${tool.name}</div>
+                                <div class="tool-category">${tool.category}</div>
+                                <div class="tool-description">${tool.short_description}</div>
+                            </div>
+                            <div class="tool-parameters">
+                                <span class="parameters-count">${totalParams} params (${requiredParams} required)</span>
+                            </div>
+                        </div>
+                        <div class="tool-details" id="details-${tool.name}">
+                            ${generateParametersHTML(tool.parameters, tool.name)}
+                        </div>
                     </div>
                 `;
             });
+            
+            html += '</div>';
+            
+            toolsContainer.innerHTML = html;
+            console.log(`Displayed ${tools.length} tools in compact layout`);
+        }
+        
+        function generateParametersHTML(parameters, toolName) {
+            if (!parameters || parameters.length === 0) {
+                return `
+                    <div class="parameters-section">
+                        <p><em>No parameters required</em></p>
+                        <div class="execute-section" onclick="event.stopPropagation()">
+                            <form class="execute-form" onsubmit="executeTool('${toolName}', event)">
+                                <button type="submit" class="execute-button" onclick="event.stopPropagation()">Execute ${toolName}</button>
+                            </form>
+                            <div id="result-${toolName}" class="result-section" style="display: none;"></div>
+                        </div>
+                    </div>
+                `;
+            }
+            
+            let html = '<div class="parameters-section">';
+            html += '<div class="execute-section" onclick="event.stopPropagation()">';
+            html += `<form class="execute-form" onsubmit="executeTool('${toolName}', event)">`;
+            
+            parameters.forEach(param => {
+                const required = param.required ? 'required' : '';
+                const requiredLabel = param.required ? 
+                    '<span class="parameter-required">required</span>' : 
+                    '<span class="parameter-optional">optional</span>';
+                const placeholder = param.description || `Enter ${param.name}`;
+                
+                if (param.type === 'string' && param.description && param.description.length > 100) {
+                    // Use textarea for long descriptions
+                    html += `
+                        <div class="parameter-field">
+                            <div class="parameter-header">
+                                <label class="parameter-name">${param.name}</label>
+                                ${requiredLabel}
+                                <span class="parameter-type">${param.type}</span>
+                            </div>
+                            <div class="parameter-description">${param.description || 'No description provided'}</div>
+                            <textarea id="${toolName}-${param.name}" placeholder="${placeholder}" ${required} onclick="event.stopPropagation()" rows="3"></textarea>
+                        </div>
+                    `;
+                } else {
+                    html += `
+                        <div class="parameter-field">
+                            <div class="parameter-header">
+                                <label class="parameter-name">${param.name}</label>
+                                ${requiredLabel}
+                                <span class="parameter-type">${param.type}</span>
+                            </div>
+                            <div class="parameter-description">${param.description || 'No description provided'}</div>
+                            <input type="text" id="${toolName}-${param.name}" placeholder="${placeholder}" ${required} onclick="event.stopPropagation()" />
+                        </div>
+                    `;
+                }
+            });
+            
+            html += `
+                        <div class="execute-button-container">
+                            <button type="submit" class="execute-button" onclick="event.stopPropagation()">Execute ${toolName}</button>
+                        </div>
+                    </form>
+                    <div id="result-${toolName}" class="result-section" style="display: none;"></div>
+                </div>
+            </div>`;
             
             return html;
         }
@@ -354,6 +593,182 @@
             if (detailsElement) {
                 detailsElement.classList.toggle('show');
             }
+        }
+        
+        async function executeTool(toolName, event) {
+            event.preventDefault();
+            
+            const resultDiv = document.getElementById(`result-${toolName}`);
+            const button = event.target.querySelector('.execute-button');
+            
+            // Show loading state
+            button.disabled = true;
+            button.textContent = 'Executing...';
+            resultDiv.style.display = 'block';
+            resultDiv.innerHTML = 'Executing tool...';
+            resultDiv.className = 'result-section';
+            
+            try {
+                // Collect form parameters
+                const params = {};
+                const inputs = event.target.querySelectorAll('input, textarea');
+                inputs.forEach(input => {
+                    const paramName = input.id.split('-').slice(1).join('-'); // Remove toolName prefix
+                    if (input.value.trim()) {
+                        // Try to parse as JSON, fallback to string
+                        try {
+                            params[paramName] = JSON.parse(input.value);
+                        } catch (e) {
+                            params[paramName] = input.value;
+                        }
+                    }
+                });
+                
+                // Make API call
+                const requestBody = {
+                    tool: toolName,
+                    params: params
+                };
+                
+                console.log('🚀 Sending request:', requestBody);
+                
+                const response = await fetch('http://localhost:8081/execute', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify(requestBody)
+                });
+                
+                console.log('📡 Response status:', response.status, response.statusText);
+                console.log('📡 Response headers:', [...response.headers.entries()]);
+                
+                const result = await response.json();
+                console.log('📦 Server response:', result);
+                
+                // Display result
+                if (result.success) {
+                    resultDiv.className = 'result-section result-success';
+                    // Show only tool_result if available, otherwise show the full response
+                    let displayData = result.tool_result || result.result || result;
+                    
+                    let responseText;
+                    let isJsonFormatted = false;
+                    
+                    // Smart JSON formatting - try to parse any string as JSON first
+                    if (typeof displayData === 'string') {
+                        try {
+                            // Try to parse any string as JSON
+                            const parsed = JSON.parse(displayData);
+                            
+                            // Check the type of parsed result
+                            if (typeof parsed === 'object' && parsed !== null) {
+                                // Object or array - pretty print as JSON
+                                responseText = JSON.stringify(parsed, null, 2);
+                                isJsonFormatted = true;
+                                console.log('🎨 JSON formatted from string (object/array):', displayData);
+                            } else {
+                                // Primitive value (string, number, boolean) - display as text
+                                responseText = String(parsed);
+                                isJsonFormatted = false;
+                                console.log('📝 Primitive value from JSON:', parsed);
+                            }
+                        } catch (e) {
+                            // If JSON parsing fails, display as is
+                            responseText = displayData;
+                            isJsonFormatted = false;
+                            console.log('📝 Text content (not valid JSON):', displayData);
+                        }
+                    } else if (typeof displayData === 'object' && displayData !== null) {
+                        // Already an object, format as JSON
+                        responseText = JSON.stringify(displayData, null, 2);
+                        isJsonFormatted = true;
+                        console.log('🎨 JSON formatted from object:', displayData);
+                    } else {
+                        // Primitive types (number, boolean, etc.)
+                        responseText = String(displayData);
+                        isJsonFormatted = false;
+                        console.log('📝 Primitive content:', displayData);
+                    }
+                    
+                    const formatIndicator = isJsonFormatted ? ' (JSON)' : ' (Text)';
+                        
+                    resultDiv.innerHTML = `
+                        <div class="result-header">
+                            <span>✅ Success (${result.execution_time || 0}ms)${formatIndicator}</span>
+                            <button class="copy-button" onclick="copyToClipboard('result-content-${toolName}', this)">Copy</button>
+                        </div>
+                        <div class="result-content">
+                            <pre class="result-code ${isJsonFormatted ? 'json-formatted' : 'text-content'}" id="result-content-${toolName}">${escapeHtml(responseText)}</pre>
+                        </div>
+                    `;
+                } else {
+                    resultDiv.className = 'result-section result-error';
+                    const responseText = JSON.stringify(result, null, 2);
+                    resultDiv.innerHTML = `
+                        <div class="result-header">
+                            <span>❌ Error</span>
+                            <button class="copy-button" onclick="copyToClipboard('result-content-${toolName}', this)">Copy</button>
+                        </div>
+                        <div class="result-content">
+                            <pre class="result-code" id="result-content-${toolName}">${escapeHtml(responseText)}</pre>
+                        </div>
+                    `;
+                }
+                
+            } catch (error) {
+                console.error('❌ Network/Fetch Error:', error);
+                resultDiv.className = 'result-section result-error';
+                const errorText = `Network Error: ${error.message}\n\nStack Trace:\n${error.stack}`;
+                resultDiv.innerHTML = `
+                    <div class="result-header">
+                        <span>❌ Network Error</span>
+                        <button class="copy-button" onclick="copyToClipboard('result-content-${toolName}', this)">Copy</button>
+                    </div>
+                    <div class="result-content">
+                        <pre class="result-code" id="result-content-${toolName}">${escapeHtml(errorText)}</pre>
+                    </div>
+                `;
+            } finally {
+                // Reset button
+                button.disabled = false;
+                button.textContent = `Execute ${toolName}`;
+            }
+        }
+        
+        // Copy to clipboard function
+        function copyToClipboard(elementId, buttonElement) {
+            const element = document.getElementById(elementId);
+            if (element) {
+                const text = element.textContent;
+                navigator.clipboard.writeText(text).then(() => {
+                    const originalText = buttonElement.textContent;
+                    buttonElement.textContent = 'Copied!';
+                    buttonElement.style.background = '#28a745';
+                    setTimeout(() => {
+                        buttonElement.textContent = originalText;
+                        buttonElement.style.background = '';
+                    }, 2000);
+                }).catch(err => {
+                    console.error('Failed to copy text: ', err);
+                    buttonElement.textContent = 'Failed';
+                    setTimeout(() => {
+                        buttonElement.textContent = 'Copy';
+                    }, 2000);
+                });
+            }
+        }
+        
+        // Escape HTML characters for safe display
+        function escapeHtml(text) {
+            const map = {
+                '&': '&amp;',
+                '<': '&lt;',
+                '>': '&gt;',
+                '"': '&quot;',
+                "'": '&#039;'
+            };
+            return text.replace(/[&<>"']/g, function(m) { return map[m]; });
         }
     </script>
 </body>

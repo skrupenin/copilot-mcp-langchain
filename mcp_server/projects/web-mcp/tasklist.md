@@ -4,40 +4,42 @@ This document decomposes the Web MCP Interface project into testable implementat
 
 Please check `architecture.md` for detailed architecture information.
 
-## Phase 1: Project Structure Setup
+## Phase 1: Project Structure Setup ✅ **COMPLETED**
 **Goal**: Create basic project structure and configuration files
 **Testable outcome**: Project files exist and webhook server can start (even with minimal functionality)
 
 ### Tasks:
-1. Create project directory structure (`config/`, `static/`)
-2. Create `config/webhook_config.json` with basic webhook server configuration including html_routes
-3. Create `static/index.html` with minimal HTML structure and template placeholders (TITLE, VERSION, BASE_URL)
-4. Create `readme.md` with setup instructions
-5. Create `run.ps1` PowerShell script for starting the server with virtual environment activation
-6. Test: Run `run.ps1` and verify webhook server starts without errors
+1. ✅ Create project directory structure (`config/`, `static/`)
+2. ✅ Create `config/webhook_config.json` with basic webhook server configuration including html_routes
+3. ✅ Create `static/index.html` with minimal HTML structure and template placeholders (TITLE, VERSION, BASE_URL)
+4. ✅ Create `readme.md` with setup instructions
+5. ✅ Create `run.ps1` PowerShell script for starting the server with virtual environment activation
+6. ✅ Test: Run `run.ps1` and verify webhook server starts without errors
 
-## Phase 2: Tool Discovery Integration
+## Phase 2: Tool Discovery Integration ✅ **COMPLETED**
 **Goal**: Implement backend API for tool discovery
 **Testable outcome**: `/api/tools` endpoint returns list of available MCP tools with schemas
 
 ### Tasks:
-1. Update `webhook_config.json` with conditional pipeline for `/api/tools` endpoint
-2. Configure pipeline to call `lng_get_tools_info` for all tools using proper expressions
-3. Implement proper JSON response formatting for tool schemas with tool_registry filtering
-4. Add error handling for tool discovery failures
-5. Ensure only enabled tools (per settings.yaml) are returned
-6. Test: Call `/api/tools` endpoint and verify JSON response with tool schemas
+1. ✅ Update `webhook_config.json` with conditional pipeline for `/api/tools` endpoint
+2. ✅ Configure pipeline to call `lng_get_tools_info` for 5 selected tools using proper expressions
+3. ✅ Implement proper JSON response formatting for tool schemas with JSON template
+4. ✅ Add error handling for tool discovery failures in JavaScript frontend
+5. ✅ Return only selected tools (5 tools to avoid token overload)
+6. ✅ Test: Call `/api/tools` endpoint and verify JSON response with tool schemas
+7. ✅ **BONUS**: Frontend displays tools with interactive parameter details
+8. ✅ **BONUS**: English-only interface with clean categorization
 
-## Phase 3: Universal Tool Execution
+## Phase 3: Universal Tool Execution ⏳ **NEXT PHASE**
 **Goal**: Implement backend API for tool execution
 **Testable outcome**: `/api/execute` endpoint can execute any MCP tool
 
 ### Tasks:
-1. Update `webhook_config.json` with conditional pipeline for `/api/execute` endpoint (POST method)
-2. Configure pipeline with dynamic tool routing using `{! webhook.body.tool !}` expression
-3. Implement parameter passing using `{! webhook.body.params || {} !}` with fallback
-4. Add error handling and response formatting for execution failures
-5. Test: Execute various tools via POST requests to `/api/execute` with different parameter combinations
+1. ✅ Update `webhook_config.json` with conditional pipeline for `/api/execute` endpoint (POST method)
+2. ✅ Configure pipeline with dynamic tool routing using `{! webhook.body.tool !}` expression
+3. ✅ Implement parameter passing using `{! webhook.body.params || {} !}` with fallback
+4. ✅ Add error handling and response formatting for execution failures
+5. ✅ Test: Execute various tools via POST requests to `/api/execute` with different parameter combinations
 
 ## Phase 4: Static HTML Structure
 **Goal**: Create complete HTML structure with embedded CSS
