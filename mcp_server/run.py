@@ -111,7 +111,7 @@ def run_daemon_mode(tool_name: str, arguments: Optional[Dict[str, Any]] = None):
         
         print("\n🔄 Tool executed, entering daemon mode...")
         print("💡 Process will stay alive until you press Ctrl+C")
-        print("📊 You can check tool status/results in browser or other processes")
+        print("📊 Tool services are now running and accessible")
         print("-" * 50)
         
         # Keep the process alive
@@ -123,16 +123,14 @@ def run_daemon_mode(tool_name: str, arguments: Optional[Dict[str, Any]] = None):
             print("\n\n🛑 Ctrl+C detected, stopping daemon...")
             print("🧹 Cleaning up...")
             
-            # Try to stop any webhooks/servers that were started
-            if tool_name in ['lng_webhook_server', 'lng_websocket_server']:
-                try:
-                    print("🧹 Attempting to stop webhook/websocket servers...")
-                    # We can't easily determine which servers to stop without maintaining state
-                    # But we can give user info about how to stop them
-                    print("💡 To stop running servers, use:")
-                    print(f"   python -m mcp_server.run run {tool_name} '{{\"operation\": \"stop\", \"name\": \"your-server-name\"}}'")
-                except Exception as e:
-                    print(f"⚠️  Warning during cleanup: {e}")
+            # Try to cleanup any resources that were started
+            try:
+                print("🧹 Cleaning up tool resources...")
+                # Generic cleanup message - tools handle their own cleanup
+                print("💡 Some tools may require manual cleanup after daemon stops")
+                print("💡 Check tool documentation for post-daemon cleanup procedures")
+            except Exception as e:
+                print(f"⚠️  Warning during cleanup: {e}")
             
             print("✅ Daemon stopped successfully")
             return result
