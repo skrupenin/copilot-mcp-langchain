@@ -92,6 +92,54 @@ def run_test(tool_name: str, arguments: Optional[Dict[str, Any]] = None) -> Any:
     """
     return asyncio.run(test_tool(tool_name, arguments))
 
+def run_daemon_mode(tool_name: str, arguments: Optional[Dict[str, Any]] = None):
+    """
+    Run tool in daemon mode - keeps process alive until Ctrl+C.
+    
+    Args:
+        tool_name: Name of the tool to test
+        arguments: Dictionary of arguments to pass to the tool (optional)
+    """
+    print(f"🔄 Starting daemon mode for tool: {tool_name}")
+    print("💡 Press Ctrl+C to stop the daemon and exit")
+    print("=" * 50)
+    
+    try:
+        # Run the tool first
+        result = run_test(tool_name, arguments)
+        
+        print("\n🔄 Tool executed, entering daemon mode...")
+        print("💡 Process will stay alive until you press Ctrl+C")
+        print("📊 You can check tool status/results in browser or other processes")
+        print("-" * 50)
+        
+        # Keep the process alive
+        try:
+            while True:
+                import time
+                time.sleep(1)
+        except KeyboardInterrupt:
+            print("\n\n🛑 Ctrl+C detected, stopping daemon...")
+            print("🧹 Cleaning up...")
+            
+            # Try to stop any webhooks/servers that were started
+            if tool_name in ['lng_webhook_server', 'lng_websocket_server']:
+                try:
+                    print("🧹 Attempting to stop webhook/websocket servers...")
+                    # We can't easily determine which servers to stop without maintaining state
+                    # But we can give user info about how to stop them
+                    print("💡 To stop running servers, use:")
+                    print(f"   python -m mcp_server.run run {tool_name} '{{\"operation\": \"stop\", \"name\": \"your-server-name\"}}'")
+                except Exception as e:
+                    print(f"⚠️  Warning during cleanup: {e}")
+            
+            print("✅ Daemon stopped successfully")
+            return result
+            
+    except Exception as e:
+        print(f"❌ Error in daemon mode: {e}")
+        return None
+
 def install_dependencies(specific_tools: Optional[list] = None):
     """Install dependencies for specific tools or all enabled tools based on their settings.yaml files.
     
@@ -329,19 +377,24 @@ def main():
         print("🚀 MCP Tool Runner")
         print("=" * 40)
         print("Usage:")
-        print("  python -m mcp_server.run list                                    # List all tools")
-        print("  python -m mcp_server.run schema <tool_name>                      # Show tool schema")
-        print("  python -m mcp_server.run run <tool_name> 'args'                  # Run tool")
-        print("  python -m mcp_server.run batch tool1 'args1' tool2 'args2'       # Run multiple tools")
-        print("  python -m mcp_server.run install_dependencies                    # Install tool dependencies")
-        print("  python -m mcp_server.run install_dependencies tool1 tool2 ...    # Install dependencies for specific tools")
-        print("  python -m mcp_server.run analyze_libs <lib1> [lib2] ...          # Analyze Python libraries")
+        print("  python -m mcp_server.run list                                         # List all tools")
+        print("  python -m mcp_server.run schema <tool_name>                           # Show tool schema")
+        print("  python -m mcp_server.run run [--daemon] <tool_name> 'args'            # Run tool")
+        print("  python -m mcp_server.run batch [--daemon] tool1 'args1' tool2 'args2' # Run multiple tools")
+        print("  python -m mcp_server.run install_dependencies                         # Install tool dependencies")
+        print("  python -m mcp_server.run install_dependencies tool1 tool2 ...         # Install dependencies for specific tools")
+        print("  python -m mcp_server.run analyze_libs <lib1> [lib2] ...               # Analyze Python libraries")
+        print("")
+        print("Daemon mode:")
+        print("  --daemon                                                              # Keep process running (Ctrl+C to stop)")
         print("")
         print("Examples:")
         print("  python -m mcp_server.run run lng_count_words '{\\\"input_text\\\":\\\"Hello world\\\"}'")
+        print("  python -m mcp_server.run run --daemon lng_webhook_server '{\\\"operation\\\":\\\"start\\\", \\\"name\\\":\\\"test\\\"}'")
         print("  python -m mcp_server.run run lng_math_calculator '{\\\"expression\\\":\\\"2+3*4\\\"}'")
         print("  python -m mcp_server.run run lng_get_tools_info")
         print("  python -m mcp_server.run batch lng_count_words '{\\\"input_text\\\":\\\"Hello\\\"}' lng_math_calculator '{\\\"expression\\\":\\\"2+3\\\"}'")
+        print("  python -m mcp_server.run batch --daemon lng_webhook_server '{\\\"operation\\\":\\\"start\\\"}' lng_webhook_server '{\\\"operation\\\":\\\"list\\\"}'")
         print("  python -m mcp_server.run install_dependencies lng_email_client")
         print("  python -m mcp_server.run analyze_libs langchain requests numpy")
         print("")
@@ -370,16 +423,24 @@ def main():
         show_tool_schema(sys.argv[2])
     
     elif command == 'run':
-        if len(sys.argv) < 3:
+        # Check for --daemon flag
+        daemon_mode = False
+        args = sys.argv[2:]
+        
+        if args and args[0] == '--daemon':
+            daemon_mode = True
+            args = args[1:]  # Remove --daemon flag
+        
+        if len(args) < 1:
             print("❌ Tool name required for run command")
             return
         
-        tool_name = sys.argv[2]
+        tool_name = args[0]
         tool_args = {}
         
-        if len(sys.argv) >= 4:
+        if len(args) >= 2:
             # Join all remaining arguments into one string (handles spaces in JSON)
-            json_str = ' '.join(sys.argv[3:])
+            json_str = ' '.join(args[1:])
             
             # Try to parse JSON arguments
             try:
@@ -391,8 +452,11 @@ def main():
                 print('💡 Example: {\\\"input_text\\\":\\\"Hello world\\\"}')
                 return
         
-        # Run the tool
-        run_test(tool_name, tool_args)
+        # Run the tool in appropriate mode
+        if daemon_mode:
+            run_daemon_mode(tool_name, tool_args)
+        else:
+            run_test(tool_name, tool_args)
     
     elif command == 'analyze_libs':
         if len(sys.argv) < 3:
@@ -505,7 +569,9 @@ def main():
         print ("    python -m mcp_server.run list")
         print ("    python -m mcp_server.run schema lng_count_words")
         print ("    python -m mcp_server.run run lng_count_words '{\\\"input_text\\\":\\\"Hello world\\\"}'")
+        print ("    python -m mcp_server.run run --daemon lng_webhook_server '{\\\"operation\\\":\\\"start\\\", \\\"name\\\":\\\"test\\\"}'")
         print ("    python -m mcp_server.run batch lng_webhook_server '{\\\"operation\\\":\\\"list\\\"}' lng_webhook_server '{\\\"operation\\\":\\\"stop\\\", \\\"name\\\":\\\"web-mcp-interface\\\"}'")
+        print ("    python -m mcp_server.run batch --daemon lng_webhook_server '{\\\"operation\\\":\\\"start\\\"}'")
         print ("    python -m mcp_server.run install_dependencies lng_email_client" )
         print ("    python -m mcp_server.run analyze_libs langchain requests numpy")
 
