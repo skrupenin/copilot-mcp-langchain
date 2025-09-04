@@ -499,7 +499,15 @@ def main():
     
     else:
         print(f"❌ Unknown command: {command}")
-        print("Available commands: list, schema, run, batch, install_dependencies")
+        print("Available commands: list, schema, run, batch, install_dependencies, analyze_libs")
+        print ("💡 Examples: ")        
+        print ("    python -m mcp_server.run")
+        print ("    python -m mcp_server.run list")
+        print ("    python -m mcp_server.run schema lng_count_words")
+        print ("    python -m mcp_server.run run lng_count_words '{\\\"input_text\\\":\\\"Hello world\\\"}'")
+        print ("    python -m mcp_server.run batch lng_webhook_server '{\\\"operation\\\":\\\"list\\\"}' lng_webhook_server '{\\\"operation\\\":\\\"stop\\\", \\\"name\\\":\\\"web-mcp-interface\\\"}'")
+        print ("    python -m mcp_server.run install_dependencies lng_email_client" )
+        print ("    python -m mcp_server.run analyze_libs langchain requests numpy")
 
 if __name__ == "__main__":
     main()
