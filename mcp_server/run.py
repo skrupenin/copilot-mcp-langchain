@@ -388,7 +388,7 @@ def main():
                 print(f"❌ Invalid JSON arguments: {e}")
                 print(f"💡 Received: {json_str}")
                 print("💡 Try using double quotes for property names and values")
-                print('💡 Example: {"input_text":"Hello world"}')
+                print('💡 Example: {\\\"input_text\\\":\\\"Hello world\\\"}')
                 return
         
         # Run the tool
