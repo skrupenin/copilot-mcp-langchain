@@ -8,6 +8,7 @@ import json
 import sys
 import os
 import subprocess
+import time
 import yaml
 import logging
 import traceback
@@ -486,13 +487,16 @@ def main():
             traceback.print_exc()
     
     elif command == 'batch':
-        if len(sys.argv) < 4:
+        # Check for --daemon flag
+        daemon_mode = '--daemon' in sys.argv
+        args = [arg for arg in sys.argv[2:] if arg != '--daemon']
+        
+        if len(args) < 2:
             print("❌ At least one tool name and arguments required for batch command")
-            print("💡 Usage: python -m mcp_server.run batch <tool1> [args1] <tool2> [args2] ...")
+            print("💡 Usage: python -m mcp_server.run batch [--daemon] <tool1> [args1] <tool2> [args2] ...")
             return
         
         # Parse batch arguments more intelligently
-        args = sys.argv[2:]
         commands = []
         
         i = 0
@@ -553,13 +557,34 @@ def main():
         print(f"🔄 Running {len(commands)} tools in batch...")
         print("=" * 60)
         
-        for idx, (tool_name, tool_args) in enumerate(commands, 1):
-            print(f"\n📍 Step {idx}/{len(commands)}: {tool_name}")
-            print("-" * 40)
-            run_test(tool_name, tool_args)
+        if daemon_mode:
+            print("🔄 Running in daemon mode - press Ctrl+C to stop all tools...")
+        
+        try:
+            for idx, (tool_name, tool_args) in enumerate(commands, 1):
+                print(f"\n📍 Step {idx}/{len(commands)}: {tool_name}")
+                print("-" * 40)
+                if daemon_mode:
+                    # Run in daemon mode
+                    result = run_daemon_mode(tool_name, tool_args)
+                else:
+                    # Regular mode
+                    run_test(tool_name, tool_args)
+                
+                if idx < len(commands):
+                    print("\n" + "⏭️  " * 20)
             
-            if idx < len(commands):
-                print("\n" + "⏭️  " * 20)
+            if daemon_mode:
+                print("\n🔄 All tools started in daemon mode. Press Ctrl+C to stop...")
+                try:
+                    while True:
+                        time.sleep(1)
+                except KeyboardInterrupt:
+                    print("\n\n🛑 Ctrl+C detected, stopping all daemon processes...")
+                    print("✅ Batch daemon stopped successfully")
+                    
+        except Exception as e:
+            print(f"❌ Error in batch execution: {e}")
     
     else:
         print(f"❌ Unknown command: {command}")
