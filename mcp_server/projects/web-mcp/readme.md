@@ -42,7 +42,8 @@ This project creates a web interface that allows users to interact with MCP tool
    ```
 
 2. **Open your browser:**
-   - Web Interface: http://localhost:8080/webhook
+   - Web Interface: http://localhost:8080/
+   - Tools Api:     http://localhost:8080/api/tools
    - Execution API: http://localhost:8081/execute
 
 3. **Stop the server:**
