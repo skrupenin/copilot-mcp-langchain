@@ -31,18 +31,6 @@
             font-size: 0.9em;
             margin-top: 5px;
         }
-        .phase-status {
-            background: #e8f5e8;
-            padding: 15px;
-            border-radius: 6px;
-            margin: 20px 0;
-            border-left: 4px solid #4CAF50;
-        }
-        .phase-title {
-            color: #2E7D32;
-            font-weight: bold;
-            margin-bottom: 10px;
-        }
         .main-content {
             display: grid;
             grid-template-columns: 1fr 1fr;
@@ -683,41 +671,22 @@
         <header>
             <h1>🚀 {{TITLE}}</h1>
             <div class="version">Version {{VERSION}}</div>
-            <div class="phase-status">
-                <div class="phase-title">✅ {{CURRENT_PHASE}}</div>
-                <p>{{PHASE_DESCRIPTION}}</p>
-            </div>
         </header>
 
         <main>
-            <section>
-                <h2>🚀 MCP Tools Web Interface</h2>
-                <p>This is the beginning of a Swagger-like web interface for MCP tools.</p>
-                <p><strong>Base URL:</strong> {{BASE_URL}}</p>
-            </section>
-
             <div class="main-content">
                 <div class="card">
-                    <h3>📋 Phase 2 Status:</h3>
-                    <ul>
-                        <li>✅ Update webhook configuration</li>
-                        <li>✅ Add /api/tools endpoint</li> 
-                        <li>✅ Create JavaScript parser</li>
-                        <li>✅ Add JSON response template</li>
-                        <li>✅ Load tools dynamically</li>
-                        <li>✅ Display tools in interface</li>
-                        <li><strong>🎉 Phase 2 COMPLETED!</strong></li>
-                    </ul>
+                    <h3>🚀 MCP Tools Interface</h3>
+                    <p>Universal browser-based access to all MCP tools with interactive execution forms. Swagger-like web interface for easy tool discovery and testing.</p>
                 </div>
 
                 <div class="card">
-                    <h3>🔧 API Endpoints:</h3>
+                    <h3>🔧 API Endpoints</h3>
                     <ul>
-                        <li><strong>GET /api/tools</strong> - Discover all MCP tools</li>
-                        <li><strong>POST /api/execute</strong> - Execute tools (Phase 3)</li>
-                        <li><strong>GET /</strong> - Web interface</li>
+                        <li><strong>[GET] Web Interface:</strong> <a href="{{BASE_URL}}/" target="_blank">{{BASE_URL}}/</a></li>
+                        <li><strong>[GET] Tools API:</strong> <a href="{{BASE_URL}}/api/tools" target="_blank">{{BASE_URL}}/api/tools</a></li>
+                        <li><strong>[POST] Execution API:</strong> <a href="{{EXECUTION_API}}" target="_blank">{{EXECUTION_API}}</a></li>
                     </ul>
-                    <p><a href="{{BASE_URL}}/api/tools" target="_blank">Test /api/tools →</a></p>
                 </div>
             </div>
 
