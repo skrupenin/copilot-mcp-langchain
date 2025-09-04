@@ -6,6 +6,13 @@ python -m mcp_server.run run lng_winapi_window_tree '{\"pid\":18672}'
 ```bash
 python -m mcp_server.run batch lng_llm_rag_add_data '{\"input_text\":\"Hello pirate!\"}' lng_llm_rag_search '{\"query\":\"Pirate\"}'
 ```
+- If you need to run the same in `daemon` mode:
+```bash
+python -m mcp_server.run run --daemon lng_winapi_window_tree '{\"pid\":18672}'
+```
+```bash
+python -m mcp_server.run batch --daemon lng_llm_rag_add_data '{\"input_text\":\"Hello pirate!\"}' lng_llm_rag_search '{\"query\":\"Pirate\"}'
+```
 - Log file in this case will be `mcp_server/logs/mcp_server.log`.
 - Always use single quotes for the json parameter string, and escape double quotes within that string with a slash.
 Not:
