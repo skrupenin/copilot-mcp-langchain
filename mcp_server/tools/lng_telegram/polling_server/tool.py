@@ -295,7 +295,8 @@ class TelegramPollingServer:
     def _setup_handlers(self):
         """Настройка обработчиков сообщений"""
         self.application.add_handler(CommandHandler("start", self._handle_start))
-        self.application.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, self._handle_message))
+        # Обрабатываем все текстовые сообщения, включая команды /tamam и /cancel
+        self.application.add_handler(MessageHandler(filters.TEXT, self._handle_message))
         
     def close_logger(self):
         """Закрытие логгера и освобождение файловых дескрипторов"""
@@ -329,6 +330,10 @@ class TelegramPollingServer:
         try:
             user_id = update.effective_user.id
             message_text = update.message.text
+            
+            # Пропускаем команду /start, так как она обрабатывается отдельно
+            if message_text.startswith("/start"):
+                return
             
             logger.info(f"Message from {user_id}: {message_text}")
             
