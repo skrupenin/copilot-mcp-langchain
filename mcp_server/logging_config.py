@@ -131,3 +131,26 @@ def setup_instance_logger(instance_name: str, log_subdir: str, logger_prefix: st
     instance_logger.propagate = False
     
     return instance_logger
+
+
+def close_instance_logger(instance_name: str, log_subdir: str, logger_prefix: str = None):
+    """
+    Properly close and cleanup instance logger to release file handles.
+    
+    Args:
+        instance_name: Name of the instance
+        log_subdir: Subdirectory under logs/
+        logger_prefix: Optional prefix for logger name
+    """
+    logger_name = f"{logger_prefix or log_subdir}.{instance_name}"
+    instance_logger = logging.getLogger(logger_name)
+    
+    # Close and remove all handlers
+    for handler in instance_logger.handlers[:]:
+        if hasattr(handler, 'close'):
+            handler.close()
+        instance_logger.removeHandler(handler)
+    
+    # Clear the logger
+    instance_logger.handlers.clear()
+    instance_logger.filters.clear()

@@ -5,6 +5,7 @@ mcp_server/logs/hotkey_service.log
 mcp_server/logs/hotkey_core.log
 mcp_server/logs/pipeline
 mcp_server/logs/websocket
+mcp_server/logs/telegram
 mcp_server/logs/multi_agent/*
 !mcp_server/logs/multi_agent/readme.md
 mcp_server/logs/webhook
