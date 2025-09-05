@@ -106,15 +106,70 @@ class SuperEmpathProcessor:
         message = telegram_context.get("message", "").strip()
         user_id = telegram_context.get("user_id")
         
+        # Проверяем, зарегистрирован ли пользователь
+        data = self._load_sessions()
+        user_data = data["users"].get(str(user_id))
+        
         if message.startswith("/start"):
             return self._handle_start_command(telegram_context)
-        elif message == "тамам":
+        elif message == "/tamam":
             return self._handle_approve_command(telegram_context)
-        elif message == "отбой":
+        elif message == "/cancel":
             return self._handle_cancel_command(telegram_context)
+        elif not user_data:
+            # Пользователь не зарегистрирован - показываем приветствие
+            return self._handle_welcome_message(telegram_context)
         else:
             return self._handle_regular_message(telegram_context)
             
+    def _handle_welcome_message(self, telegram_context: dict) -> dict:
+        """Показ приветственного сообщения для незарегистрированных пользователей"""
+        first_name = telegram_context.get("first_name", "Пользователь")
+        message = telegram_context.get("message", "")
+        
+        # Проверяем, это deep link или обычное сообщение
+        session_id = None
+        if " " in message:
+            parts = message.split(" ", 1)
+            if len(parts) > 1:
+                session_id = parts[1]
+        
+        # Если есть session_id, показываем приветствие для присоединения
+        is_joining = session_id is not None
+        
+        welcome_text = self._get_welcome_message(first_name, is_joining_session=is_joining)
+        
+        return {
+            "response": welcome_text,
+            "action": "welcome_shown"
+        }
+            
+    def _get_welcome_message(self, first_name: str, is_joining_session: bool = False, session_id: str = None) -> str:
+        """Генерирует приветственное сообщение с общим шаблоном"""
+        
+        # Общая часть сообщения (возвращаем эмодзи)
+        emoji = "✅" if is_joining_session else "🎯"
+        
+        base_message = f"""{emoji} Добро пожаловать, {first_name}!
+
+Если вы тут - вы хотите наладить отношения.
+
+Каждое сообщение отправленное вами будет проходить эмоциональную и экономичную модерацию. Вы сможете поговорить через Медиатора с вашими собеседниками. Возражайте, давайте ему больше контекста и вы вместе подберете наилучшую реализацию.
+
+Только если вы скажете /tamam оно уйдет всем собеседникам. Если же вы скажете /cancel оно будет забыто.
+
+Ваши собеседники будут так же модерировать свои сообщения перед отправкой их вам.
+
+Удачи в переговорах!"""
+
+        # Только для присоединившихся показываем session_id
+        if is_joining_session and session_id:
+            specific_part = f"\n\nВы присоединились к сессии: {session_id}"
+        else:
+            specific_part = ""
+        
+        return base_message + specific_part
+
     def _handle_start_command(self, telegram_context: dict) -> dict:
         """Обработка команды /start"""
         user_id = telegram_context.get("user_id")
@@ -146,8 +201,11 @@ class SuperEmpathProcessor:
                 
                 self._save_sessions(data)
                 
+                # Отправляем приветственное сообщение для присоединившегося
+                welcome_message = self._get_welcome_message(first_name, is_joining_session=True, session_id=session_id)
+                
                 return {
-                    "response": f"✅ Добро пожаловать в Super Empath, {first_name}!\n\nВы присоединились к сессии {session_id}",
+                    "response": welcome_message,
                     "session_id": session_id,
                     "action": "joined_session"
                 }
@@ -175,26 +233,20 @@ class SuperEmpathProcessor:
             
             self._save_sessions(data)
             
-            # Генерируем ссылку-приглашение (предполагаем что bot username будет подставлен)
-            invite_link = f"https://t.me/BOT_USERNAME?start={new_session_id}"
+            # Отправляем приветственное сообщение для создателя сессии
+            welcome_message = self._get_welcome_message(first_name, is_joining_session=False)
             
-            response = f"""🎯 Добро пожаловать в Super Empath, {first_name}!
-
-**Super Empath** - ваш эмоциональный переводчик для лучшего общения.
-
-Ваша сессия: `{new_session_id}`
-Ссылка для приглашения: {invite_link}
-
-**Как пользоваться:**
-1. Отправьте эту ссылку вашему собеседнику
-2. Пишите сообщения как обычно
-3. Бот предложит более мягкие формулировки
-4. Говорите "тамам" для отправки или "отбой" для отмены
-
-Начните общение! 💬"""
-
+            # Генерируем ссылку-приглашение (используем реальное имя бота)
+            invite_link = f"https://t.me/IStillLoveYou_Bot?start={new_session_id}"
+            
+            # Логируем что именно генерируем
+            logger.info(f"Generated invite link: {invite_link}")
+            
+            # Комбинируем приветствие с информацией о ссылке (возвращаем эмодзи)
+            full_message = f"{welcome_message}\n\n🔗 Ваша ссылка для приглашения собеседников:\n\n{invite_link}\n\nОтправьте эту ссылку тем, кого хотите услышать и если хотите быть услышаны."
+            
             return {
-                "response": response,
+                "response": full_message,
                 "session_id": new_session_id,
                 "invite_link": invite_link,
                 "action": "created_session"
@@ -228,13 +280,13 @@ class SuperEmpathProcessor:
         data["users"][str(user_id)] = user_data
         self._save_sessions(data)
         
-        response = f"""📝 **Ваше сообщение:**
+        response = f"""📝 Ваше сообщение:
 "{message}"
 
-💡 **Предлагаю переформулировать:**
+💡 Предлагаю переформулировать:
 "{improved}"
 
-Напишите "тамам" для отправки или "отбой" для отмены."""
+Напишите /tamam для отправки или /cancel для отмены."""
 
         return {
             "response": response,

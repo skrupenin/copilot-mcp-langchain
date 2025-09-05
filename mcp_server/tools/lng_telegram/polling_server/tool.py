@@ -471,7 +471,9 @@ class TelegramPollingServer:
             
             # Отправляем ответ если он есть
             if response_text and isinstance(response_text, str) and response_text.strip():
-                await update.message.reply_text(response_text, parse_mode='Markdown')
+                # Логируем что отправляем
+                logger.info(f"Sending message to user {user_id}: {repr(response_text)}")
+                await update.message.reply_text(response_text)  # Убрали parse_mode='Markdown'
                 logger.info(f"Auto-sent response to user {user_id}")
                 
             # Проверяем auto_send для отправки сообщений другим пользователям
@@ -485,11 +487,12 @@ class TelegramPollingServer:
                         sent_count = 0
                         for target_user_id in to_users:
                             try:
+                                # Логируем что отправляем
+                                logger.info(f"Auto-sending message to user {target_user_id}: {repr(message_text)}")
                                 await self.bot.send_message(
                                     chat_id=target_user_id,
-                                    text=message_text,
-                                    parse_mode='Markdown'
-                                )
+                                    text=message_text
+                                )  # Убрали parse_mode='Markdown'
                                 sent_count += 1
                                 logger.info(f"Auto-sent message to user {target_user_id}")
                             except Exception as e:
