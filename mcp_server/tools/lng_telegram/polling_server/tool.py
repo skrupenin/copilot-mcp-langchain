@@ -17,9 +17,31 @@ from telegram.ext import Application, CommandHandler, MessageHandler, filters, C
 from telegram.error import TelegramError
 
 from mcp_server.logging_config import setup_instance_logger, close_instance_logger
+from mcp_server.tools.tool_registry import run_tool as execute_tool
+from mcp_server.pipeline.expressions import substitute_expressions
 
 # Логгер будет создаваться только при запуске бота
 logger = None
+
+def load_pipeline_from_file(file_path: str) -> Optional[List[Dict[str, Any]]]:
+    """Load pipeline configuration from JSON file."""
+    try:
+        if not os.path.isabs(file_path):
+            # Convert relative path to absolute
+            file_path = os.path.abspath(file_path)
+        
+        if not os.path.exists(file_path):
+            return None
+            
+        with open(file_path, 'r', encoding='utf-8') as f:
+            config = json.load(f)
+            
+        # Expect pipeline to be in the config
+        return config.get('pipeline', [])
+    except Exception as e:
+        if logger:
+            logger.error(f"Error loading pipeline from file {file_path}: {e}")
+        return None
 
 async def tool_info() -> dict:
     """Returns information about the lng_telegram_polling_server tool."""
@@ -51,6 +73,10 @@ async def tool_info() -> dict:
                     "items": {
                         "type": "object"
                     }
+                },
+                "pipeline_file": {
+                    "type": "string",
+                    "description": "Path to JSON file containing pipeline configuration (alternative to pipeline parameter)"
                 }
             },
             "required": ["operation"]
@@ -83,6 +109,188 @@ class TelegramPollingServer:
         
         # Настройка обработчиков
         self._setup_handlers()
+        
+        # Настройка обработчика ошибок
+        self._setup_error_handlers()
+        
+    def _setup_error_handlers(self):
+        """Настройка обработчиков ошибок"""
+        try:
+            # Патчим sys.stderr ДО создания telegram приложения
+            import sys
+            import io
+            
+            class TelegramStderrInterceptor:
+                def __init__(self, original_stderr, logger):
+                    self.original_stderr = original_stderr
+                    self.logger = logger
+                    self.buffer = ""
+                    
+                def write(self, text):
+                    if text and text.strip():
+                        # Записываем ВСЕ в лог файл
+                        self.logger.error(f"STDERR: {text.rstrip()}")
+                        
+                def flush(self):
+                    pass
+                    
+                def fileno(self):
+                    return self.original_stderr.fileno()
+                    
+                def isatty(self):
+                    return False
+            
+            # Заменяем stderr ПОЛНОСТЬЮ
+            if not hasattr(sys.stderr, '_intercepted'):
+                original_stderr = sys.stderr
+                sys.stderr = TelegramStderrInterceptor(original_stderr, self.logger)
+                sys.stderr._intercepted = True
+                self.logger.info("Stderr fully intercepted")
+            
+            # Добавляем error handler для telegram-bot
+            async def error_handler(update: object, context: ContextTypes.DEFAULT_TYPE) -> None:
+                """Обработчик всех ошибок telegram-bot"""
+                try:
+                    import traceback
+                    
+                    # Логируем основную ошибку
+                    self.logger.error(f"Telegram bot error: {context.error}")
+                    
+                    # Полный traceback
+                    if hasattr(context.error, '__traceback__'):
+                        tb_str = ''.join(traceback.format_exception(
+                            type(context.error), 
+                            context.error, 
+                            context.error.__traceback__
+                        ))
+                        self.logger.error(f"Full traceback:\n{tb_str}")
+                        
+                    # Логируем детали update если есть
+                    if update:
+                        self.logger.error(f"Update that caused error: {update}")
+                        
+                except Exception as log_error:
+                    self.logger.error(f"Error in error_handler itself: {log_error}")
+            
+            # Регистрируем error handler
+            self.application.add_error_handler(error_handler)
+            
+            # Настраиваем все Python логгеры
+            import logging
+            
+            # Перенаправляем ВСЕ логгеры уровня WARNING и выше в наш файл
+            class UniversalLogHandler(logging.Handler):
+                def __init__(self, main_logger):
+                    super().__init__()
+                    self.main_logger = main_logger
+                    
+                def emit(self, record):
+                    try:
+                        if record.levelno >= logging.WARNING:
+                            msg = self.format(record)
+                            self.main_logger.error(f"Logger[{record.name}]: {msg}")
+                    except Exception:
+                        pass
+            
+            # Агрессивно перехватываем ВСЕ telegram логгеры
+            telegram_loggers = [
+                'telegram',
+                'telegram.bot',
+                'telegram.ext',
+                'telegram.ext.application',
+                'telegram.ext.updater',
+                'telegram._utils.request',
+                'urllib3',
+                'httpcore',
+                'httpx'
+            ]
+            
+            for logger_name in telegram_loggers:
+                tel_logger = logging.getLogger(logger_name)
+                tel_logger.setLevel(logging.DEBUG)
+                
+                # Удаляем все существующие handlers
+                for handler in tel_logger.handlers[:]:
+                    tel_logger.removeHandler(handler)
+                
+                # Добавляем наш handler
+                tel_handler = logging.StreamHandler()
+                tel_handler.setLevel(logging.DEBUG)
+                tel_formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
+                tel_handler.setFormatter(tel_formatter)
+                
+                # Перенаправляем в наш логгер
+                class TelegramRedirectHandler(logging.Handler):
+                    def __init__(self, target_logger):
+                        super().__init__()
+                        self.target_logger = target_logger
+                        
+                    def emit(self, record):
+                        try:
+                            msg = self.format(record)
+                            self.target_logger.error(f"TELEGRAM[{record.name}]: {msg}")
+                        except Exception:
+                            pass
+                
+                redirect_handler = TelegramRedirectHandler(self.logger)
+                redirect_handler.setFormatter(tel_formatter)
+                tel_logger.addHandler(redirect_handler)
+                tel_logger.propagate = False  # Не передавать в родительские логгеры
+                
+                self.logger.info(f"Intercepted logger: {logger_name}")
+                
+            self.logger.info("All telegram loggers intercepted")
+            
+            # Перехватываем print() функцию для telegram библиотек
+            original_print = __builtins__.get('print', print)
+            
+            def intercepted_print(*args, **kwargs):
+                try:
+                    # Проверяем есть ли в стеке вызовов telegram модули
+                    import inspect
+                    frame = inspect.currentframe()
+                    while frame:
+                        filename = frame.f_code.co_filename
+                        if 'telegram' in filename or 'httpx' in filename or 'urllib3' in filename:
+                            # Это вызов из telegram библиотеки - перенаправляем в лог
+                            message = ' '.join(str(arg) for arg in args)
+                            self.logger.error(f"TELEGRAM_PRINT: {message}")
+                            return
+                        frame = frame.f_back
+                    
+                    # Обычный print для всех остальных
+                    original_print(*args, **kwargs)
+                except Exception:
+                    # В случае ошибки используем оригинальный print
+                    original_print(*args, **kwargs)
+            
+            # Заменяем print в builtins (безопасно)
+            import builtins
+            try:
+                builtins.print = intercepted_print
+                self.logger.info("Print function intercepted for telegram libraries")
+            except Exception as print_error:
+                self.logger.warning(f"Could not intercept print function: {print_error}")
+                # Не критично, продолжаем без перехвата print
+            
+            # Добавляем universal handler к корневому логгеру
+            root_logger = logging.getLogger()
+            universal_handler = UniversalLogHandler(self.logger)
+            universal_handler.setLevel(logging.WARNING)
+            
+            # Убираем все stderr handlers с корневого логгера
+            for handler in root_logger.handlers[:]:
+                if isinstance(handler, logging.StreamHandler):
+                    root_logger.removeHandler(handler)
+                    
+            root_logger.addHandler(universal_handler)
+            
+            self.logger.info("All error handlers configured - stderr and logging intercepted")
+            
+        except Exception as e:
+            self.logger.error(f"Failed to setup error handlers: {e}")
+            import traceback
+            self.logger.error(f"Setup error traceback: {traceback.format_exc()}")
         
     def _setup_handlers(self):
         """Настройка обработчиков сообщений"""
@@ -132,23 +340,32 @@ class TelegramPollingServer:
             await update.message.reply_text("Произошла ошибка при обработке сообщения")
             
     async def _process_message_pipeline(self, user_id: int, message_text: str, update: Update):
-        """Обработка сообщения через pipeline"""
+        """Обработка сообщения через pipeline с автоматической отправкой ответов"""
         try:
             # Подготавливаем базовый контекст для pipeline
             user = update.effective_user
+            telegram_context = {
+                "user_id": user_id,
+                "message": message_text,
+                "username": user.username or "",
+                "first_name": user.first_name or "",
+                "last_name": user.last_name or "",
+                "language_code": user.language_code or "en",
+                "is_bot": user.is_bot,
+                "update_id": update.update_id,
+                "chat_id": update.effective_chat.id,
+                "chat_type": update.effective_chat.type,
+                "message_id": update.message.message_id,
+                "timestamp": update.message.date.isoformat() if update.message.date else None
+            }
+            
             context = {
-                "telegram": {
-                    "user_id": user_id,
-                    "message": message_text,
-                    "username": user.username or "",
-                    "first_name": user.first_name or "",
-                    "last_name": user.last_name or "",
-                    "update": update,
-                    "bot": self
-                }
+                "telegram_context": telegram_context,
+                "telegram": telegram_context  # Алиас для совместимости
             }
             
             # Выполняем pipeline если он задан
+            pipeline_results = []
             if self.pipeline:
                 for step in self.pipeline:
                     tool_name = step.get("tool")
@@ -158,36 +375,154 @@ class TelegramPollingServer:
                     processed_params = self._substitute_context(tool_params, context)
                     
                     try:
-                        # TODO: Интеграция с системой выполнения инструментов
-                        # result = await execute_tool(tool_name, processed_params)
+                        # Выполняем инструмент через импорт модуля
+                        result = await self._execute_tool(tool_name, processed_params)
                         
-                        # Временная заглушка для pipeline
-                        result = {"tool": tool_name, "params": processed_params}
-                        logger.info(f"Pipeline step {tool_name} would be executed with params: {processed_params}")
+                        logger.info(f"Pipeline step {tool_name} executed successfully")
                         
                         # Сохраняем результат в контекст
                         output_var = step.get("output")
                         if output_var:
                             context[output_var] = result
                             
+                        pipeline_results.append({
+                            "tool": tool_name,
+                            "result": result,
+                            "success": True
+                        })
+                        
+                        # Проверяем результат на наличие response для автоотправки
+                        await self._handle_tool_response(result, user_id, update)
+                            
                     except Exception as e:
-                        logger.error(f"Error executing pipeline step {tool_name}: {e}")
+                        error_msg = f"Error executing pipeline step {tool_name}: {e}"
+                        logger.error(error_msg)
+                        
+                        pipeline_results.append({
+                            "tool": tool_name,
+                            "error": str(e),
+                            "success": False
+                        })
+                        
+                        # Отправляем сообщение об ошибке пользователю
+                        await update.message.reply_text("Произошла ошибка при обработке сообщения")
+                        
+            # Сохраняем результаты pipeline в контекст
+            context["pipeline_results"] = pipeline_results
                         
         except Exception as e:
             logger.error(f"Error in message pipeline: {e}")
+            await update.message.reply_text("Произошла ошибка в системе обработки сообщений")
+            
+    async def _execute_tool(self, tool_name: str, params: dict) -> dict:
+        """Выполнение инструмента через tool_registry (как в lng_batch_run)"""
+        try:
+            logger.info(f"Executing tool {tool_name} with params: {params}")
+            
+            # Используем импортированный execute_tool (то же что в lng_batch_run)
+            result = await execute_tool(tool_name, params)
+            
+            # Парсим результат из TextContent если нужно
+            if isinstance(result, list) and len(result) > 0:
+                first_result = result[0]
+                if hasattr(first_result, 'text'):
+                    import json
+                    try:
+                        parsed_result = json.loads(first_result.text)
+                        return parsed_result
+                    except json.JSONDecodeError:
+                        return {"response": first_result.text}
+                else:
+                    return first_result
+            
+            return result
+            
+        except Exception as e:
+            logger.error(f"Failed to execute tool {tool_name}: {e}")
+            import traceback
+            logger.error(f"Tool execution traceback: {traceback.format_exc()}")
+            raise
+            
+    async def _handle_tool_response(self, result: dict, user_id: int, update: Update):
+        """Обработка результата инструмента для автоматической отправки ответов"""
+        try:
+            # Проверяем различные варианты ответов в результате
+            response_text = None
+            
+            # Вариант 1: прямое поле response
+            if isinstance(result, dict):
+                if "response" in result:
+                    response_text = result["response"]
+                elif "reply" in result:
+                    response_text = result["reply"]
+                elif "message" in result:
+                    response_text = result["message"]
+                elif "improved" in result and "original" in result:
+                    # Специально для super_empath - форматируем ответ
+                    original = result["original"]
+                    improved = result["improved"]
+                    response_text = f"""📝 **Ваше сообщение:**
+"{original}"
+
+💡 **Предлагаю переформулировать:**
+"{improved}"
+
+Напишите "тамам" для отправки или "отбой" для отмены."""
+            
+            # Отправляем ответ если он есть
+            if response_text and isinstance(response_text, str) and response_text.strip():
+                await update.message.reply_text(response_text, parse_mode='Markdown')
+                logger.info(f"Auto-sent response to user {user_id}")
+                
+            # Проверяем auto_send для отправки сообщений другим пользователям
+            if isinstance(result, dict) and "auto_send" in result:
+                auto_send = result["auto_send"]
+                if isinstance(auto_send, dict):
+                    to_users = auto_send.get("to_users", [])
+                    message_text = auto_send.get("message", "")
+                    
+                    if to_users and message_text:
+                        sent_count = 0
+                        for target_user_id in to_users:
+                            try:
+                                await self.bot.send_message(
+                                    chat_id=target_user_id,
+                                    text=message_text,
+                                    parse_mode='Markdown'
+                                )
+                                sent_count += 1
+                                logger.info(f"Auto-sent message to user {target_user_id}")
+                            except Exception as e:
+                                logger.error(f"Failed to auto-send message to user {target_user_id}: {e}")
+                        
+                        logger.info(f"Auto-sent messages to {sent_count}/{len(to_users)} users")
+                
+        except Exception as e:
+            logger.error(f"Error handling tool response: {e}")
             
     def _substitute_context(self, params: Dict, context: Dict) -> Dict:
-        """Подстановка контекста в параметры"""
-        result = {}
-        for key, value in params.items():
-            if isinstance(value, str) and "{!" in value and "!}" in value:
-                # Простая подстановка контекста (можно расширить)
-                if "{! telegram.message !}" in value:
-                    value = value.replace("{! telegram.message !}", context["telegram"]["message"])
-                if "{! telegram.user_id !}" in value:
-                    value = value.replace("{! telegram.user_id !}", str(context["telegram"]["user_id"]))
-            result[key] = value
-        return result
+        """Подстановка контекста в параметры используя expressions.py"""
+        try:
+            # Используем substitute_expressions как в других инструментах
+            return self._substitute_variables(params, context)
+        except Exception as e:
+            logger.error(f"Error in context substitution: {e}")
+            return params
+            
+    def _substitute_variables(self, obj: Any, context: dict) -> Any:
+        """Substitute variables in response template using new expression system."""
+        if isinstance(obj, dict):
+            return {k: self._substitute_variables(v, context) for k, v in obj.items()}
+        elif isinstance(obj, list):
+            return [self._substitute_variables(item, context) for item in obj]
+        elif isinstance(obj, str) and ("{!" in obj or "[!" in obj):
+            try:
+                return substitute_expressions(obj, context, expected_result_type="python")
+            except Exception as e:
+                logger.warning(f"Variable substitution failed for '{obj}': {e}")
+                return obj
+        else:
+            return obj
 
 # Глобальный инстанс сервера
 _server_instance: Optional[TelegramPollingServer] = None
@@ -252,7 +587,8 @@ def tool_lng_telegram_polling_server(
     token: str = None,
     user_id: int = None,
     message: str = None,
-    pipeline: List[Dict] = None
+    pipeline: List[Dict] = None,
+    pipeline_file: str = None
 ) -> Dict[str, Any]:
     """
     Telegram Polling Server - универсальный инструмент для работы с Telegram ботами
@@ -265,6 +601,14 @@ def tool_lng_telegram_polling_server(
     """
     
     global _server_instance
+    
+    # Обработка pipeline_file если указан
+    if pipeline_file and not pipeline:
+        loaded_pipeline = load_pipeline_from_file(pipeline_file)
+        if loaded_pipeline:
+            pipeline = loaded_pipeline
+        else:
+            return {"error": f"Failed to load pipeline from file: {pipeline_file}"}
     
     try:
         if operation == "start":
@@ -306,6 +650,30 @@ def tool_lng_telegram_polling_server(
                     asyncio.set_event_loop(loop)
                     
                     try:
+                        # Перенаправляем stderr в логгер
+                        import sys
+                        import io
+                        
+                        class LoggerWriter:
+                            def __init__(self, logger, level):
+                                self.logger = logger
+                                self.level = level
+                                
+                            def write(self, message):
+                                if message.strip():  # Игнорируем пустые строки
+                                    # Фильтруем telegram ошибки
+                                    if any(keyword in message for keyword in [
+                                        'telegram.error',
+                                        'Conflict: terminated by other getUpdates',
+                                        'PTBUserWarning',
+                                        'No error handlers are registered'
+                                    ]):
+                                        if hasattr(self, 'logger') and self.logger:
+                                            self.logger.error(f"Telegram: {message.strip()}")
+                                    
+                            def flush(self):
+                                pass
+                        
                         # Создаем новый экземпляр сервера
                         _server_instance = TelegramPollingServer(token, pipeline or [])
                         _server_instance.running = True
@@ -314,11 +682,19 @@ def tool_lng_telegram_polling_server(
                         logger = _server_instance.logger
                         logger.info("Starting Telegram polling server...")
                         
-                        # Запускаем polling
-                        _server_instance.application.run_polling(
-                            close_loop=False,  # Не закрываем loop автоматически
-                            stop_signals=None  # Отключаем обработку сигналов
-                        )
+                        # Перенаправляем stderr
+                        original_stderr = sys.stderr
+                        sys.stderr = LoggerWriter(logger, 'error')
+                        
+                        try:
+                            # Запускаем polling
+                            _server_instance.application.run_polling(
+                                close_loop=False,  # Не закрываем loop автоматически
+                                stop_signals=None  # Отключаем обработку сигналов
+                            )
+                        finally:
+                            # Восстанавливаем stderr
+                            sys.stderr = original_stderr
                         
                     except Exception as e:
                         if logger:

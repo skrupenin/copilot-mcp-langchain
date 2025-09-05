@@ -1,19 +1,14 @@
 """
-Super Empath - бизнес-логика эмоционального переводчика
+Super Empath - бизнес-логика эмоционального переводчика для улучшения коммуникации в отношениях
 """
 
-import asyncio
 import json
 import uuid
 import os
 from datetime import datetime
-from typing import Dict, List, Optional, Any
-from dataclasses import dataclass, asdict
+from typing import Dict, Any
 
 import mcp.types as types
-from telegram import Update, Bot
-from telegram.ext import Application, CommandHandler, MessageHandler, filters, ContextTypes
-from telegram.error import TelegramError
 
 from mcp_server.logging_config import setup_instance_logger, close_instance_logger
 
@@ -27,190 +22,167 @@ async def tool_info() -> dict:
         "schema": {
             "type": "object",
             "properties": {
-                "operation": {
-                    "type": "string",
-                    "enum": ["start_bot", "stop_bot", "status", "process_message"],
-                    "description": "Operation to perform"
-                },
-                "message": {
-                    "type": "string",
-                    "description": "Message to process"
-                },
-                "user_id": {
-                    "type": "integer",
-                    "description": "User ID"
-                },
-                "session_id": {
-                    "type": "string", 
-                    "description": "Session ID"
-                },
-                "pipeline": {
-                    "type": "array",
-                    "description": "Pipeline to execute for message processing",
-                    "items": {
-                        "type": "object"
-                    }
+                "telegram_context": {
+                    "type": "object",
+                    "description": "Telegram context object with user and message information"
                 }
             },
-            "required": ["operation"]
+            "required": ["telegram_context"]
         }
     }
 
-@dataclass
-class UserState:
-    """Состояние пользователя"""
-    user_id: int
-    username: str
-    first_name: str
-    session_id: Optional[str] = None
-    current_message_processing: Optional[str] = None
-    joined_at: Optional[str] = None
-
-@dataclass
-class SessionState:
-    """Состояние сессии"""
-    session_id: str
-    participants: List[int]
-    created_at: str
-    last_activity: str
-    message_queue: List[Dict] = None
-
-    def __post_init__(self):
-        if self.message_queue is None:
-            self.message_queue = []
-
-class SuperEmpathBot:
-    """Бизнес-логика Super Empath бота"""
+class SuperEmpathProcessor:
+    """Процессор Super Empath для обработки сообщений"""
     
-    def __init__(self, token: str, pipeline: List[Dict] = None):
-        self.token = token
-        self.bot = Bot(token=token)
-        self.application = Application.builder().token(token).build()
-        self.pipeline = pipeline or []
+    def __init__(self):
+        self.session_file = "mcp_server/config/telegram/super_empath_sessions.json"
+        self._ensure_session_file()
         
-        # Состояния
-        self.users: Dict[int, UserState] = {}
-        self.sessions: Dict[str, SessionState] = {}
-        self.running = False
-        
-        # Настройка обработчиков
-        self._setup_handlers()
-        
-    def _setup_handlers(self):
-        """Настройка обработчиков сообщений"""
-        self.application.add_handler(CommandHandler("start", self._handle_start))
-        self.application.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, self._handle_message))
-        
-    async def _handle_start(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
-        """Обработка команды /start"""
+    def _ensure_session_file(self):
+        """Убеждаемся что файл сессий существует"""
+        os.makedirs(os.path.dirname(self.session_file), exist_ok=True)
+        if not os.path.exists(self.session_file):
+            with open(self.session_file, 'w', encoding='utf-8') as f:
+                json.dump({"sessions": {}, "users": {}}, f)
+                
+    def _load_sessions(self) -> dict:
+        """Загрузка сессий из файла"""
         try:
-            user = update.effective_user
-            user_id = user.id
+            with open(self.session_file, 'r', encoding='utf-8') as f:
+                return json.load(f)
+        except:
+            return {"sessions": {}, "users": {}}
             
-            # Получаем параметр сессии из deep link
-            session_id = None
-            if context.args:
-                session_id = context.args[0]
-                
-            logger.info(f"User {user_id} started bot with session_id: {session_id}")
-            
-            # Создаем или обновляем состояние пользователя
-            user_state = UserState(
-                user_id=user_id,
-                username=user.username or "",
-                first_name=user.first_name or "",
-                session_id=session_id,
-                joined_at=datetime.now().isoformat()
-            )
-            self.users[user_id] = user_state
-            
-            if session_id:
-                # Присоединяемся к существующей сессии
-                await self._join_session(user_id, session_id)
-            else:
-                # Создаем новую сессию
-                new_session_id = await self._create_session(user_id)
-                await self._send_invitation_link(user_id, new_session_id)
-                
-        except Exception as e:
-            logger.error(f"Error in start handler: {e}")
-            await update.message.reply_text("Произошла ошибка при подключении к боту")
-            
-    async def _handle_message(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
-        """Обработка текстовых сообщений"""
+    def _save_sessions(self, data: dict):
+        """Сохранение сессий в файл"""
         try:
-            user_id = update.effective_user.id
-            message_text = update.message.text
-            
-            # Проверяем, что пользователь зарегистрирован
-            if user_id not in self.users:
-                await update.message.reply_text("Пожалуйста, сначала выполните команду /start")
-                return
-                
-            user_state = self.users[user_id]
-            
-            # Обрабатываем команды Super Empath
-            if message_text == "тамам":
-                await self._approve_message(user_id, update)
-            elif message_text == "отбой":
-                await self._cancel_message(user_id, update)
-            else:
-                # Обрабатываем обычное сообщение
-                await self._process_user_message(user_id, message_text, update)
-            
+            with open(self.session_file, 'w', encoding='utf-8') as f:
+                json.dump(data, f, ensure_ascii=False, indent=2)
         except Exception as e:
-            logger.error(f"Error in message handler: {e}")
-            await update.message.reply_text("Произошла ошибка при обработке сообщения")
-
-    async def _create_session(self, user_id: int) -> str:
-        """Создание новой сессии"""
-        session_id = str(uuid.uuid4())
-        session_state = SessionState(
-            session_id=session_id,
-            participants=[user_id],
-            created_at=datetime.now().isoformat(),
-            last_activity=datetime.now().isoformat()
-        )
+            logger.error(f"Failed to save sessions: {e}")
+            
+    def improve_message(self, message: str) -> str:
+        """Улучшение сообщения для более мягкого общения"""
+        message_lower = message.lower()
         
-        self.sessions[session_id] = session_state
-        self.users[user_id].session_id = session_id
+        # Агрессивные слова и фразы
+        aggressive_patterns = [
+            ("достал", "Я чувствую усталость от ситуации, можем это обсудить?"),
+            ("бесишь", "Меня что-то расстраивает в этой ситуации"),
+            ("надоел", "Мне нужен перерыв, можем поговорить позже?"),
+            ("дурак", "У меня есть другое мнение по этому вопросу"),
+            ("идиот", "Давайте разберемся в ситуации спокойно"),
+            ("тупой", "Мне кажется, здесь есть недопонимание"),
+            ("не хочу", "Мне сейчас сложно это делать"),
+            ("не буду", "Я предпочел бы другой вариант"),
+            ("отстань", "Мне нужно немного времени"),
+            ("заткнись", "Давайте сделаем паузу в разговоре"),
+            ("противно", "Меня это не очень привлекает"),
+            ("ненавижу", "Это вызывает у меня негативные эмоции")
+        ]
         
-        logger.info(f"Created session {session_id} for user {user_id}")
-        return session_id
-        
-    async def _join_session(self, user_id: int, session_id: str):
-        """Присоединение к существующей сессии"""
-        if session_id in self.sessions:
-            session = self.sessions[session_id]
-            if user_id not in session.participants:
-                session.participants.append(user_id)
-                session.last_activity = datetime.now().isoformat()
+        for pattern, replacement in aggressive_patterns:
+            if pattern in message_lower:
+                return replacement
                 
-            self.users[user_id].session_id = session_id
+        # Обработка восклицательных знаков (признак эмоционального напряжения)
+        if "!" in message and len(message) > 20:
+            improved = message.replace("!", ".").strip()
+            return improved + " Что думаешь об этом?"
             
-            # Уведомляем всех участников о присоединении
-            user_state = self.users[user_id]
-            join_message = f"👋 {user_state.first_name} присоединился к сессии Super Empath"
+        # Обработка команд/требований
+        command_words = ["должен", "обязан", "немедленно", "сейчас же"]
+        if any(word in message_lower for word in command_words):
+            return f"Мне важно, чтобы: {message.lower().replace('должен', 'мог').replace('обязан', 'смог')}. Как считаешь?"
             
-            for participant_id in session.participants:
-                if participant_id != user_id:
-                    await self.bot.send_message(participant_id, join_message)
-                    
-            await self.bot.send_message(user_id, f"✅ Добро пожаловать в Super Empath!\n\nВы присоединились к сессии {session_id}")
-            logger.info(f"User {user_id} joined session {session_id}")
+        # Если сообщение нейтральное, добавляем мягкости
+        if len(message) > 10 and not message.endswith("?"):
+            return f"Я хотел сказать: {message}. Как ты к этому относишься?"
+            
+        return message
+        
+    def handle_command(self, telegram_context: dict) -> dict:
+        """Обработка команд Super Empath"""
+        message = telegram_context.get("message", "").strip()
+        user_id = telegram_context.get("user_id")
+        
+        if message.startswith("/start"):
+            return self._handle_start_command(telegram_context)
+        elif message == "тамам":
+            return self._handle_approve_command(telegram_context)
+        elif message == "отбой":
+            return self._handle_cancel_command(telegram_context)
         else:
-            await self.bot.send_message(user_id, "❌ Сессия не найдена")
+            return self._handle_regular_message(telegram_context)
             
-    async def _send_invitation_link(self, user_id: int, session_id: str):
-        """Отправка ссылки-приглашения"""
-        bot_username = (await self.bot.get_me()).username
-        invite_link = f"https://t.me/{bot_username}?start={session_id}"
+    def _handle_start_command(self, telegram_context: dict) -> dict:
+        """Обработка команды /start"""
+        user_id = telegram_context.get("user_id")
+        first_name = telegram_context.get("first_name", "Пользователь")
+        message = telegram_context.get("message", "")
         
-        message = f"""🎯 Добро пожаловать в Super Empath!
+        # Извлекаем session_id из deep link
+        session_id = None
+        if " " in message:
+            parts = message.split(" ", 1)
+            if len(parts) > 1:
+                session_id = parts[1]
+                
+        data = self._load_sessions()
+        
+        if session_id:
+            # Присоединение к существующей сессии
+            if session_id in data["sessions"]:
+                session = data["sessions"][session_id]
+                if user_id not in session["participants"]:
+                    session["participants"].append(user_id)
+                    session["last_activity"] = datetime.now().isoformat()
+                    
+                data["users"][str(user_id)] = {
+                    "session_id": session_id,
+                    "first_name": first_name,
+                    "joined_at": datetime.now().isoformat()
+                }
+                
+                self._save_sessions(data)
+                
+                return {
+                    "response": f"✅ Добро пожаловать в Super Empath, {first_name}!\n\nВы присоединились к сессии {session_id}",
+                    "session_id": session_id,
+                    "action": "joined_session"
+                }
+            else:
+                return {
+                    "response": "❌ Сессия не найдена. Попросите новую ссылку-приглашение.",
+                    "action": "session_not_found"
+                }
+        else:
+            # Создание новой сессии
+            new_session_id = str(uuid.uuid4())[:8]  # Короткий ID для удобства
+            
+            data["sessions"][new_session_id] = {
+                "participants": [user_id],
+                "created_at": datetime.now().isoformat(),
+                "last_activity": datetime.now().isoformat(),
+                "created_by": user_id
+            }
+            
+            data["users"][str(user_id)] = {
+                "session_id": new_session_id,
+                "first_name": first_name,
+                "joined_at": datetime.now().isoformat()
+            }
+            
+            self._save_sessions(data)
+            
+            # Генерируем ссылку-приглашение (предполагаем что bot username будет подставлен)
+            invite_link = f"https://t.me/BOT_USERNAME?start={new_session_id}"
+            
+            response = f"""🎯 Добро пожаловать в Super Empath, {first_name}!
 
 **Super Empath** - ваш эмоциональный переводчик для лучшего общения.
 
-Ваша сессия: `{session_id}`
+Ваша сессия: `{new_session_id}`
 Ссылка для приглашения: {invite_link}
 
 **Как пользоваться:**
@@ -220,245 +192,172 @@ class SuperEmpathBot:
 4. Говорите "тамам" для отправки или "отбой" для отмены
 
 Начните общение! 💬"""
-        
-        await self.bot.send_message(user_id, message, parse_mode='Markdown')
 
-    async def _process_user_message(self, user_id: int, message_text: str, update: Update):
-        """Обработка пользовательского сообщения через pipeline"""
-        try:
-            # Сохраняем текущее сообщение для обработки
-            self.users[user_id].current_message_processing = message_text
+            return {
+                "response": response,
+                "session_id": new_session_id,
+                "invite_link": invite_link,
+                "action": "created_session"
+            }
             
-            # Выполняем pipeline для обработки сообщения (заглушка)
-            # TODO: Интеграция с lng_batch_run
+    def _handle_regular_message(self, telegram_context: dict) -> dict:
+        """Обработка обычного сообщения"""
+        message = telegram_context.get("message", "")
+        user_id = telegram_context.get("user_id")
+        
+        # Проверяем, что пользователь в сессии
+        data = self._load_sessions()
+        user_data = data["users"].get(str(user_id))
+        
+        if not user_data:
+            return {
+                "response": "Пожалуйста, сначала выполните команду /start",
+                "action": "not_registered"
+            }
             
-            # Простая демо-обработка
-            improved_message = await self._demo_improve_message(message_text)
-            
-            response = f"""📝 **Ваше сообщение:**
-"{message_text}"
+        # Улучшаем сообщение
+        improved = self.improve_message(message)
+        
+        # Сохраняем текущее сообщение для последующего одобрения
+        user_data["pending_message"] = {
+            "original": message,
+            "improved": improved,
+            "timestamp": datetime.now().isoformat()
+        }
+        
+        data["users"][str(user_id)] = user_data
+        self._save_sessions(data)
+        
+        response = f"""📝 **Ваше сообщение:**
+"{message}"
 
 💡 **Предлагаю переформулировать:**
-"{improved_message}"
+"{improved}"
 
 Напишите "тамам" для отправки или "отбой" для отмены."""
+
+        return {
+            "response": response,
+            "original": message,
+            "improved": improved,
+            "action": "message_processed"
+        }
+        
+    def _handle_approve_command(self, telegram_context: dict) -> dict:
+        """Обработка команды одобрения 'тамам'"""
+        user_id = telegram_context.get("user_id")
+        
+        data = self._load_sessions()
+        user_data = data["users"].get(str(user_id))
+        
+        if not user_data or "pending_message" not in user_data:
+            return {
+                "response": "Нет сообщения для отправки",
+                "action": "no_pending_message"
+            }
             
-            await update.message.reply_text(response, parse_mode='Markdown')
+        pending = user_data["pending_message"]
+        session_id = user_data["session_id"]
+        
+        if session_id not in data["sessions"]:
+            return {
+                "response": "Ошибка: сессия не найдена",
+                "action": "session_error"
+            }
             
-        except Exception as e:
-            logger.error(f"Error processing message: {e}")
-            await update.message.reply_text("Ошибка при обработке сообщения")
-
-    async def _demo_improve_message(self, message: str) -> str:
-        """Демо-функция улучшения сообщения (заглушка для LLM)"""
-        # Простые правила для демо
-        message_lower = message.lower()
+        session = data["sessions"][session_id]
+        participants = session["participants"]
         
-        if any(word in message_lower for word in ["достал", "бесишь", "надоел"]):
-            return "Я чувствую усталость от ситуации, можем это обсудить?"
-        elif any(word in message_lower for word in ["дурак", "идиот", "тупой"]):
-            return "У меня есть другое мнение по этому вопросу, давайте разберемся"
-        elif any(word in message_lower for word in ["не хочу", "не буду", "отстань"]):
-            return "Мне сейчас сложно это делать, можем найти компромисс?"
-        elif "!" in message and len(message) > 20:
-            return message.replace("!", ".").strip() + " Что думаешь?"
-        else:
-            return f"Я хотел сказать: {message}. Как считаешь?"
-
-    async def _approve_message(self, user_id: int, update: Update):
-        """Одобрение и отправка сообщения"""
-        user_state = self.users[user_id]
+        # Очищаем pending message
+        del user_data["pending_message"]
+        data["users"][str(user_id)] = user_data
+        self._save_sessions(data)
         
-        if not user_state.current_message_processing:
-            await update.message.reply_text("Нет сообщения для отправки")
-            return
+        # Возвращаем информацию для отправки другим участникам
+        other_participants = [p for p in participants if p != user_id]
+        
+        return {
+            "response": f"✅ Сообщение отправлено {len(other_participants)} участникам",
+            "action": "message_approved",
+            "improved_message": pending["improved"],
+            "original_message": pending["original"],
+            "recipients": other_participants,
+            "sender_name": user_data.get("first_name", "Участник"),
+            # Специальное поле для автоматической обработки транспортным слоем
+            "auto_send": {
+                "to_users": other_participants,
+                "message": f"💬 Сообщение от {user_data.get('first_name', 'Участника')}:\n\n{pending['improved']}"
+            }
+        }
+        
+    def _handle_cancel_command(self, telegram_context: dict) -> dict:
+        """Обработка команды отмены 'отбой'"""
+        user_id = telegram_context.get("user_id")
+        
+        data = self._load_sessions()
+        user_data = data["users"].get(str(user_id))
+        
+        if not user_data or "pending_message" not in user_data:
+            return {
+                "response": "Нет активной операции для отмены",
+                "action": "no_pending_operation"
+            }
             
-        if not user_state.session_id:
-            await update.message.reply_text("Вы не подключены к сессии")
-            return
-            
-        # Получаем улучшенное сообщение
-        improved_message = await self._demo_improve_message(user_state.current_message_processing)
+        # Очищаем pending message
+        del user_data["pending_message"]
+        data["users"][str(user_id)] = user_data
+        self._save_sessions(data)
         
-        # Отправляем всем участникам сессии кроме отправителя
-        session = self.sessions[user_state.session_id]
-        sent_count = 0
-        
-        for participant_id in session.participants:
-            if participant_id != user_id:
-                try:
-                    await self.bot.send_message(
-                        participant_id, 
-                        f"💬 Сообщение от {user_state.first_name}:\n\n{improved_message}"
-                    )
-                    sent_count += 1
-                except Exception as e:
-                    logger.error(f"Failed to send message to {participant_id}: {e}")
-        
-        # Подтверждение отправителю
-        await update.message.reply_text(f"✅ Сообщение отправлено {sent_count} участникам")
-        
-        # Очищаем состояние
-        user_state.current_message_processing = None
+        return {
+            "response": "❌ Операция отменена",
+            "action": "operation_cancelled"
+        }
 
-    async def _cancel_message(self, user_id: int, update: Update):
-        """Отмена обработки сообщения"""
-        user_state = self.users[user_id]
-        
-        if user_state.current_message_processing:
-            user_state.current_message_processing = None
-            await update.message.reply_text("❌ Операция отменена")
-        else:
-            await update.message.reply_text("Нет активной операции для отмены")
-
-# Глобальный инстанс
-_bot_instance: Optional[SuperEmpathBot] = None
-
-def close_super_empath_logger():
-    """Закрытие логгера super_empath"""
-    try:
-        close_instance_logger("super_empath", "telegram")
-    except Exception as e:
-        print(f"Error closing super_empath logger: {e}")
-
-def get_bot_status() -> Dict:
-    """Получение статуса бота"""
-    global _bot_instance
-    
-    if not _bot_instance:
-        return {"running": False, "users": 0, "sessions": 0}
-        
-    return {
-        "running": _bot_instance.running,
-        "users": len(_bot_instance.users),
-        "sessions": len(_bot_instance.sessions),
-        "user_list": list(_bot_instance.users.keys()),
-        "session_list": list(_bot_instance.sessions.keys())
-    }
+# Создаем глобальный экземпляр процессора
+_processor = SuperEmpathProcessor()
 
 def tool_lng_telegram_super_empath(
-    operation: str,
-    message: str = None,
-    user_id: int = None,
-    session_id: str = None,
-    pipeline: List[Dict] = None
+    telegram_context: dict
 ) -> Dict[str, Any]:
     """
     Super Empath - бизнес-логика эмоционального переводчика
     
-    Operations:
-    - start_bot: Запуск бота Super Empath
-    - stop_bot: Остановка бота
-    - status: Получение статуса
-    - process_message: Обработка сообщения через LLM
+    Обрабатывает сообщение через эмоциональный переводчик
+    Принимает telegram_context как объект или JSON строку
     """
     
     try:
-        if operation == "start_bot":
-            # Пересоздаем логгер при запуске
-            global logger
-            close_super_empath_logger()
-            logger = setup_instance_logger("super_empath", "telegram")
-            
-            # Получаем токен из .env
-            from dotenv import load_dotenv
-            load_dotenv()
-            token = os.getenv("TELEGRAM_BOT_TOKEN")
-            
-            if not token:
-                return {"error": "TELEGRAM_BOT_TOKEN not found in .env file"}
-            
-            # Запускаем через lng_telegram_polling_server
-            import subprocess
-            import sys
-            
-            # Создаем конфигурацию для запуска
-            config = {
-                "operation": "start",
-                "token": token,
-                "pipeline": pipeline or [
-                    {
-                        "tool": "lng_telegram_super_empath",
-                        "params": {
-                            "operation": "process_message",
-                            "message": "{! telegram.message !}",
-                            "user_id": "{! telegram.user_id !}"
-                        },
-                        "output": "processed_result"
-                    }
-                ]
-            }
-            
-            # Используем existing polling server
-            from mcp_server.tools.lng_telegram.polling_server.tool import tool_lng_telegram_polling_server
-            
-            result = tool_lng_telegram_polling_server(**config)
-            
-            if "error" not in result:
-                return {
-                    "status": "started",
-                    "message": "Super Empath bot started successfully",
-                    "details": result
-                }
-            else:
-                return result
-                
-        elif operation == "stop_bot":
-            from mcp_server.tools.lng_telegram.polling_server.tool import tool_lng_telegram_polling_server
-            
-            result = tool_lng_telegram_polling_server(operation="stop")
-            
-            # Закрываем логгер super_empath при остановке
-            close_super_empath_logger()
-            
-            return result
-            
-        elif operation == "status":
-            status = get_bot_status()
-            
-            # Проверяем также статус polling server
-            from mcp_server.tools.lng_telegram.polling_server.tool import tool_lng_telegram_polling_server
-            polling_status = tool_lng_telegram_polling_server(operation="status")
-            
-            return {
-                "super_empath": status,
-                "polling_server": polling_status
-            }
-            
-        elif operation == "process_message":
-            if not message:
-                return {"error": "message is required for process_message operation"}
-            
-            # Простая обработка сообщения (синхронная версия для демо)
-            def improve_message_sync(msg: str) -> str:
-                """Синхронная версия улучшения сообщения"""
-                msg_lower = msg.lower()
-                
-                if any(word in msg_lower for word in ["достал", "бесишь", "надоел"]):
-                    return "Я чувствую усталость от ситуации, можем это обсудить?"
-                elif any(word in msg_lower for word in ["дурак", "идиот", "тупой"]):
-                    return "У меня есть другое мнение по этому вопросу, давайте разберемся"
-                elif any(word in msg_lower for word in ["не хочу", "не буду", "отстань"]):
-                    return "Мне сейчас сложно это делать, можем найти компромисс?"
-                elif "!" in msg and len(msg) > 20:
-                    return msg.replace("!", ".").strip() + " Что думаешь?"
-                else:
-                    return f"Я хотел сказать: {msg}. Как считаешь?"
-            
-            improved = improve_message_sync(message)
-            
-            return {
-                "original": message,
-                "improved": improved,
-                "status": "processed"
-            }
-            
-        else:
-            return {"error": f"Unknown operation: {operation}"}
-            
+        if not telegram_context:
+            return {"error": "telegram_context is required"}
+        
+        # Универсальная обработка: поддерживаем и объект, и JSON строку
+        context_obj = telegram_context
+        if isinstance(telegram_context, str):
+            import json
+            try:
+                context_obj = json.loads(telegram_context)
+                logger.info("Parsed telegram_context from JSON string")
+            except json.JSONDecodeError as e:
+                logger.error(f"Invalid JSON in telegram_context: {e}")
+                return {"error": f"Invalid telegram_context JSON: {e}"}
+        
+        # Проверяем что получили словарь
+        if not isinstance(context_obj, dict):
+            logger.error(f"telegram_context must be dict or JSON string, got: {type(telegram_context)}")
+            return {"error": f"Invalid telegram_context type: {type(telegram_context)}"}
+        
+        # Обрабатываем сообщение
+        result = _processor.handle_command(context_obj)
+        
+        logger.info(f"Processed message from user {context_obj.get('user_id')}: {context_obj.get('message')}")
+        
+        return result
+        
     except Exception as e:
         logger.error(f"Error in super empath tool: {e}")
-        return {"error": str(e)}
+        import traceback
+        logger.error(f"Traceback: {traceback.format_exc()}")
+        return {"error": f"Super empath processing failed: {e}"}
 
 async def run_tool(name: str, parameters: dict) -> list[types.Content]:
     """Executes the Super Empath tool."""
