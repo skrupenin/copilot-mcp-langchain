@@ -2,6 +2,9 @@ import mcp.types as types
 from langchain.prompts import PromptTemplate
 from mcp_server.file_state_manager import prompts_manager
 from mcp_server.llm import llm
+import logging
+
+logger = logging.getLogger('mcp_server.tools.lng_llm_prompt_template')
 
 
 async def tool_info() -> dict:
@@ -95,6 +98,8 @@ async def _use_template(parameters: dict) -> list[types.Content]:
     """Use a saved prompt template with provided parameters."""
     template_name = parameters.get("template_name", "default")
     
+    logger.info(f"Using template '{template_name}' with parameters: {parameters}")
+    
     saved_template = prompts_manager.get(template_name, extension=".prompt")
     if saved_template is None:
         available_templates = prompts_manager.list_files(extension=".prompt")
@@ -104,15 +109,20 @@ async def _use_template(parameters: dict) -> list[types.Content]:
         else:
             return [types.TextContent(type="text", text=f"No prompt template named '{template_name}' found. No templates have been saved yet.")]
     
+    logger.info(f"Loaded template content:\n--------------\n{saved_template}\n--------------")
+    
     try:
         # Create a copy of parameters without the command and template_name
         template_params = {k: v for k, v in parameters.items() if k not in ["command", "template_name"]}
+        
+        logger.info(f"Template parameters after filtering: {template_params}")
         
         if not template_params:
             return [types.TextContent(type="text", text=f"Template '{template_name}' loaded: {saved_template}\n\nNo parameters provided. Add parameters that match the placeholders in your template.")]
         
         # Extract input variables from the parameters
         input_variables = list(template_params.keys())
+        logger.info(f"Input variables: {input_variables}")
         
         # Create prompt template with the input variables
         prompt_template = PromptTemplate(
@@ -122,18 +132,25 @@ async def _use_template(parameters: dict) -> list[types.Content]:
         
         # Format the prompt with the provided parameters
         prompt = prompt_template.format(**template_params)
-        
+        logger.info(f"Formatted prompt:\n--------------\n{prompt}\n--------------")
+
         # Initialize LLM and get response
+        logger.info("Calling LLM...")
         response = llm().invoke(prompt)
+        logger.info(f"LLM response type: {type(response)}")
+        logger.info(f"LLM response raw:\n--------------\n{response}\n--------------")
 
         # Check if the response has content and convert it to string
         if hasattr(response, "content"):
             response_text = response.content
+            logger.info(f"Response content:\n--------------\n{response_text}\n--------------")
         else:
             response_text = str(response)
-        
+            logger.info(f"Response as string:\n--------------\n{response_text}\n--------------")
+
         return [types.TextContent(type="text", text=response_text)]
     except Exception as e:
+        logger.error(f"Error in _use_template: {str(e)}", exc_info=True)
         return [types.TextContent(type="text", text=f"Error using prompt template '{template_name}': {str(e)}")]
 
 
