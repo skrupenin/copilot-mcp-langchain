@@ -120,10 +120,21 @@ class SuperEmpathProcessor:
             }
     
     def _get_conversation_history(self, user_id: str) -> str:
-        """Получение истории сообщений пользователя"""
+        """Получение истории сообщений пользователя из правильной структуры папок"""
         try:
-            # Путь к файлу истории для пользователя
-            history_dir = f"mcp_server/config/telegram/sessions"
+            # Получаем session_id для пользователя
+            data = self._load_sessions()
+            user_data = data["users"].get(str(user_id))
+            
+            if not user_data:
+                return "История сообщений пуста."
+                
+            session_id = user_data.get("session_id")
+            if not session_id:
+                return "История сообщений пуста."
+                
+            # Путь к файлу истории: sessions/<SESSION_ID>/<USER_ID>.txt
+            history_dir = f"mcp_server/config/telegram/sessions/{session_id}"
             os.makedirs(history_dir, exist_ok=True)
             
             history_file = f"{history_dir}/{user_id}.txt"
@@ -138,10 +149,22 @@ class SuperEmpathProcessor:
             logger.error(f"Error reading conversation history for user {user_id}: {e}")
             return "Ошибка при загрузке истории сообщений."
     
-    def _save_message_to_history(self, user_id: str, user_name: str, message: str):
+    def _save_message_to_history(self, user_id: str, user_name: str, message: str, session_id: str = None):
         """Сохранение сообщения в историю в формате [USER_ID|USER_NAME]: message content"""
         try:
-            history_dir = f"mcp_server/config/telegram/sessions"
+            # Получаем session_id если не передан
+            if not session_id:
+                data = self._load_sessions()
+                user_data = data["users"].get(str(user_id))
+                if user_data:
+                    session_id = user_data.get("session_id")
+                    
+            if not session_id:
+                logger.error(f"No session_id found for user {user_id}")
+                return
+                
+            # Создаем структуру папок: sessions/<SESSION_ID>/<USER_ID>.txt
+            history_dir = f"mcp_server/config/telegram/sessions/{session_id}"
             os.makedirs(history_dir, exist_ok=True)
             
             history_file = f"{history_dir}/{user_id}.txt"
@@ -153,10 +176,42 @@ class SuperEmpathProcessor:
             with open(history_file, 'a', encoding='utf-8') as f:
                 f.write(history_entry)
                 
-            logger.info(f"Saved message to history for user {user_id}")
+            logger.info(f"Saved message to history for user {user_id} in session {session_id}")
             
         except Exception as e:
             logger.error(f"Error saving message to history for user {user_id}: {e}")
+    
+    def _save_empath_message_to_history(self, user_id: str, message: str, session_id: str = None):
+        """Сохранение сообщения ассистента в историю"""
+        try:
+            # Получаем session_id если не передан
+            if not session_id:
+                data = self._load_sessions()
+                user_data = data["users"].get(str(user_id))
+                if user_data:
+                    session_id = user_data.get("session_id")
+                    
+            if not session_id:
+                logger.error(f"No session_id found for user {user_id}")
+                return
+                
+            # Создаем структуру папок: sessions/<SESSION_ID>/<USER_ID>.txt
+            history_dir = f"mcp_server/config/telegram/sessions/{session_id}"
+            os.makedirs(history_dir, exist_ok=True)
+            
+            history_file = f"{history_dir}/{user_id}.txt"
+            
+            # Формат: [EMPATH] (timestamp): message content
+            timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+            history_entry = f"[EMPATH] ({timestamp}): {message}\n"
+            
+            with open(history_file, 'a', encoding='utf-8') as f:
+                f.write(history_entry)
+                
+            logger.info(f"Saved EMPATH message to history for user {user_id} in session {session_id}")
+            
+        except Exception as e:
+            logger.error(f"Error saving EMPATH message to history for user {user_id}: {e}")
 
     def improve_message(self, message: str) -> str:
         """Улучшение сообщения для более мягкого общения (legacy fallback)"""
@@ -200,7 +255,12 @@ class SuperEmpathProcessor:
         
     async def handle_command(self, telegram_context: dict) -> dict:
         """Обработка команд Super Empath"""
-        message = telegram_context.get("message", "").strip()
+        # Извлекаем текст из объекта message
+        message_obj = telegram_context.get("message", {})
+        if isinstance(message_obj, dict):
+            message = message_obj.get("text", "").strip()
+        else:
+            message = str(message_obj).strip()
         user_id = telegram_context.get("user_id")
         
         # Проверяем, зарегистрирован ли пользователь
@@ -222,7 +282,12 @@ class SuperEmpathProcessor:
     def _handle_welcome_message(self, telegram_context: dict) -> dict:
         """Показ приветственного сообщения для незарегистрированных пользователей"""
         first_name = telegram_context.get("first_name", "Пользователь")
-        message = telegram_context.get("message", "")
+        # Извлекаем текст из объекта message
+        message_obj = telegram_context.get("message", {})
+        if isinstance(message_obj, dict):
+            message = message_obj.get("text", "").strip()
+        else:
+            message = str(message_obj).strip()
         
         # Проверяем, это deep link или обычное сообщение
         session_id = None
@@ -271,7 +336,12 @@ class SuperEmpathProcessor:
         """Обработка команды /start"""
         user_id = telegram_context.get("user_id")
         first_name = telegram_context.get("first_name", "Пользователь")
-        message = telegram_context.get("message", "")
+        # Извлекаем текст из объекта message
+        message_obj = telegram_context.get("message", {})
+        if isinstance(message_obj, dict):
+            message = message_obj.get("text", "").strip()
+        else:
+            message = str(message_obj).strip()
         
         # Извлекаем session_id из deep link
         session_id = None
@@ -351,7 +421,12 @@ class SuperEmpathProcessor:
             
     async def _handle_regular_message(self, telegram_context: dict) -> dict:
         """Обработка обычного сообщения через LLM"""
-        message = telegram_context.get("message", "")
+        # Извлекаем текст из объекта message
+        message_obj = telegram_context.get("message", {})
+        if isinstance(message_obj, dict):
+            message = message_obj.get("text", "").strip()
+        else:
+            message = str(message_obj).strip()
         user_id = str(telegram_context.get("user_id"))
         first_name = telegram_context.get("first_name", "Пользователь")
         template_name = telegram_context.get("prompt_template_name", "default_super_empath")
@@ -375,6 +450,10 @@ class SuperEmpathProcessor:
         if llm_result["success"]:
             explanation = llm_result["explanation"]
             suggestion = llm_result["suggestion"]
+            
+            # Сохраняем предложение ассистента в историю
+            empath_message = f"Предлагаю: \"{suggestion}\""
+            self._save_empath_message_to_history(user_id, empath_message)
             
             # Сохраняем текущее сообщение для последующего одобрения
             user_data["pending_message"] = {
@@ -401,6 +480,10 @@ class SuperEmpathProcessor:
         else:
             # Fallback на старую логику в случае ошибки LLM
             improved = self.improve_message(message)
+            
+            # Сохраняем предложение ассистента в историю (fallback)
+            empath_message = f"Предлагаю (резервный вариант): \"{improved}\""
+            self._save_empath_message_to_history(user_id, empath_message)
             
             user_data["pending_message"] = {
                 "original": message,
@@ -431,8 +514,9 @@ class SuperEmpathProcessor:
         }
         
     def _handle_approve_command(self, telegram_context: dict) -> dict:
-        """Обработка команды одобрения 'тамам'"""
+        """Обработка команды одобрения '/tamam'"""
         user_id = telegram_context.get("user_id")
+        first_name = telegram_context.get("first_name", "Пользователь")
         
         data = self._load_sessions()
         user_data = data["users"].get(str(user_id))
@@ -452,6 +536,13 @@ class SuperEmpathProcessor:
                 "action": "session_error"
             }
             
+        # Сохраняем команду "/tamam" в историю
+        self._save_message_to_history(user_id, first_name, "/tamam", session_id)
+        
+        # Сохраняем факт отправки финального сообщения
+        final_message = f"Отправлено: \"{pending['improved']}\""
+        self._save_empath_message_to_history(user_id, final_message, session_id)
+        
         session = data["sessions"][session_id]
         participants = session["participants"]
         
@@ -481,8 +572,9 @@ class SuperEmpathProcessor:
         }
         
     def _handle_cancel_command(self, telegram_context: dict) -> dict:
-        """Обработка команды отмены 'отбой'"""
+        """Обработка команды отмены '/cancel'"""
         user_id = telegram_context.get("user_id")
+        first_name = telegram_context.get("first_name", "Пользователь")
         
         data = self._load_sessions()
         user_data = data["users"].get(str(user_id))
@@ -492,6 +584,14 @@ class SuperEmpathProcessor:
                 "response": "Нет активной операции для отмены",
                 "action": "no_pending_operation"
             }
+        
+        session_id = user_data.get("session_id")
+        
+        # Сохраняем команду "/cancel" в историю
+        self._save_message_to_history(user_id, first_name, "/cancel", session_id)
+        
+        # Сохраняем факт отмены операции
+        self._save_empath_message_to_history(user_id, "Операция отменена", session_id)
             
         # Очищаем pending message
         del user_data["pending_message"]
