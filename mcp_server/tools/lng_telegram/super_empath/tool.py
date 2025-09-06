@@ -213,6 +213,38 @@ class SuperEmpathProcessor:
         except Exception as e:
             logger.error(f"Error saving EMPATH message to history for user {user_id}: {e}")
 
+    def _save_incoming_message_to_history(self, user_id: str, sender_name: str, message: str, session_id: str = None):
+        """Сохранение входящего сообщения от другого участника в историю"""
+        try:
+            # Получаем session_id если не передан
+            if not session_id:
+                data = self._load_sessions()
+                user_data = data["users"].get(str(user_id))
+                if user_data:
+                    session_id = user_data.get("session_id")
+                    
+            if not session_id:
+                logger.error(f"No session_id found for user {user_id}")
+                return
+                
+            # Создаем структуру папок: sessions/<SESSION_ID>/<USER_ID>.txt
+            history_dir = f"mcp_server/config/telegram/sessions/{session_id}"
+            os.makedirs(history_dir, exist_ok=True)
+            
+            history_file = f"{history_dir}/{user_id}.txt"
+            
+            # Формат: [ВХОДЯЩЕЕ|SENDER_NAME] (timestamp): message content
+            timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+            history_entry = f"[ВХОДЯЩЕЕ|{sender_name}] ({timestamp}): {message}\n"
+            
+            with open(history_file, 'a', encoding='utf-8') as f:
+                f.write(history_entry)
+                
+            logger.info(f"Saved incoming message from {sender_name} to history for user {user_id} in session {session_id}")
+            
+        except Exception as e:
+            logger.error(f"Error saving incoming message to history for user {user_id}: {e}")
+
 
         
     async def handle_command(self, telegram_context: dict) -> dict:
@@ -505,6 +537,22 @@ class SuperEmpathProcessor:
         
         session = data["sessions"][session_id]
         participants = session["participants"]
+        
+        # Логируем входящее сообщение для всех остальных участников сессии
+        sender_name = user_data.get("first_name", "Участник")
+        other_participants = [p for p in participants if p != user_id]
+        
+        for participant_id in other_participants:
+            try:
+                self._save_incoming_message_to_history(
+                    str(participant_id), 
+                    sender_name, 
+                    pending['improved'], 
+                    session_id
+                )
+                logger.info(f"Logged incoming message for participant {participant_id} from {sender_name}")
+            except Exception as e:
+                logger.error(f"Failed to log incoming message for participant {participant_id}: {e}")
         
         # Очищаем pending message
         del user_data["pending_message"]
