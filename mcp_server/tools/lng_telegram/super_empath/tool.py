@@ -467,7 +467,7 @@ class SuperEmpathProcessor:
         
         if not user_data or "pending_message" not in user_data:
             return {
-                "response": "⚠️ Нет сообщения для отправки",
+                "response": "⚠️ Вы еще ничего не отправили",
                 "action": "no_pending_message"
             }
             
@@ -542,7 +542,7 @@ class SuperEmpathProcessor:
         
         if not user_data or "pending_message" not in user_data:
             return {
-                "response": "Нет активной операции для отмены",
+                "response": "⚠️ Вы еще ничего не отправили",
                 "action": "no_pending_operation"
             }
         
