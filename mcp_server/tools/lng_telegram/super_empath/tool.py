@@ -169,9 +169,9 @@ class SuperEmpathProcessor:
             
             history_file = f"{history_dir}/{user_id}.txt"
             
-            # Формат: [USER_ID|USER_NAME]: message content
+            # Формат: ⬅️[USER_ID|USER_NAME]: message content (исходящие)
             timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-            history_entry = f"[{user_id}|{user_name}] ({timestamp}): {message}\n"
+            history_entry = f"⬅️[{user_id}|{user_name}] ({timestamp}): {message}\n"
             
             with open(history_file, 'a', encoding='utf-8') as f:
                 f.write(history_entry)
@@ -201,9 +201,9 @@ class SuperEmpathProcessor:
             
             history_file = f"{history_dir}/{user_id}.txt"
             
-            # Формат: [EMPATH] (timestamp): message content
+            # Формат: 🤖[EMPATH] (timestamp): message content
             timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-            history_entry = f"[EMPATH] ({timestamp}): {message}\n"
+            history_entry = f"🤖[EMPATH] ({timestamp}): {message}\n"
             
             with open(history_file, 'a', encoding='utf-8') as f:
                 f.write(history_entry)
@@ -213,7 +213,7 @@ class SuperEmpathProcessor:
         except Exception as e:
             logger.error(f"Error saving EMPATH message to history for user {user_id}: {e}")
 
-    def _save_incoming_message_to_history(self, user_id: str, sender_name: str, message: str, session_id: str = None):
+    def _save_incoming_message_to_history(self, user_id: str, sender_id: str, sender_name: str, message: str, session_id: str = None):
         """Сохранение входящего сообщения от другого участника в историю"""
         try:
             # Получаем session_id если не передан
@@ -233,9 +233,9 @@ class SuperEmpathProcessor:
             
             history_file = f"{history_dir}/{user_id}.txt"
             
-            # Формат: [ВХОДЯЩЕЕ|SENDER_NAME] (timestamp): message content
+            # Формат: ➡️[SENDER_ID|SENDER_NAME] (timestamp): message content (входящие)
             timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-            history_entry = f"[ВХОДЯЩЕЕ|{sender_name}] ({timestamp}): {message}\n"
+            history_entry = f"➡️[{sender_id}|{sender_name}] ({timestamp}): {message}\n"
             
             with open(history_file, 'a', encoding='utf-8') as f:
                 f.write(history_entry)
@@ -244,6 +244,38 @@ class SuperEmpathProcessor:
             
         except Exception as e:
             logger.error(f"Error saving incoming message to history for user {user_id}: {e}")
+
+    def _save_system_message_to_history(self, user_id: str, user_name: str, message: str, session_id: str = None):
+        """Сохранение системного сообщения в историю"""
+        try:
+            # Получаем session_id если не передан
+            if not session_id:
+                data = self._load_sessions()
+                user_data = data["users"].get(str(user_id))
+                if user_data:
+                    session_id = user_data.get("session_id")
+                    
+            if not session_id:
+                logger.error(f"No session_id found for user {user_id}")
+                return
+                
+            # Создаем структуру папок: sessions/<SESSION_ID>/<USER_ID>.txt
+            history_dir = f"mcp_server/config/telegram/sessions/{session_id}"
+            os.makedirs(history_dir, exist_ok=True)
+            
+            history_file = f"{history_dir}/{user_id}.txt"
+            
+            # Формат: ⚙️[СИСТЕМА] (timestamp): message content
+            timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+            history_entry = f"⚙️[СИСТЕМА] ({timestamp}): {message}\n"
+            
+            with open(history_file, 'a', encoding='utf-8') as f:
+                f.write(history_entry)
+                
+            logger.info(f"Saved system message to history for user {user_id} in session {session_id}")
+            
+        except Exception as e:
+            logger.error(f"Error saving system message to history for user {user_id}: {e}")
 
 
         
@@ -363,7 +395,7 @@ class SuperEmpathProcessor:
                 self._save_sessions(data)
                 
                 # Создаем файл истории для присоединившегося участника
-                self._save_message_to_history(user_id, first_name, f"[СИСТЕМА] Присоединился к сессии {session_id}", session_id)
+                self._save_system_message_to_history(user_id, first_name, f"Присоединился к сессии {session_id}", session_id)
                 
                 # Отправляем приветственное сообщение для присоединившегося
                 welcome_message = self._get_welcome_message(first_name, is_joining_session=True, session_id=session_id)
@@ -398,7 +430,7 @@ class SuperEmpathProcessor:
             self._save_sessions(data)
             
             # Создаем файл истории для создателя сессии
-            self._save_message_to_history(user_id, first_name, f"[СИСТЕМА] Создал сессию {new_session_id}", new_session_id)
+            self._save_system_message_to_history(user_id, first_name, f"Создал сессию {new_session_id}", new_session_id)
             
             # Отправляем приветственное сообщение для создателя сессии
             welcome_message = self._get_welcome_message(first_name, is_joining_session=False)
@@ -546,6 +578,7 @@ class SuperEmpathProcessor:
             try:
                 self._save_incoming_message_to_history(
                     str(participant_id), 
+                    str(user_id),  # sender_id
                     sender_name, 
                     pending['improved'], 
                     session_id
