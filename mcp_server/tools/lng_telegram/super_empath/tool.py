@@ -464,8 +464,7 @@ class SuperEmpathProcessor:
         other_participants = [p for p in participants if p != user_id]
         
         # Формируем детальный ответ с информацией о сообщении
-        message_preview = pending["improved"][:50] + "..." if len(pending["improved"]) > 50 else pending["improved"]
-        response_text = f"✅ Сообщение отправлено {len(other_participants)} участникам\n\n📝 Отправленное сообщение:\n{message_preview}"
+        response_text = f"✅ Сообщение отправлено {len(other_participants)} участникам\n\n📝 Отправленное сообщение:\n{pending['improved']}"
         
         return {
             "response": response_text,
