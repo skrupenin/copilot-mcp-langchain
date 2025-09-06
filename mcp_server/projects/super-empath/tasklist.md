@@ -16,13 +16,13 @@ This project enhances the Super Empath Telegram bot to use LLM-based responses i
 **Testing:** Review documentation completeness and clarity
 
 **Acceptance Criteria:**
-- [ ] tasklist.md created with all tasks
-- [ ] readme.md updated with project overview
-- [ ] Technical requirements documented
+- [x] tasklist.md created with all tasks
+- [x] readme.md updated with project overview
+- [x] Technical requirements documented
 
 ---
 
-### Task 2: Create Prompt Template File
+### Task 2: Create Prompt Template File ✅
 **Description:** Create prompt template file in projects/super-empath/prompt/default_super_empath.txt with the specified prompt structure
 
 **Implementation Details:**
@@ -37,14 +37,14 @@ This project enhances the Super Empath Telegram bot to use LLM-based responses i
 **Testing:** Validate template syntax and placeholder structure
 
 **Acceptance Criteria:**
-- [ ] Prompt directory created
-- [ ] Template file contains complete empathy prompt
-- [ ] JSON structure specified correctly
-- [ ] Character restrictions applied (no "ё", no long dashes)
+- [x] Prompt directory created
+- [x] Template file contains complete empathy prompt
+- [x] JSON structure specified correctly
+- [x] Character restrictions applied (no "ё", no long dashes)
 
 ---
 
-### Task 3: Update Telegram Pipeline Config
+### Task 3: Update Telegram Pipeline Config ✅
 **Description:** Transform telegram_pipeline.json into a batch pipeline that loads prompt and saves it as template, then calls telegram tool
 
 **Implementation Details:**
@@ -53,18 +53,20 @@ This project enhances the Super Empath Telegram bot to use LLM-based responses i
 - Add step to save prompt template using `lng_llm_prompt_template save`
 - Keep existing telegram tool call with current parameters
 - Configure template name as "default_super_empath"
+- Use pipeline_file approach instead of inline pipeline for better expression handling
 
 **Testing:** Validate pipeline syntax and execution order
 
 **Acceptance Criteria:**
-- [ ] Pipeline loads prompt from file
-- [ ] Pipeline saves template with correct name
-- [ ] Pipeline calls telegram tool with existing config
-- [ ] All steps have proper output variables
+- [x] Pipeline loads prompt from file
+- [x] Pipeline saves template with correct name
+- [x] Pipeline calls telegram tool with pipeline_file reference
+- [x] All steps have proper output variables
+- [x] Expression evaluation works correctly with telegram context
 
 ---
 
-### Task 4: Implement Session History Management
+### Task 4: Implement Session History Management ✅
 **Description:** Add session/user history management to super-empath tool with file storage in config/telegram/sessions/<sessionId>/<userId>.txt
 
 **Implementation Details:**
@@ -81,15 +83,15 @@ This project enhances the Super Empath Telegram bot to use LLM-based responses i
 **Testing:** Test history creation, loading, and appending with mock data
 
 **Acceptance Criteria:**
-- [ ] Session directories created automatically
-- [ ] History files follow specified format
-- [ ] Multi-line messages handled correctly
-- [ ] History loading works for existing users
-- [ ] New messages appended correctly
+- [x] Session directories created automatically
+- [x] History files follow specified format
+- [x] Multi-line messages handled correctly
+- [x] History loading works for existing users
+- [x] New messages appended correctly
 
 ---
 
-### Task 5: Modify Super-Empath Tool for LLM Integration
+### Task 5: Modify Super-Empath Tool for LLM Integration ✅
 **Description:** Replace hardcoded logic with LLM calls using lng_llm_prompt_template through tool_registry.py, implement structured JSON output parsing
 
 **Implementation Details:**
@@ -103,15 +105,36 @@ This project enhances the Super Empath Telegram bot to use LLM-based responses i
 **Testing:** Test LLM integration with various message types and history scenarios
 
 **Acceptance Criteria:**
-- [ ] Hardcoded logic removed
-- [ ] LLM calls implemented via tool_registry
-- [ ] JSON response parsing works correctly
-- [ ] Error handling implemented
-- [ ] All parameters passed correctly to LLM
+- [x] Hardcoded logic removed
+- [x] LLM calls implemented via tool_registry
+- [x] JSON response parsing works correctly
+- [x] Error handling implemented
+- [x] All parameters passed correctly to LLM
 
 ---
 
-### Task 6: Test and Validate Implementation
+### Task 6: Implement Named Bot Management ✅
+**Description:** Add named bot instances to avoid conflicts when multiple bots are running
+
+**Implementation Details:**
+- Replace global `_server_instance` with `_server_instances` dictionary
+- Add `bot_name` parameter to telegram polling server operations
+- Implement automatic cleanup of old instances when starting new bot with same name
+- Update pipeline configuration to use named bots
+- Add proper status reporting for named instances
+
+**Testing:** Test multiple named bot instances and proper cleanup
+
+**Acceptance Criteria:**
+- [x] Named bot instances implemented
+- [x] Automatic cleanup of conflicting instances
+- [x] Pipeline configuration updated with bot_name
+- [x] Status reporting works for named bots
+- [x] No "Conflict: terminated by other getUpdates request" errors
+
+---
+
+### Task 7: Test and Validate Implementation ✅
 **Description:** Test the complete pipeline with mock telegram data and validate JSON response parsing
 
 **Implementation Details:**
@@ -125,11 +148,11 @@ This project enhances the Super Empath Telegram bot to use LLM-based responses i
 **Testing:** Comprehensive testing of all components
 
 **Acceptance Criteria:**
-- [ ] Pipeline executes successfully end-to-end
-- [ ] History management works correctly
-- [ ] LLM responses are properly structured
-- [ ] Error scenarios handled gracefully
-- [ ] Multiple user scenarios tested
+- [x] Pipeline executes successfully end-to-end
+- [x] History management works correctly
+- [x] LLM responses are properly structured
+- [x] Error scenarios handled gracefully
+- [x] Multiple user scenarios tested
 
 ## Important Requirements from Discussion
 - **Commands in Russian:** Use `тамам` (not `/tamam`) and `отбой` (not `/cancel`)
