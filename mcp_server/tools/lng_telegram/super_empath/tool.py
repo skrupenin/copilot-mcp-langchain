@@ -442,7 +442,8 @@ class SuperEmpathProcessor:
             }
         
         # Сохраняем сообщение в историю
-        self._save_message_to_history(user_id, first_name, message)
+        session_id = user_data.get("session_id")
+        self._save_message_to_history(user_id, first_name, message, session_id)
         
         # Получаем ответ от LLM
         llm_result = await self.improve_message_with_llm(message, user_id, template_name)
@@ -451,9 +452,13 @@ class SuperEmpathProcessor:
             explanation = llm_result["explanation"]
             suggestion = llm_result["suggestion"]
             
-            # Сохраняем предложение ассистента в историю
-            empath_message = f"Предлагаю: \"{suggestion}\""
-            self._save_empath_message_to_history(user_id, empath_message)
+            # Сохраняем ПОЛНОЕ предложение ассистента в историю
+            full_empath_message = f"""🤔 Размышления эксперта:
+{explanation}
+
+💡 Предлагаю переформулировать:
+"{suggestion}\""""
+            self._save_empath_message_to_history(user_id, full_empath_message, session_id)
             
             # Сохраняем текущее сообщение для последующего одобрения
             user_data["pending_message"] = {
@@ -481,9 +486,13 @@ class SuperEmpathProcessor:
             # Fallback на старую логику в случае ошибки LLM
             improved = self.improve_message(message)
             
-            # Сохраняем предложение ассистента в историю (fallback)
-            empath_message = f"Предлагаю (резервный вариант): \"{improved}\""
-            self._save_empath_message_to_history(user_id, empath_message)
+            # Сохраняем ПОЛНОЕ предложение ассистента в историю (fallback)
+            full_empath_message = f"""🤔 Размышления эксперта:
+Произошла ошибка при обработке LLM, использован резервный алгоритм.
+
+💡 Предлагаю переформулировать:
+"{improved}\""""
+            self._save_empath_message_to_history(user_id, full_empath_message, session_id)
             
             user_data["pending_message"] = {
                 "original": message,
