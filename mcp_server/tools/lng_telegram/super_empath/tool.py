@@ -330,6 +330,9 @@ class SuperEmpathProcessor:
                 
                 self._save_sessions(data)
                 
+                # Создаем файл истории для присоединившегося участника
+                self._save_message_to_history(user_id, first_name, f"[СИСТЕМА] Присоединился к сессии {session_id}", session_id)
+                
                 # Отправляем приветственное сообщение для присоединившегося
                 welcome_message = self._get_welcome_message(first_name, is_joining_session=True, session_id=session_id)
                 
@@ -361,6 +364,9 @@ class SuperEmpathProcessor:
             }
             
             self._save_sessions(data)
+            
+            # Создаем файл истории для создателя сессии
+            self._save_message_to_history(user_id, first_name, f"[СИСТЕМА] Создал сессию {new_session_id}", new_session_id)
             
             # Отправляем приветственное сообщение для создателя сессии
             welcome_message = self._get_welcome_message(first_name, is_joining_session=False)
