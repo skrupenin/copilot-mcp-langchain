@@ -88,6 +88,11 @@ async def tool_info() -> dict:
                 "pipeline_file": {
                     "type": "string",
                     "description": "Path to JSON file containing pipeline configuration (alternative to pipeline parameter)"
+                },
+                "bot_name": {
+                    "type": "string",
+                    "description": "Name of the bot instance (default: 'default')",
+                    "default": "default"
                 }
             },
             "required": ["operation"]
@@ -558,45 +563,53 @@ class TelegramPollingServer:
         else:
             return obj
 
-# Глобальный инстанс сервера
-_server_instance: Optional[TelegramPollingServer] = None
+# Глобальные именованные экземпляры серверов
+_server_instances: Dict[str, TelegramPollingServer] = {}
 
-async def start_polling_server(token: str, pipeline: List[Dict] = None) -> TelegramPollingServer:
+async def start_polling_server(token: str, pipeline: List[Dict] = None, bot_name: str = "default") -> TelegramPollingServer:
     """Запуск polling сервера"""
-    global _server_instance
+    global _server_instances
     
-    if _server_instance and _server_instance.running:
-        logger.warning("Polling server already running")
-        return _server_instance
+    # Если бот с таким именем уже запущен, останавливаем его
+    if bot_name in _server_instances and _server_instances[bot_name].running:
+        logger.info(f"Stopping existing bot '{bot_name}' before starting new one")
+        await stop_polling_server(bot_name)
+    
+    # Небольшая пауза для корректной остановки
+    import asyncio
+    await asyncio.sleep(0.5)
         
-    _server_instance = TelegramPollingServer(token, pipeline)
-    _server_instance.running = True
+    _server_instances[bot_name] = TelegramPollingServer(token, pipeline)
+    _server_instances[bot_name].running = True
     
-    logger.info("Starting Telegram polling server...")
-    await _server_instance.application.run_polling()
+    logger.info(f"Starting Telegram polling server '{bot_name}'...")
+    await _server_instances[bot_name].application.run_polling()
     
-    return _server_instance
+    return _server_instances[bot_name]
 
-async def stop_polling_server():
+async def stop_polling_server(bot_name: str = "default"):
     """Остановка polling сервера"""
-    global _server_instance
+    global _server_instances
     
-    if _server_instance and _server_instance.running:
-        logger.info("Stopping Telegram polling server...")
-        await _server_instance.application.stop()
-        _server_instance.running = False
-        _server_instance = None
+    if bot_name in _server_instances and _server_instances[bot_name].running:
+        logger.info(f"Stopping Telegram polling server '{bot_name}'...")
+        await _server_instances[bot_name].application.stop()
+        _server_instances[bot_name].running = False
+        _server_instances[bot_name].close_logger()
+        del _server_instances[bot_name]
+    else:
+        logger.warning(f"Bot '{bot_name}' is not running")
 
-async def send_message(user_id: int, text: str) -> bool:
+async def send_message(user_id: int, text: str, bot_name: str = "default") -> bool:
     """Отправка сообщения пользователю"""
-    global _server_instance
+    global _server_instances
     
-    if not _server_instance:
-        logger.error("Polling server not running")
+    if bot_name not in _server_instances:
+        logger.error(f"Polling server '{bot_name}' not running")
         return False
         
     try:
-        await _server_instance.bot.send_message(user_id, text)
+        await _server_instances[bot_name].bot.send_message(user_id, text)
         return True
     except TelegramError as e:
         logger.error(f"Error sending message to {user_id}: {e}")
@@ -604,24 +617,24 @@ async def send_message(user_id: int, text: str) -> bool:
 
 
 
-def get_server_status() -> Dict:
+def get_server_status(bot_name: str = "default") -> Dict:
     """Получение статуса сервера"""
-    global _server_instance
+    global _server_instances
     
-    if not _server_instance:
+    if bot_name not in _server_instances:
         return {"running": False, "pipeline_count": 0}
     
     # Определяем правильное количество шагов pipeline
-    pipeline_count = len(_server_instance.pipeline)
-    if _server_instance.pipeline_file and pipeline_count == 0:
-        file_pipeline = load_pipeline_from_file(_server_instance.pipeline_file)
+    pipeline_count = len(_server_instances[bot_name].pipeline)
+    if _server_instances[bot_name].pipeline_file and pipeline_count == 0:
+        file_pipeline = load_pipeline_from_file(_server_instances[bot_name].pipeline_file)
         if file_pipeline:
             pipeline_count = len(file_pipeline)
         
     return {
-        "running": _server_instance.running,
+        "running": _server_instances[bot_name].running,
         "pipeline_count": pipeline_count,
-        "pipeline_source": "file" if _server_instance.pipeline_file else "inline"
+        "pipeline_source": "file" if _server_instances[bot_name].pipeline_file else "inline"
     }
 
 def tool_lng_telegram_polling_server(
@@ -630,7 +643,8 @@ def tool_lng_telegram_polling_server(
     user_id: int = None,
     message: str = None,
     pipeline: List[Dict] = None,
-    pipeline_file: str = None
+    pipeline_file: str = None,
+    bot_name: str = "default"
 ) -> Dict[str, Any]:
     """
     Telegram Polling Server - универсальный инструмент для работы с Telegram ботами
@@ -642,7 +656,7 @@ def tool_lng_telegram_polling_server(
     - status: Получение статуса сервера
     """
     
-    global _server_instance
+    global _server_instances
     
     # Обработка pipeline_file если указан - НЕ обрабатываем на этапе запуска
     # pipeline_file будет обработан при создании экземпляра TelegramPollingServer
@@ -664,16 +678,16 @@ def tool_lng_telegram_polling_server(
                 return {"error": "Invalid bot token format"}
             
             # Запуск бота с pipeline поддержкой
-            if _server_instance and _server_instance.running:
-                return {"error": "Server already running"}
+            if bot_name in _server_instances and _server_instances[bot_name].running:
+                return {"error": f"Server '{bot_name}' already running"}
             
             # Принудительная очистка перед запуском
-            if _server_instance:
+            if bot_name in _server_instances:
                 try:
-                    _server_instance.close_logger()
+                    _server_instances[bot_name].close_logger()
                 except:
                     pass
-                _server_instance = None
+                del _server_instances[bot_name]
             
             try:
                 import asyncio
@@ -681,7 +695,7 @@ def tool_lng_telegram_polling_server(
                 import time
                 
                 def run_bot():
-                    global _server_instance, logger
+                    global _server_instances, logger
                     
                     # Создаем полностью новый event loop
                     loop = asyncio.new_event_loop()
@@ -713,12 +727,12 @@ def tool_lng_telegram_polling_server(
                                 pass
                         
                         # Создаем новый экземпляр сервера
-                        _server_instance = TelegramPollingServer(token, pipeline or [], loaded_pipeline_file)
-                        _server_instance.running = True
+                        _server_instances[bot_name] = TelegramPollingServer(token, pipeline or [], loaded_pipeline_file)
+                        _server_instances[bot_name].running = True
                         
                         # Обновляем глобальный логгер
-                        logger = _server_instance.logger
-                        logger.info("Starting Telegram polling server...")
+                        logger = _server_instances[bot_name].logger
+                        logger.info(f"Starting Telegram polling server '{bot_name}'...")
                         
                         # Перенаправляем stderr
                         original_stderr = sys.stderr
@@ -726,7 +740,7 @@ def tool_lng_telegram_polling_server(
                         
                         try:
                             # Запускаем polling
-                            _server_instance.application.run_polling(
+                            _server_instances[bot_name].application.run_polling(
                                 close_loop=False,  # Не закрываем loop автоматически
                                 stop_signals=None  # Отключаем обработку сигналов
                             )
@@ -737,8 +751,8 @@ def tool_lng_telegram_polling_server(
                     except Exception as e:
                         if logger:
                             logger.error(f"Bot error: {e}")
-                        if _server_instance:
-                            _server_instance.running = False
+                        if bot_name in _server_instances:
+                            _server_instances[bot_name].running = False
                     finally:
                         # Принудительная очистка loop
                         try:
@@ -778,12 +792,12 @@ def tool_lng_telegram_polling_server(
                 return {"error": f"Failed to start bot: {str(e)}"}
                 
         elif operation == "stop":
-            if _server_instance and _server_instance.running:
+            if bot_name in _server_instances and _server_instances[bot_name].running:
                 try:
-                    logger.info("Stopping Telegram polling server...")
-                    _server_instance.running = False
+                    logger.info(f"Stopping Telegram polling server '{bot_name}'...")
+                    _server_instances[bot_name].running = False
                     
-                    if _server_instance.application:
+                    if _server_instances[bot_name].application:
                         # Более тщательная остановка
                         import asyncio
                         import threading
@@ -796,11 +810,11 @@ def tool_lng_telegram_polling_server(
                                 asyncio.set_event_loop(loop)
                                 
                                 # Останавливаем приложение
-                                loop.run_until_complete(_server_instance.application.stop())
+                                loop.run_until_complete(_server_instances[bot_name].application.stop())
                                 
                                 # Дополнительная очистка
-                                if hasattr(_server_instance.application, 'updater'):
-                                    loop.run_until_complete(_server_instance.application.updater.stop())
+                                if hasattr(_server_instances[bot_name].application, 'updater'):
+                                    loop.run_until_complete(_server_instances[bot_name].application.updater.stop())
                                 
                                 # Закрываем все задачи
                                 pending = asyncio.all_tasks(loop)
@@ -821,15 +835,15 @@ def tool_lng_telegram_polling_server(
                         stop_thread.join(timeout=10)  # Увеличили timeout
                         
                         # Принудительно очищаем ссылку на приложение
-                        _server_instance.application = None
+                        _server_instances[bot_name].application = None
                     
                     # Закрываем логгер
-                    _server_instance.close_logger()
+                    _server_instances[bot_name].close_logger()
                     
                     # Очищаем глобальную ссылку
-                    _server_instance = None
+                    del _server_instances[bot_name]
                     
-                    return {"status": "stopped", "message": "Telegram bot stopped"}
+                    return {"status": "stopped", "message": f"Telegram bot '{bot_name}' stopped"}
                 except Exception as e:
                     return {"error": f"Failed to stop bot: {str(e)}"}
             else:
@@ -843,7 +857,7 @@ def tool_lng_telegram_polling_server(
                 import asyncio
                 loop = asyncio.new_event_loop()
                 asyncio.set_event_loop(loop)
-                success = loop.run_until_complete(send_message(user_id, message))
+                success = loop.run_until_complete(send_message(user_id, message, bot_name))
                 return {
                     "status": "sent" if success else "failed",
                     "user_id": user_id,
@@ -853,7 +867,7 @@ def tool_lng_telegram_polling_server(
                 return {"error": f"Failed to send message: {str(e)}"}
             
         elif operation == "status":
-            return get_server_status()
+            return get_server_status(bot_name)
             
         else:
             return {"error": f"Unknown operation: {operation}"}
