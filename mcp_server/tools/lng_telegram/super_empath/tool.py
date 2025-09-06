@@ -149,8 +149,8 @@ class SuperEmpathProcessor:
             logger.error(f"Error reading conversation history for user {user_id}: {e}")
             return "Ошибка при загрузке истории сообщений."
     
-    def _save_message_to_history(self, user_id: str, user_name: str, message: str, session_id: str = None):
-        """Сохранение сообщения в историю в формате [USER_ID|USER_NAME]: message content"""
+    def _save_to_history(self, user_id: str, emoji: str, label: str, message: str, session_id: str = None, timestamp: bool = True):
+        """Универсальное сохранение любого типа сообщения в историю"""
         try:
             # Получаем session_id если не передан
             if not session_id:
@@ -169,114 +169,46 @@ class SuperEmpathProcessor:
             
             history_file = f"{history_dir}/{user_id}.txt"
             
-            # Формат: ⬅️[USER_ID|USER_NAME]: message content (исходящие)
-            timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-            history_entry = f"⬅️[{user_id}|{user_name}] ({timestamp}): {message}\n"
+            # Формат: {emoji}[{label}] (timestamp): {message}
+            if timestamp:
+                timestamp_str = f" ({datetime.now().strftime('%Y-%m-%d %H:%M:%S')})"
+            else:
+                timestamp_str = ""
+            
+            history_entry = f"{emoji}[{label}]{timestamp_str}: {message}\n"
             
             with open(history_file, 'a', encoding='utf-8') as f:
                 f.write(history_entry)
                 
-            logger.info(f"Saved message to history for user {user_id} in session {session_id}")
+            logger.info(f"Saved message to history for user {user_id} in session {session_id}: {emoji}[{label}]")
             
         except Exception as e:
             logger.error(f"Error saving message to history for user {user_id}: {e}")
+
+    # Удобные методы-обертки для разных типов сообщений
+    def _save_message_to_history(self, user_id: str, user_name: str, message: str, session_id: str = None):
+        """Сохранение обычного сообщения пользователя"""
+        self._save_to_history(user_id, "💬", f"{user_id}|{user_name}", message, session_id)
     
     def _save_empath_message_to_history(self, user_id: str, message: str, session_id: str = None):
-        """Сохранение сообщения ассистента в историю"""
-        try:
-            # Получаем session_id если не передан
-            if not session_id:
-                data = self._load_sessions()
-                user_data = data["users"].get(str(user_id))
-                if user_data:
-                    session_id = user_data.get("session_id")
-                    
-            if not session_id:
-                logger.error(f"No session_id found for user {user_id}")
-                return
-                
-            # Создаем структуру папок: sessions/<SESSION_ID>/<USER_ID>.txt
-            history_dir = f"mcp_server/config/telegram/sessions/{session_id}"
-            os.makedirs(history_dir, exist_ok=True)
-            
-            history_file = f"{history_dir}/{user_id}.txt"
-            
-            # Формат: 🤖[EMPATH] (timestamp): message content
-            timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-            history_entry = f"🤖[EMPATH] ({timestamp}): {message}\n"
-            
-            with open(history_file, 'a', encoding='utf-8') as f:
-                f.write(history_entry)
-                
-            logger.info(f"Saved EMPATH message to history for user {user_id} in session {session_id}")
-            
-        except Exception as e:
-            logger.error(f"Error saving EMPATH message to history for user {user_id}: {e}")
-
+        """Сохранение рекомендации ассистента"""
+        self._save_to_history(user_id, "💡🤖", "EMPATH", message, session_id)
+    
+    def _save_empath_sent_message_to_history(self, user_id: str, message: str, session_id: str = None):
+        """Сохранение отправленного ассистентом сообщения"""
+        self._save_to_history(user_id, "⬅️🤖", "EMPATH", message, session_id)
+    
     def _save_incoming_message_to_history(self, user_id: str, sender_id: str, sender_name: str, message: str, session_id: str = None):
-        """Сохранение входящего сообщения от другого участника в историю"""
-        try:
-            # Получаем session_id если не передан
-            if not session_id:
-                data = self._load_sessions()
-                user_data = data["users"].get(str(user_id))
-                if user_data:
-                    session_id = user_data.get("session_id")
-                    
-            if not session_id:
-                logger.error(f"No session_id found for user {user_id}")
-                return
-                
-            # Создаем структуру папок: sessions/<SESSION_ID>/<USER_ID>.txt
-            history_dir = f"mcp_server/config/telegram/sessions/{session_id}"
-            os.makedirs(history_dir, exist_ok=True)
-            
-            history_file = f"{history_dir}/{user_id}.txt"
-            
-            # Формат: ➡️[SENDER_ID|SENDER_NAME] (timestamp): message content (входящие)
-            timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-            history_entry = f"➡️[{sender_id}|{sender_name}] ({timestamp}): {message}\n"
-            
-            with open(history_file, 'a', encoding='utf-8') as f:
-                f.write(history_entry)
-                
-            logger.info(f"Saved incoming message from {sender_name} to history for user {user_id} in session {session_id}")
-            
-        except Exception as e:
-            logger.error(f"Error saving incoming message to history for user {user_id}: {e}")
-
+        """Сохранение входящего сообщения от другого участника"""
+        self._save_to_history(user_id, "➡️", f"{sender_id}|{sender_name}", message, session_id)
+    
     def _save_system_message_to_history(self, user_id: str, user_name: str, message: str, session_id: str = None):
-        """Сохранение системного сообщения в историю"""
-        try:
-            # Получаем session_id если не передан
-            if not session_id:
-                data = self._load_sessions()
-                user_data = data["users"].get(str(user_id))
-                if user_data:
-                    session_id = user_data.get("session_id")
-                    
-            if not session_id:
-                logger.error(f"No session_id found for user {user_id}")
-                return
-                
-            # Создаем структуру папок: sessions/<SESSION_ID>/<USER_ID>.txt
-            history_dir = f"mcp_server/config/telegram/sessions/{session_id}"
-            os.makedirs(history_dir, exist_ok=True)
-            
-            history_file = f"{history_dir}/{user_id}.txt"
-            
-            # Формат: ⚙️[СИСТЕМА] (timestamp): message content
-            timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-            history_entry = f"⚙️[СИСТЕМА] ({timestamp}): {message}\n"
-            
-            with open(history_file, 'a', encoding='utf-8') as f:
-                f.write(history_entry)
-                
-            logger.info(f"Saved system message to history for user {user_id} in session {session_id}")
-            
-        except Exception as e:
-            logger.error(f"Error saving system message to history for user {user_id}: {e}")
-
+        """Сохранение системного сообщения"""
+        self._save_to_history(user_id, "⚙️", "СИСТЕМА", message, session_id)
+    
+    def _save_command_to_history(self, user_id: str, user_name: str, command: str, emoji: str, session_id: str = None):
+        """Сохранение команды (✅ /tamam, ❌ /cancel)"""
+        self._save_to_history(user_id, emoji, f"{user_id}|{user_name}", command, session_id)
 
         
     async def handle_command(self, telegram_context: dict) -> dict:
@@ -334,11 +266,8 @@ class SuperEmpathProcessor:
             
     def _get_welcome_message(self, first_name: str, is_joining_session: bool = False, session_id: str = None) -> str:
         """Генерирует приветственное сообщение с общим шаблоном"""
-        
-        # Общая часть сообщения (возвращаем эмодзи)
-        emoji = "✅" if is_joining_session else "🎯"
-        
-        base_message = f"""{emoji} Добро пожаловать, {first_name}!
+                
+        base_message = f"""🎯 Добро пожаловать, {first_name}!
 
 Если вы тут - вы хотите наладить отношения.
 
@@ -484,13 +413,9 @@ class SuperEmpathProcessor:
             explanation = llm_result["explanation"]
             suggestion = llm_result["suggestion"]
             
-            # Сохраняем ПОЛНОЕ предложение ассистента в историю
-            full_empath_message = f"""🤔 Размышления эксперта:
-{explanation}
-
-💡 Предлагаю переформулировать:
-"{suggestion}\""""
-            self._save_empath_message_to_history(user_id, full_empath_message, session_id)
+            # Сохраняем объяснение и предложение в историю отдельными строками
+            self._save_to_history(user_id, "🤔🤖", "EMPATH", explanation, session_id)
+            self._save_to_history(user_id, "💡🤖", "EMPATH", f"Предлагаю: {suggestion}", session_id)
             
             # Сохраняем текущее сообщение для последующего одобрения
             user_data["pending_message"] = {
@@ -503,16 +428,11 @@ class SuperEmpathProcessor:
             data["users"][str(user_id)] = user_data
             self._save_sessions(data)
             
-            response = f"""📝 Ваше сообщение:
-"{message}"
+            response = f"""🤔 {explanation}
 
-🤔 Размышления эксперта:
-{explanation}
+💡 Предлагаю: {suggestion}
 
-💡 Предлагаю переформулировать:
-"{suggestion}"
-
-Напишите /tamam для отправки или /cancel для отмены."""
+Напишите ✅ /tamam для отправки или ❌ /cancel для отмены."""
         
         else:
             # В случае ошибки LLM показываем простое сообщение
@@ -547,7 +467,7 @@ class SuperEmpathProcessor:
         
         if not user_data or "pending_message" not in user_data:
             return {
-                "response": "Нет сообщения для отправки",
+                "response": "⚠️ Нет сообщения для отправки",
                 "action": "no_pending_message"
             }
             
@@ -561,11 +481,11 @@ class SuperEmpathProcessor:
             }
             
         # Сохраняем команду "/tamam" в историю
-        self._save_message_to_history(user_id, first_name, "/tamam", session_id)
+        self._save_command_to_history(user_id, first_name, "/tamam", "✅", session_id)
         
         # Сохраняем факт отправки финального сообщения
-        final_message = f"Отправлено: \"{pending['improved']}\""
-        self._save_empath_message_to_history(user_id, final_message, session_id)
+        final_message = "Отправлено."
+        self._save_empath_sent_message_to_history(user_id, final_message, session_id)
         
         session = data["sessions"][session_id]
         participants = session["participants"]
@@ -595,8 +515,8 @@ class SuperEmpathProcessor:
         # Возвращаем информацию для отправки другим участникам
         other_participants = [p for p in participants if p != user_id]
         
-        # Формируем детальный ответ с информацией о сообщении
-        response_text = f"✅ Сообщение отправлено {len(other_participants)} участникам\n\n📝 Отправленное сообщение:\n{pending['improved']}"
+        # Формируем упрощенный ответ
+        response_text = f"✅ Сообщение отправлено {len(other_participants)} участникам\n{pending['improved']}"
         
         return {
             "response": response_text,
@@ -608,7 +528,7 @@ class SuperEmpathProcessor:
             # Специальное поле для автоматической обработки транспортным слоем
             "auto_send": {
                 "to_users": other_participants,
-                "message": f"💬 Сообщение от {user_data.get('first_name', 'Участника')}:\n\n{pending['improved']}"
+                "message": f"💬 {user_data.get('first_name', 'Участник')}: {pending['improved']}"
             }
         }
         
@@ -629,10 +549,10 @@ class SuperEmpathProcessor:
         session_id = user_data.get("session_id")
         
         # Сохраняем команду "/cancel" в историю
-        self._save_message_to_history(user_id, first_name, "/cancel", session_id)
+        self._save_command_to_history(user_id, first_name, "/cancel", "❌", session_id)
         
         # Сохраняем факт отмены операции
-        self._save_empath_message_to_history(user_id, "Операция отменена", session_id)
+        self._save_empath_sent_message_to_history(user_id, "Операция отменена", session_id)
             
         # Очищаем pending message
         del user_data["pending_message"]
