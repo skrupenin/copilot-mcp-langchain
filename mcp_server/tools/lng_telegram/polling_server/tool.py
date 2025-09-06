@@ -30,17 +30,28 @@ def load_pipeline_from_file(file_path: str) -> Optional[List[Dict[str, Any]]]:
             # Convert relative path to absolute
             file_path = os.path.abspath(file_path)
         
+        if logger:
+            logger.info(f"Loading pipeline from file: {file_path}")
+            logger.info(f"File exists: {os.path.exists(file_path)}")
+        
         if not os.path.exists(file_path):
+            if logger:
+                logger.error(f"Pipeline file not found: {file_path}")
             return None
             
         with open(file_path, 'r', encoding='utf-8') as f:
             config = json.load(f)
             
         # Expect pipeline to be in the config
-        return config.get('pipeline', [])
+        pipeline = config.get('pipeline', [])
+        if logger:
+            logger.info(f"Loaded pipeline with {len(pipeline)} steps")
+        return pipeline
     except Exception as e:
         if logger:
             logger.error(f"Error loading pipeline from file {file_path}: {e}")
+            import traceback
+            logger.error(f"Traceback: {traceback.format_exc()}")
         return None
 
 async def tool_info() -> dict:
@@ -95,7 +106,7 @@ async def run_tool(name: str, parameters: dict) -> list[types.Content]:
 class TelegramPollingServer:
     """Сервер для управления Telegram ботом в polling режиме"""
     
-    def __init__(self, token: str, pipeline: List[Dict] = None):
+    def __init__(self, token: str, pipeline: List[Dict] = None, pipeline_file: str = None):
         global logger
         # Создаем логгер только при создании экземпляра бота
         logger = setup_instance_logger("polling_server", "telegram")
@@ -104,7 +115,9 @@ class TelegramPollingServer:
         self.token = token
         self.bot = Bot(token=token)
         self.application = Application.builder().token(token).build()
+        # Сохраняем оригинальный pipeline БЕЗ обработки выражений
         self.pipeline = pipeline or []
+        self.pipeline_file = pipeline_file  # Сохраняем путь к файлу пайплайна
         self.running = False
         
         # Настройка обработчиков
@@ -369,10 +382,23 @@ class TelegramPollingServer:
                 "telegram": telegram_context  # Алиас для совместимости
             }
             
+            # Определяем какой pipeline использовать
+            current_pipeline = self.pipeline
+            
+            # Если указан pipeline_file, загружаем его при каждом сообщении
+            # чтобы можно было использовать telegram контекст
+            if self.pipeline_file:
+                loaded_pipeline = load_pipeline_from_file(self.pipeline_file)
+                if loaded_pipeline:
+                    current_pipeline = loaded_pipeline
+                else:
+                    logger.error(f"Failed to load pipeline from file: {self.pipeline_file}")
+                    current_pipeline = self.pipeline  # Fallback на исходный pipeline
+            
             # Выполняем pipeline если он задан
             pipeline_results = []
-            if self.pipeline:
-                for step in self.pipeline:
+            if current_pipeline:
+                for step in current_pipeline:
                     tool_name = step.get("tool")
                     tool_params = step.get("params", {})
                     
@@ -584,10 +610,18 @@ def get_server_status() -> Dict:
     
     if not _server_instance:
         return {"running": False, "pipeline_count": 0}
+    
+    # Определяем правильное количество шагов pipeline
+    pipeline_count = len(_server_instance.pipeline)
+    if _server_instance.pipeline_file and pipeline_count == 0:
+        file_pipeline = load_pipeline_from_file(_server_instance.pipeline_file)
+        if file_pipeline:
+            pipeline_count = len(file_pipeline)
         
     return {
         "running": _server_instance.running,
-        "pipeline_count": len(_server_instance.pipeline)
+        "pipeline_count": pipeline_count,
+        "pipeline_source": "file" if _server_instance.pipeline_file else "inline"
     }
 
 def tool_lng_telegram_polling_server(
@@ -610,13 +644,9 @@ def tool_lng_telegram_polling_server(
     
     global _server_instance
     
-    # Обработка pipeline_file если указан
-    if pipeline_file and not pipeline:
-        loaded_pipeline = load_pipeline_from_file(pipeline_file)
-        if loaded_pipeline:
-            pipeline = loaded_pipeline
-        else:
-            return {"error": f"Failed to load pipeline from file: {pipeline_file}"}
+    # Обработка pipeline_file если указан - НЕ обрабатываем на этапе запуска
+    # pipeline_file будет обработан при создании экземпляра TelegramPollingServer
+    loaded_pipeline_file = pipeline_file
     
     try:
         if operation == "start":
@@ -683,7 +713,7 @@ def tool_lng_telegram_polling_server(
                                 pass
                         
                         # Создаем новый экземпляр сервера
-                        _server_instance = TelegramPollingServer(token, pipeline or [])
+                        _server_instance = TelegramPollingServer(token, pipeline or [], loaded_pipeline_file)
                         _server_instance.running = True
                         
                         # Обновляем глобальный логгер
@@ -728,10 +758,20 @@ def tool_lng_telegram_polling_server(
                 # Небольшая задержка для инициализации
                 time.sleep(0.5)
                 
+                # Определяем правильное количество шагов pipeline
+                pipeline_count = 0
+                if pipeline:
+                    pipeline_count = len(pipeline)
+                elif loaded_pipeline_file:
+                    file_pipeline = load_pipeline_from_file(loaded_pipeline_file)
+                    if file_pipeline:
+                        pipeline_count = len(file_pipeline)
+                
                 return {
                     "status": "started",
                     "message": "Telegram bot started with pipeline support",
-                    "pipeline_count": len(pipeline or [])
+                    "pipeline_count": pipeline_count,
+                    "pipeline_source": "inline" if pipeline else ("file" if loaded_pipeline_file else "none")
                 }
                 
             except Exception as e:

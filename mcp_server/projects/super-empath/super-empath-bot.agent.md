@@ -16,7 +16,7 @@ Get-Process python* | Where-Object { $_.ProcessName -like "*python*" } | Stop-Pr
 {
   "operation": "start",
   "pipeline_file": "mcp_server/projects/super-empath/config/telegram_pipeline.json"
-}}
+}
 ```
 
 ## Другие команды (при необходимости)

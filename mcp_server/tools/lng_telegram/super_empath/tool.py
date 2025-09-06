@@ -23,8 +23,13 @@ async def tool_info() -> dict:
             "type": "object",
             "properties": {
                 "telegram_context": {
-                    "type": "object",
-                    "description": "Telegram context object with user and message information"
+                    "type": "string",
+                    "description": "Telegram context JSON string with user and message information"
+                },
+                "prompt_template_name": {
+                    "type": "string",
+                    "description": "Name of the prompt template to use for LLM processing",
+                    "default": "default_super_empath"
                 }
             },
             "required": ["telegram_context"]
@@ -61,8 +66,100 @@ class SuperEmpathProcessor:
         except Exception as e:
             logger.error(f"Failed to save sessions: {e}")
             
+    async def improve_message_with_llm(self, message: str, user_id: str, template_name: str = "default_super_empath") -> dict:
+        """Улучшение сообщения через LLM с использованием истории сессии"""
+        try:
+            # Загружаем историю сессии для пользователя
+            conversation_history = self._get_conversation_history(user_id)
+            
+            # Импортируем необходимые модули для обращения к LLM
+            from mcp_server.tools.tool_registry import run_tool as execute_tool
+            
+            # Выполняем LLM prompt template
+            llm_params = {
+                "command": "use",
+                "template_name": template_name,
+                "conversation_history": conversation_history,
+                "user_message": message,
+                "user_id": user_id
+            }
+            
+            result_content = await execute_tool("lng_llm_prompt_template", llm_params)
+            
+            if result_content and len(result_content) > 0:
+                result_text = result_content[0].text
+                # Парсим JSON ответ от LLM
+                import json
+                llm_response = json.loads(result_text)
+                
+                logger.info(f"LLM response for user {user_id}: {llm_response}")
+                
+                return {
+                    "explanation": llm_response.get("explanation", ""),
+                    "suggestion": llm_response.get("suggestion", message),
+                    "success": True
+                }
+            else:
+                logger.error("Empty response from LLM")
+                return {
+                    "explanation": "Не удалось получить ответ от LLM",
+                    "suggestion": message,
+                    "success": False
+                }
+                
+        except Exception as e:
+            logger.error(f"Error in improve_message_with_llm: {e}")
+            import traceback
+            logger.error(f"Traceback: {traceback.format_exc()}")
+            
+            # Возвращаем fallback в случае ошибки
+            return {
+                "explanation": f"Произошла ошибка при обработке сообщения: {e}",
+                "suggestion": message,
+                "success": False
+            }
+    
+    def _get_conversation_history(self, user_id: str) -> str:
+        """Получение истории сообщений пользователя"""
+        try:
+            # Путь к файлу истории для пользователя
+            history_dir = f"mcp_server/config/telegram/sessions"
+            os.makedirs(history_dir, exist_ok=True)
+            
+            history_file = f"{history_dir}/{user_id}.txt"
+            
+            if os.path.exists(history_file):
+                with open(history_file, 'r', encoding='utf-8') as f:
+                    return f.read()
+            else:
+                return "История сообщений пуста."
+                
+        except Exception as e:
+            logger.error(f"Error reading conversation history for user {user_id}: {e}")
+            return "Ошибка при загрузке истории сообщений."
+    
+    def _save_message_to_history(self, user_id: str, user_name: str, message: str):
+        """Сохранение сообщения в историю в формате [USER_ID|USER_NAME]: message content"""
+        try:
+            history_dir = f"mcp_server/config/telegram/sessions"
+            os.makedirs(history_dir, exist_ok=True)
+            
+            history_file = f"{history_dir}/{user_id}.txt"
+            
+            # Формат: [USER_ID|USER_NAME]: message content
+            timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+            history_entry = f"[{user_id}|{user_name}] ({timestamp}): {message}\n"
+            
+            with open(history_file, 'a', encoding='utf-8') as f:
+                f.write(history_entry)
+                
+            logger.info(f"Saved message to history for user {user_id}")
+            
+        except Exception as e:
+            logger.error(f"Error saving message to history for user {user_id}: {e}")
+
     def improve_message(self, message: str) -> str:
-        """Улучшение сообщения для более мягкого общения"""
+        """Улучшение сообщения для более мягкого общения (legacy fallback)"""
         message_lower = message.lower()
         
         # Агрессивные слова и фразы
@@ -101,7 +198,7 @@ class SuperEmpathProcessor:
             
         return message
         
-    def handle_command(self, telegram_context: dict) -> dict:
+    async def handle_command(self, telegram_context: dict) -> dict:
         """Обработка команд Super Empath"""
         message = telegram_context.get("message", "").strip()
         user_id = telegram_context.get("user_id")
@@ -120,7 +217,7 @@ class SuperEmpathProcessor:
             # Пользователь не зарегистрирован - показываем приветствие
             return self._handle_welcome_message(telegram_context)
         else:
-            return self._handle_regular_message(telegram_context)
+            return await self._handle_regular_message(telegram_context)
             
     def _handle_welcome_message(self, telegram_context: dict) -> dict:
         """Показ приветственного сообщения для незарегистрированных пользователей"""
@@ -252,10 +349,12 @@ class SuperEmpathProcessor:
                 "action": "created_session"
             }
             
-    def _handle_regular_message(self, telegram_context: dict) -> dict:
-        """Обработка обычного сообщения"""
+    async def _handle_regular_message(self, telegram_context: dict) -> dict:
+        """Обработка обычного сообщения через LLM"""
         message = telegram_context.get("message", "")
-        user_id = telegram_context.get("user_id")
+        user_id = str(telegram_context.get("user_id"))
+        first_name = telegram_context.get("first_name", "Пользователь")
+        template_name = telegram_context.get("prompt_template_name", "default_super_empath")
         
         # Проверяем, что пользователь в сессии
         data = self._load_sessions()
@@ -266,24 +365,59 @@ class SuperEmpathProcessor:
                 "response": "Пожалуйста, сначала выполните команду /start",
                 "action": "not_registered"
             }
+        
+        # Сохраняем сообщение в историю
+        self._save_message_to_history(user_id, first_name, message)
+        
+        # Получаем ответ от LLM
+        llm_result = await self.improve_message_with_llm(message, user_id, template_name)
+        
+        if llm_result["success"]:
+            explanation = llm_result["explanation"]
+            suggestion = llm_result["suggestion"]
             
-        # Улучшаем сообщение
-        improved = self.improve_message(message)
-        
-        # Сохраняем текущее сообщение для последующего одобрения
-        user_data["pending_message"] = {
-            "original": message,
-            "improved": improved,
-            "timestamp": datetime.now().isoformat()
-        }
-        
-        data["users"][str(user_id)] = user_data
-        self._save_sessions(data)
-        
-        response = f"""📝 Ваше сообщение:
+            # Сохраняем текущее сообщение для последующего одобрения
+            user_data["pending_message"] = {
+                "original": message,
+                "improved": suggestion,
+                "explanation": explanation,
+                "timestamp": datetime.now().isoformat()
+            }
+            
+            data["users"][str(user_id)] = user_data
+            self._save_sessions(data)
+            
+            response = f"""📝 Ваше сообщение:
 "{message}"
 
+🤔 Размышления эксперта:
+{explanation}
+
 💡 Предлагаю переформулировать:
+"{suggestion}"
+
+Напишите /tamam для отправки или /cancel для отмены."""
+        
+        else:
+            # Fallback на старую логику в случае ошибки LLM
+            improved = self.improve_message(message)
+            
+            user_data["pending_message"] = {
+                "original": message,
+                "improved": improved,
+                "explanation": llm_result["explanation"],
+                "timestamp": datetime.now().isoformat()
+            }
+            
+            data["users"][str(user_id)] = user_data
+            self._save_sessions(data)
+            
+            response = f"""📝 Ваше сообщение:
+"{message}"
+
+⚠️ {llm_result["explanation"]}
+
+💡 Предлагаю переформулировать (резервный вариант):
 "{improved}"
 
 Напишите /tamam для отправки или /cancel для отмены."""
@@ -291,7 +425,8 @@ class SuperEmpathProcessor:
         return {
             "response": response,
             "original": message,
-            "improved": improved,
+            "improved": llm_result.get("suggestion", message),
+            "explanation": llm_result.get("explanation", ""),
             "action": "message_processed"
         }
         
@@ -368,38 +503,40 @@ class SuperEmpathProcessor:
 # Создаем глобальный экземпляр процессора
 _processor = SuperEmpathProcessor()
 
-def tool_lng_telegram_super_empath(
-    telegram_context: dict
+async def tool_lng_telegram_super_empath(
+    telegram_context: str,
+    prompt_template_name: str = "default_super_empath"
 ) -> Dict[str, Any]:
     """
     Super Empath - бизнес-логика эмоционального переводчика
     
-    Обрабатывает сообщение через эмоциональный переводчик
-    Принимает telegram_context как объект или JSON строку
+    Обрабатывает сообщение через эмоциональный переводчик с LLM
+    Принимает telegram_context как JSON строку
     """
     
     try:
         if not telegram_context:
             return {"error": "telegram_context is required"}
         
-        # Универсальная обработка: поддерживаем и объект, и JSON строку
-        context_obj = telegram_context
-        if isinstance(telegram_context, str):
-            import json
-            try:
-                context_obj = json.loads(telegram_context)
-                logger.info("Parsed telegram_context from JSON string")
-            except json.JSONDecodeError as e:
-                logger.error(f"Invalid JSON in telegram_context: {e}")
-                return {"error": f"Invalid telegram_context JSON: {e}"}
+        # Парсим telegram_context из JSON строки
+        import json
+        try:
+            context_obj = json.loads(telegram_context)
+            logger.info("Parsed telegram_context from JSON string")
+        except json.JSONDecodeError as e:
+            logger.error(f"Invalid JSON in telegram_context: {e}")
+            return {"error": f"Invalid telegram_context JSON: {e}"}
         
         # Проверяем что получили словарь
         if not isinstance(context_obj, dict):
-            logger.error(f"telegram_context must be dict or JSON string, got: {type(telegram_context)}")
-            return {"error": f"Invalid telegram_context type: {type(telegram_context)}"}
+            logger.error(f"telegram_context must be dict, got: {type(context_obj)}")
+            return {"error": f"Invalid telegram_context type: {type(context_obj)}"}
+        
+        # Добавляем prompt_template_name в контекст для использования процессором
+        context_obj["prompt_template_name"] = prompt_template_name
         
         # Обрабатываем сообщение
-        result = _processor.handle_command(context_obj)
+        result = await _processor.handle_command(context_obj)
         
         logger.info(f"Processed message from user {context_obj.get('user_id')}: {context_obj.get('message')}")
         
@@ -414,7 +551,7 @@ def tool_lng_telegram_super_empath(
 async def run_tool(name: str, parameters: dict) -> list[types.Content]:
     """Executes the Super Empath tool."""
     try:
-        result = tool_lng_telegram_super_empath(**parameters)
+        result = await tool_lng_telegram_super_empath(**parameters)
         return [types.TextContent(type="text", text=json.dumps(result, indent=2, ensure_ascii=False))]
     except Exception as e:
         error_result = {"error": str(e)}
