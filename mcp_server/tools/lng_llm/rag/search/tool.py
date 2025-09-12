@@ -1,3 +1,4 @@
+import json
 import mcp.types as types
 from mcp_server.state_manager import state_manager
 from mcp_server.file_state_manager import prompts_manager
@@ -123,7 +124,7 @@ async def run_tool(name: str, parameters: dict) -> list[types.Content]:
             "retrieved_documents": retrieved_docs
         }
         
-        return [types.TextContent(type="text", text=str(output))]
+        return [types.TextContent(type="text", text=json.dumps(output, ensure_ascii=False, indent=2))]
             
     except Exception as e:
         return [types.TextContent(type="text", text=f"Error searching vector database: {str(e)}")]
