@@ -13,10 +13,10 @@
     {
       "tool": "lng_file_list",
       "params": {
-        "directory_path": "{! user.base_directory !}",
+        "patterns": ["*.json"],
+        "base_path": "{! user.base_directory !}",
         "include_directories": false,
         "include_files": true,
-        "pattern": "*.json",
         "path_type": "absolute",
         "output_format": "json"
       },

@@ -41,24 +41,25 @@ Writes text content to files with multiple write modes and comprehensive metadat
 - `mode` (optional): Write mode - 'create', 'overwrite', or 'append'
 
 ### lng_file_list
-Lists all files and directories in a specified directory with flexible filtering and output options.
+Lists files and directories using multiple glob patterns with flexible filtering and output options.
 
 **Key Features:**
+- **Multiple Glob Patterns**: Support for multiple search patterns in one call
+- **Pattern Grouping**: Group results by pattern or return deduplicated flat list
 - **Multiple Output Formats**: Simple list, detailed view, or JSON with metadata
 - Path type options: relative (default) or absolute paths
-- Recursive directory traversal support
-- Pattern-based filtering (glob-style patterns like *.txt)
+- Built-in glob support including recursive patterns (`**/*`)
 - Type filtering: files only, directories only, or both
 - Hidden file inclusion control
-- Comprehensive error handling
+- Comprehensive error handling with pattern-specific feedback
 
 **Parameters:**
-- `directory_path` (required): Path to the directory to list
+- `patterns` (required): Array of glob patterns to search for files and directories
+- `base_path` (optional): Base directory path for pattern matching, default: current directory (".")
+- `group_by_pattern` (optional): Group results by pattern, default: false (flat list with deduplication)
 - `path_type` (optional): 'relative' (default) or 'absolute' paths
 - `include_directories` (optional): Include directories, default: true
 - `include_files` (optional): Include files, default: true
-- `recursive` (optional): List recursively in subdirectories, default: false
-- `pattern` (optional): Filter by glob pattern (e.g., '*.py', '*.txt')
 - `show_hidden` (optional): Include hidden files/directories, default: false
 - `output_format` (optional): 'list' (default), 'detailed', or 'json'
 
@@ -93,20 +94,26 @@ python -m mcp_server.run run lng_file_write '{"file_path":"unicode.txt","content
 ### Listing Directory Contents
 
 ```bash
-# List all files and directories (simple format)
-python -m mcp_server.run run lng_file_list '{"directory_path":"."}'
+# List all files and directories in current directory (simple format)
+python -m mcp_server.run run lng_file_list '{"patterns":["*"]}'
 
-# List only files with absolute paths
-python -m mcp_server.run run lng_file_list '{"directory_path":".","path_type":"absolute","include_directories":false}'
+# List only files with absolute paths  
+python -m mcp_server.run run lng_file_list '{"patterns":["*"],"path_type":"absolute","include_directories":false}'
 
 # List Python files recursively
-python -m mcp_server.run run lng_file_list '{"directory_path":"src","recursive":true,"pattern":"*.py"}'
+python -m mcp_server.run run lng_file_list '{"patterns":["**/*.py"],"base_path":"src"}'
+
+# Multiple patterns - .py and .md files
+python -m mcp_server.run run lng_file_list '{"patterns":["**/*.py","**/*.md"],"base_path":"."}'
+
+# Multiple patterns with grouping by pattern
+python -m mcp_server.run run lng_file_list '{"patterns":["src/**/*.py","tests/**/*.py","docs/*.md"],"group_by_pattern":true}'
 
 # Detailed listing with file information
-python -m mcp_server.run run lng_file_list '{"directory_path":"docs","output_format":"detailed"}'
+python -m mcp_server.run run lng_file_list '{"patterns":["*"],"base_path":"docs","output_format":"detailed"}'
 
 # JSON format with full metadata
-python -m mcp_server.run run lng_file_list '{"directory_path":"logs","output_format":"json"}'
+python -m mcp_server.run run lng_file_list '{"patterns":["**/*.log"],"base_path":"logs","output_format":"json"}'
 ```
 
 ## Output Formats
@@ -179,7 +186,7 @@ directory: subdirectory/
      file: file3.md (512 bytes)
 ```
 
-**JSON Format**
+**JSON Format (flat list)**
 ```json
 {
   "items": [
@@ -187,6 +194,7 @@ directory: subdirectory/
       "path": "file1.txt",
       "name": "file1.txt",
       "type": "file",
+      "pattern": "*.txt",
       "size": 1024,
       "modified_time": 1691835600.0,
       "permissions": "644",
@@ -195,8 +203,9 @@ directory: subdirectory/
     },
     {
       "path": "subdirectory",
-      "name": "subdirectory",
+      "name": "subdirectory", 
       "type": "directory",
+      "pattern": "*",
       "size": null,
       "modified_time": 1691835700.0,
       "permissions": "755",
@@ -205,15 +214,37 @@ directory: subdirectory/
     }
   ],
   "metadata": {
-    "operation": "file_list",
-    "directory_path": "/path/to/directory",
+    "operation": "file_list_patterns",
+    "base_path": "/path/to/directory",
+    "patterns": ["*.txt", "*"],
+    "group_by_pattern": false,
     "path_type": "relative",
     "include_directories": true,
     "include_files": true,
-    "recursive": false,
     "show_hidden": false,
-    "pattern": null,
+    "output_format": "json",
     "total_items": 2,
+    "patterns_processed": 2,
+    "success": true
+  }
+}
+```
+
+**JSON Format (grouped by pattern)**
+```json
+{
+  "grouped_results": {
+    "*.py": ["main.py", "utils.py"],
+    "*.txt": ["readme.txt", "config.txt"],
+    "docs/*.md": ["docs/api.md", "docs/guide.md"]
+  },
+  "metadata": {
+    "operation": "file_list_patterns",
+    "base_path": "/path/to/directory",
+    "patterns": ["*.py", "*.txt", "docs/*.md"],
+    "group_by_pattern": true,
+    "total_items": 6,
+    "patterns_processed": 3,
     "success": true
   }
 }
