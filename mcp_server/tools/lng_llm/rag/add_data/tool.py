@@ -139,9 +139,15 @@ def create_text_splitter(splitter_config: dict):
 
 async def run_tool(name: str, parameters: dict) -> list[types.Content]:
     """Adds text data to the RAG vector database."""
+    import json
+    
     text = parameters.get("input_text", None)
     if not text:
-        return [types.TextContent(type="text", text="Error: 'input_text' parameter is required.")]
+        error_result = {
+            "success": False,
+            "error": "'input_text' parameter is required."
+        }
+        return [types.TextContent(type="text", text=json.dumps(error_result, indent=2))]
     
     metadata = parameters.get("metadata", {})
     splitter_config = parameters.get("splitter", {"type": "RecursiveCharacterTextSplitter"})
@@ -159,19 +165,37 @@ async def run_tool(name: str, parameters: dict) -> list[types.Content]:
         # Get vector store from state or create a new one
         vector_store = state_manager.get("vector_store")
         
-        splitter_info = f"using {splitter_config.get('type', 'RecursiveCharacterTextSplitter')}"
-        if splitter_config.get('config'):
-            splitter_info += f" with config: {splitter_config['config']}"
-        
         if vector_store is None:
             # If no vector store exists yet, create a new one
             vector_store = FAISS.from_documents(documents, embeddings())
             state_manager.set("vector_store", vector_store)
-            return [types.TextContent(type="text", text=f"Created new vector database with {len(documents)} text chunks {splitter_info}.")]
+            operation = "created_new"
         else:
             # Add to existing vector store
             vector_store.add_documents(documents)
             state_manager.set("vector_store", vector_store)
-            return [types.TextContent(type="text", text=f"Added {len(documents)} text chunks to existing vector database {splitter_info}.")]
+            operation = "added_to_existing"
+        
+        # Create JSON result
+        result = {
+            "success": True,
+            "operation": operation,
+            "chunks_added": len(documents),
+            "chunks_content": [chunk for chunk in chunks],
+            "metadata": metadata,
+            "splitter": {
+                "type": splitter_config.get('type', 'RecursiveCharacterTextSplitter'),
+                "config": splitter_config.get('config', {})
+            },
+            "total_characters": len(text),
+            "average_chunk_size": sum(len(chunk) for chunk in chunks) // len(chunks) if chunks else 0
+        }
+        
+        return [types.TextContent(type="text", text=json.dumps(result, indent=2))]
+        
     except Exception as e:
-        return [types.TextContent(type="text", text=f"Error adding data to vector database: {str(e)}")]
+        error_result = {
+            "success": False,
+            "error": str(e)
+        }
+        return [types.TextContent(type="text", text=json.dumps(error_result, indent=2))]
