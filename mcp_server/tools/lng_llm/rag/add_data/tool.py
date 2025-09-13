@@ -12,9 +12,10 @@ import threading
 import time
 import gc
 from mcp_server.llm import embeddings
+import logging
 
 # Setup logger
-logger = setup_logging("lng_rag_add_data")
+logger = logging.getLogger('mcp_server.tools.lng_llm.rag.add_data')
 
 # Global variables for warmup
 _warmup_completed = False
