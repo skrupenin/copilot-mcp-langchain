@@ -50,20 +50,36 @@ async def run_tool(name: str, parameters: dict) -> list[types.Content]:
     """Searches the RAG vector database with a query."""
     query = parameters.get("query", None)
     if not query:
-        return [types.TextContent(type="text", text="Error: 'query' parameter is required.")]
+        error_output = {
+            "error": "missing_parameter",
+            "message": "'query' parameter is required",
+            "required_parameter": "query"
+        }
+        return [types.TextContent(type="text", text=json.dumps(error_output, ensure_ascii=False, indent=2))]
     
     k = parameters.get("k", 3)
     prompt_template_name = parameters.get("prompt_template")
     
     if not prompt_template_name:
-        return [types.TextContent(type="text", text="Error: 'prompt_template' parameter is required. Please use lng_llm_prompt_template tool first to create a template, then specify its name here.")]
+        error_output = {
+            "error": "missing_parameter",
+            "message": "'prompt_template' parameter is required",
+            "required_parameter": "prompt_template",
+            "suggestion": "Use lng_llm_prompt_template tool first to create a template, then specify its name here"
+        }
+        return [types.TextContent(type="text", text=json.dumps(error_output, ensure_ascii=False, indent=2))]
     
     try:
         # Get vector store from state
         vector_store = state_manager.get("vector_store")
         
         if vector_store is None:
-            return [types.TextContent(type="text", text="Error: No vector database found. Please add documents first using lng_rag_add_data.")]
+            error_output = {
+                "error": "no_vector_database",
+                "message": "No vector database found",
+                "suggestion": "Please add documents first using lng_llm_rag_add_data"
+            }
+            return [types.TextContent(type="text", text=json.dumps(error_output, ensure_ascii=False, indent=2))]
         
         # Initialize embeddings
         embeddings = OpenAIEmbeddings()
@@ -72,7 +88,13 @@ async def run_tool(name: str, parameters: dict) -> list[types.Content]:
         results = vector_store.similarity_search_with_score(query, k=k)
         
         if not results:
-            return [types.TextContent(type="text", text="No relevant documents found for your query.")]
+            no_results_output = {
+                "message": "No relevant documents found for your query",
+                "query": query,
+                "retrieved_documents": [],
+                "response": None
+            }
+            return [types.TextContent(type="text", text=json.dumps(no_results_output, ensure_ascii=False, indent=2))]
         
         # Format results
         retrieved_docs = []
@@ -89,11 +111,14 @@ async def run_tool(name: str, parameters: dict) -> list[types.Content]:
         if saved_template is None:
             # If specified template is not found, return error with available templates
             available_templates = prompts_manager.list_files(extension=".prompt")
-            if available_templates:
-                available_list = ", ".join(available_templates)
-                return [types.TextContent(type="text", text=f"Error: Prompt template '{prompt_template_name}' not found. Available templates: {available_list}. Use lng_llm_prompt_template to create new templates.")]
-            else:
-                return [types.TextContent(type="text", text=f"Error: Prompt template '{prompt_template_name}' not found. No templates exist yet. Use lng_llm_prompt_template tool first to create templates.")]
+            error_output = {
+                "error": "template_not_found",
+                "message": f"Prompt template '{prompt_template_name}' not found",
+                "requested_template": prompt_template_name,
+                "available_templates": available_templates if available_templates else [],
+                "suggestion": "Use lng_llm_prompt_template to create new templates"
+            }
+            return [types.TextContent(type="text", text=json.dumps(error_output, ensure_ascii=False, indent=2))]
             
         # Create a context from retrieved documents
         context = "\n\n".join([f"Document {i+1}:\n{doc['content']}" for i, doc in enumerate(retrieved_docs)])
@@ -127,4 +152,10 @@ async def run_tool(name: str, parameters: dict) -> list[types.Content]:
         return [types.TextContent(type="text", text=json.dumps(output, ensure_ascii=False, indent=2))]
             
     except Exception as e:
-        return [types.TextContent(type="text", text=f"Error searching vector database: {str(e)}")]
+        error_output = {
+            "error": "exception",
+            "message": f"Error searching vector database: {str(e)}",
+            "exception_type": type(e).__name__,
+            "query": query
+        }
+        return [types.TextContent(type="text", text=json.dumps(error_output, ensure_ascii=False, indent=2))]
