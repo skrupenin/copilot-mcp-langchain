@@ -1,0 +1,3 @@
+enabled: true
+description: "PDF processing tools for extracting and manipulating PDF content"
+dependencies: ["PyMuPDF"]

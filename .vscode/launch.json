@@ -1,0 +1,17 @@
+{
+    // Use IntelliSense to learn about possible attributes.
+    // Hover to view descriptions of existing attributes.
+    // For more information, visit: https://go.microsoft.com/fwlink/?linkid=830387
+    "version": "0.2.0",
+    "configurations": [
+
+        {
+            "name": "Python Debugger: Current File",
+            "type": "debugpy",
+            "request": "launch",
+            "program": "mcp_server/projects/fix-teams-adaptive-cards/main.py",
+            "console": "integratedTerminal",
+            "args": ["--colleagues", "Andrii Birzov,Dzmitry Pliushch,Tom Cassidy,Mihaly Vanya,Maryia Ivanko,Ravi Gupta1,Pascal Roth,Claudio Biancardi,Hugo Fragoso,Dada Malbasa,Kostas Katsidis,Andres Priede,Jean-Marie Terrade,Vian Wellington,Lazlo Viel,Cait Connaughton,Benjamin Urban,Zsanett Zebegenyi,Eva Jakab"]
+        }
+    ]
+}
