@@ -1,11 +1,43 @@
 {
   "user_params": {
-    "masks_file": "mcp_server/projects/docs-rag/file-masks.txt",
+    "masks_file": "mcp_server/projects/docs-rag/input/file-masks.txt",
     "base_path": ".",
     "excluded_dirs": ["node_modules", ".git", "__pycache__", "copilot-session"],
-    "log_file": "mcp_server/projects/docs-rag/processing.log"
+    "log_file": "mcp_server/projects/docs-rag/logs/processing.log"
   },
   "pipeline": [
+    {
+      "tool": "lng_file_read",
+      "params": {
+        "file_path": "mcp_server/projects/docs-rag/prompt/critical_analysis.prompt"
+      },
+      "output": "critical_analysis_prompt_content"
+    },
+    {
+      "tool": "lng_llm_prompt_template",
+      "params": {
+        "command": "save",
+        "template_name": "critical_analysis",
+        "template": "{! critical_analysis_prompt_content !}"
+      },
+      "output": "critical_analysis_template_saved"
+    },
+    {
+      "tool": "lng_file_read",
+      "params": {
+        "file_path": "mcp_server/projects/docs-rag/prompt/project_analysis.prompt"
+      },
+      "output": "project_analysis_prompt_content"
+    },
+    {
+      "tool": "lng_llm_prompt_template",
+      "params": {
+        "command": "save",
+        "template_name": "project_analysis",
+        "template": "{! project_analysis_prompt_content !}"
+      },
+      "output": "project_analysis_template_saved"
+    },
     {
       "tool": "lng_file_read",
       "params": {
@@ -75,6 +107,5 @@
       ]
     }
   ],
-  "final_result": "{! `RAG processing completed successfully! Check detailed processing information in log file: ${user.log_file}` !}",
-  "context_fields": ["*"]
+  "final_result": "{! `RAG processing completed successfully! Check detailed processing information in log file: ${user.log_file}` !}"
 }
