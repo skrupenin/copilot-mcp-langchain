@@ -2,7 +2,8 @@
   "user_params": {
     "masks_file": "mcp_server/projects/docs-rag/file-masks.txt",
     "base_path": ".",
-    "excluded_dirs": ["node_modules", ".git", "__pycache__", "copilot-session"]
+    "excluded_dirs": ["node_modules", ".git", "__pycache__", "copilot-session"],
+    "log_file": "mcp_server/projects/docs-rag/processing.log"
   },
   "pipeline": [
     {
@@ -57,6 +58,15 @@
                     }
                   },
                   "output": "rag_result"
+                },
+                {
+                  "tool": "lng_file_write",
+                  "params": {
+                    "file_path": "{! user.log_file !}",
+                    "content": "File: {! current_file !}\nMask: {! current_mask !}\nChunks added: {! rag_result.chunks_added || 0 !}\nTotal characters: {! rag_result.total_characters || 0 !}\nProcessed at: {! new Date().toISOString() !}\n---------------\n",
+                    "mode": "append"
+                  },
+                  "output": "log_write_result"
                 }
               ]
             }
@@ -65,6 +75,6 @@
       ]
     }
   ],
-  "final_result": "{! `RAG processing completed successfully! Last file processed: ${rag_result ? (rag_result.metadata ? rag_result.metadata.source_file : 'unknown') : 'none'}, Last chunks added: ${rag_result ? rag_result.chunks_added || 0 : 0}. Processing took ${rag_result ? rag_result.operation || 'unknown' : 'no operation'}` !}",
+  "final_result": "{! `RAG processing completed successfully! Check detailed processing information in log file: ${user.log_file}` !}",
   "context_fields": ["*"]
 }
