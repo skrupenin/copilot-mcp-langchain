@@ -1,0 +1,70 @@
+{
+  "user_params": {
+    "masks_file": "mcp_server/projects/docs-rag/file-masks.txt",
+    "base_path": ".",
+    "excluded_dirs": ["node_modules", ".git", "__pycache__", "copilot-session"]
+  },
+  "pipeline": [
+    {
+      "tool": "lng_file_read",
+      "params": {
+        "file_path": "{! user.masks_file !}"
+      },
+      "output": "masks_content"
+    },
+    {
+      "type": "forEach",
+      "forEach": "{! masks_content.split('\\n').filter(line => line.trim() && !line.trim().startsWith('#')) !}",
+      "item": "current_mask",
+      "do": [
+        {
+          "tool": "lng_file_list",
+          "params": {
+            "patterns": ["{! current_mask !}"],
+            "base_path": "{! user.base_path !}",
+            "include_files": true,
+            "include_directories": false,
+            "output_format": "list"
+          },
+          "output": "files_for_mask"
+        },
+        {
+          "type": "forEach", 
+          "forEach": "{! files_for_mask.split('\\n').filter(file => file.trim() && !user.excluded_dirs.some(dir => file.includes(dir))) !}",
+          "item": "current_file",
+          "do": [
+            {
+              "tool": "lng_file_read",
+              "params": {
+                "file_path": "{! current_file !}",
+                "encoding": "utf-8"
+              },
+              "output": "file_content"
+            },
+            {
+              "type": "condition",
+              "condition": "{! file_content && file_content.length > 10 !}",
+              "then": [
+                {
+                  "tool": "lng_llm_rag_add_data",
+                  "params": {
+                    "input_text": "{! file_content !}",
+                    "metadata": {
+                      "source_file": "{! current_file !}",
+                      "file_type": "{! current_file.split('.').pop() !}",
+                      "processed_at": "{! new Date().toISOString() !}",
+                      "mask_pattern": "{! current_mask !}"
+                    }
+                  },
+                  "output": "rag_result"
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    }
+  ],
+  "final_result": "{! `RAG processing completed successfully! Last file processed: ${rag_result ? (rag_result.metadata ? rag_result.metadata.source_file : 'unknown') : 'none'}, Last chunks added: ${rag_result ? rag_result.chunks_added || 0 : 0}. Processing took ${rag_result ? rag_result.operation || 'unknown' : 'no operation'}` !}",
+  "context_fields": ["*"]
+}

@@ -1,0 +1,6 @@
+# List of masks for searching documents
+# Each line contains a glob pattern for searching files
+# Lines beginning with # are ignored
+
+mcp_server/instructions/*.md
+mcp_server/**/*.demo.agent.md
