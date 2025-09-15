@@ -278,110 +278,117 @@ async def test_file_operations():
         with open(os.path.join(hidden_dir, "hidden_nested.txt"), "w") as f:
             f.write("hidden nested content")
         
-        # Test 23: Basic directory listing (simple format)
+        # Test 23: Basic pattern listing (simple format)
         result = await list_tool("lng_file_list", {
-            "directory_path": temp_dir
+            "patterns": ["*"],
+            "base_path": temp_dir
         })
-        print_test_result("Test 23: Basic directory listing (simple format)", result, True)
+        print_test_result("Test 23: Basic pattern listing (simple format)", result, True)
         
-        # Test 24: Directory listing with absolute paths
+        # Test 24: Pattern listing with absolute paths
         result = await list_tool("lng_file_list", {
-            "directory_path": temp_dir,
+            "patterns": ["*"],
+            "base_path": temp_dir,
             "path_type": "absolute"
         })
-        print_test_result("Test 24: Directory listing with absolute paths", result, True)
+        print_test_result("Test 24: Pattern listing with absolute paths", result, True)
         
         # Test 25: List only files (exclude directories)
         result = await list_tool("lng_file_list", {
-            "directory_path": temp_dir,
+            "patterns": ["*"],
+            "base_path": temp_dir,
             "include_directories": False
         })
         print_test_result("Test 25: List only files", result, True)
         
         # Test 26: List only directories (exclude files)
         result = await list_tool("lng_file_list", {
-            "directory_path": temp_dir,
+            "patterns": ["*"],
+            "base_path": temp_dir,
             "include_files": False
         })
         print_test_result("Test 26: List only directories", result, True)
         
         # Test 27: Recursive listing
         result = await list_tool("lng_file_list", {
-            "directory_path": temp_dir,
-            "recursive": True
+            "patterns": ["**/*"],
+            "base_path": temp_dir
         })
-        print_test_result("Test 27: Recursive directory listing", result, True)
+        print_test_result("Test 27: Recursive pattern listing", result, True)
         
-        # Test 28: Pattern filtering (*.py files)
+        # Test 28: Pattern filtering (*.py files recursive)
         result = await list_tool("lng_file_list", {
-            "directory_path": temp_dir,
-            "pattern": "*.py",
-            "recursive": True
+            "patterns": ["**/*.py"],
+            "base_path": temp_dir
         })
         print_test_result("Test 28: Pattern filtering (*.py files)", result, True)
         
         # Test 29: Pattern filtering (*.txt files) with absolute paths
         result = await list_tool("lng_file_list", {
-            "directory_path": temp_dir,
-            "pattern": "*.txt",
-            "path_type": "absolute",
-            "recursive": True
+            "patterns": ["**/*.txt"],
+            "base_path": temp_dir,
+            "path_type": "absolute"
         })
         print_test_result("Test 29: Pattern filtering (*.txt) with absolute paths", result, True)
         
-        # Test 30: Include hidden files
+        # Test 30: Include hidden files with multiple patterns
         result = await list_tool("lng_file_list", {
-            "directory_path": temp_dir,
+            "patterns": ["*", ".*"],
+            "base_path": temp_dir,
             "show_hidden": True
         })
         print_test_result("Test 30: Include hidden files", result, True)
         
         # Test 31: Detailed output format
         result = await list_tool("lng_file_list", {
-            "directory_path": temp_dir,
+            "patterns": ["*"],
+            "base_path": temp_dir,
             "output_format": "detailed"
         })
         print_test_result("Test 31: Detailed output format", result, True)
         
         # Test 32: JSON output format
         result = await list_tool("lng_file_list", {
-            "directory_path": temp_dir,
+            "patterns": ["*"],
+            "base_path": temp_dir,
             "output_format": "json"
         })
         print_test_result("Test 32: JSON output format", result, True)
         
-        # Test 33: Recursive listing with hidden files and JSON format
+        # Test 33: Multiple patterns with grouping and JSON format
         result = await list_tool("lng_file_list", {
-            "directory_path": temp_dir,
-            "recursive": True,
+            "patterns": ["**/*.py", "**/*.txt", "**/.*"],
+            "base_path": temp_dir,
+            "group_by_pattern": True,
             "show_hidden": True,
             "output_format": "json"
         })
-        print_test_result("Test 33: Recursive with hidden files (JSON format)", result, True)
+        print_test_result("Test 33: Multiple patterns with grouping (JSON format)", result, True)
         
-        # Test 34: Test error - non-existent directory
+        # Test 34: Test error - non-existent base_path
         result = await list_tool("lng_file_list", {
-            "directory_path": os.path.join(temp_dir, "nonexistent_dir")
+            "patterns": ["*"],
+            "base_path": os.path.join(temp_dir, "nonexistent_dir")
         })
-        print_test_result("Test 34: Non-existent directory (should fail)", result, False)
+        print_test_result("Test 34: Non-existent base_path (should fail)", result, False)
         
-        # Test 35: Test error - path is file, not directory
+        # Test 35: Test error - empty patterns array
         result = await list_tool("lng_file_list", {
-            "directory_path": test_file
+            "patterns": [],
+            "base_path": temp_dir
         })
-        print_test_result("Test 35: Path is file not directory (should fail)", result, False)
+        print_test_result("Test 35: Empty patterns array (should fail)", result, False)
         
-        # Test 36: Test error - missing directory path
+        # Test 36: Test error - missing patterns parameter
         result = await list_tool("lng_file_list", {
-            "pattern": "*.txt"
+            "base_path": temp_dir
         })
-        print_test_result("Test 36: Missing directory_path parameter (should fail)", result, False)
+        print_test_result("Test 36: Missing patterns parameter (should fail)", result, False)
         
-        # Test 37: Complex combination - recursive *.txt files with detailed output
+        # Test 37: Complex combination - multiple patterns with detailed output
         result = await list_tool("lng_file_list", {
-            "directory_path": temp_dir,
-            "pattern": "*.txt",
-            "recursive": True,
+            "patterns": ["**/*.txt", "**/*.py", "**/.*"],
+            "base_path": temp_dir,
             "show_hidden": True,
             "output_format": "detailed",
             "path_type": "absolute"
