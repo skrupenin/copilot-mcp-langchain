@@ -4,6 +4,7 @@
 - Follow `./tool-requirements-gathering.agent.md` when you need to gather requirements before creating a tool.
 - Follow `./assign-issue-to-coding-agent.agent.md` when I asked to create issue on Github an to assign it to the Coding Agent.
 - Follow `../projects/super-empath/super-empath-bot.agent.md` for starting and managing the Super Empath Telegram bot with config file.
+- Follow `./todoist-ai-integration.agent.md` for information about the integrated Todoist AI MCP server and task management capabilities.
 - Always follow `./activate-virtualenv.agent.md` in any case activate the virtual environment before starting any python stuff in terminal.
 - Important! Use MCP calls to demonstrate the operation of tools whenever possible, unless otherwise specified or if the tool is being debugged prior to its final demonstration.
 - Follow `./check-mcp-enabled.agent.md` if there is no MCP enabled or you need to check if MCP is enabled.

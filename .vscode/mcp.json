@@ -1,13 +1,27 @@
 {
-    "servers": {
-      "langchain-mcp":{
-          "type": "stdio",
-          "command": "${workspaceFolder}\\.virtualenv\\Scripts\\python.exe",
-          "args": ["${workspaceFolder}\\mcp_server\\server.py"]
-      },
-      "github": {
-          "type": "http",
-          "url": "https://api.githubcopilot.com/mcp/"
-      }
-    }
+	"servers": {
+		"langchain-mcp": {
+			"type": "stdio",
+			"command": "${workspaceFolder}\\.virtualenv\\Scripts\\python.exe",
+			"args": [
+				"${workspaceFolder}\\mcp_server\\server.py"
+			]
+		},
+		"github": {
+			"type": "http",
+			"url": "https://api.githubcopilot.com/mcp/"
+		},
+		"todoist-ai": {
+			"type": "stdio",
+			"command": "npx",
+			"args": [
+				"@doist/todoist-ai@4.4.0"
+			],
+			"env": {
+				"TODOIST_API_TOKEN": "28504797b7f38e3729bf9361095b596334b9b160",
+				"TODOIST_API_KEY": "28504797b7f38e3729bf9361095b596334b9b160"
+			}
+		}
+	},
+	"inputs": []
 }
